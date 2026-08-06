@@ -1,0 +1,1857 @@
+<!-- PASSKEY: rushit2712 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>243A Strategy Console</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="/static/js/lightweight-charts.js"></script>
+    <style>
+        :root {
+            --bg-color: #030712;
+            --panel-bg: rgba(17, 24, 39, 0.7);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Header Style */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            background: rgba(10, 16, 30, 0.8);
+            border-bottom: 1px solid var(--panel-border);
+            backdrop-filter: blur(12px);
+            z-index: 10;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-badge {
+            background: linear-gradient(135deg, var(--accent-blue), #60a5fa);
+            color: white;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px var(--accent-glow);
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            background: linear-gradient(120deg, #f3f4f6 30%, #9ca3af 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .pulse-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--panel-border);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .pulse-live {
+            background-color: var(--success);
+            box-shadow: 0 0 8px var(--success);
+            animation: pulse-green 2s infinite;
+        }
+
+        .pulse-connecting {
+            background-color: var(--warning);
+            box-shadow: 0 0 8px var(--warning);
+            animation: pulse-orange 2s infinite;
+        }
+
+        .pulse-error {
+            background-color: var(--danger);
+            box-shadow: 0 0 8px var(--danger);
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        @keyframes pulse-orange {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .main-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 1.25rem;
+            padding: 1.25rem;
+            height: calc(100vh - 70px);
+            overflow: hidden;
+        }
+
+        .left-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .right-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            overflow-y: auto;
+        }
+
+        /* Glassmorphism Panel */
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.5rem;
+        }
+
+        .panel-title {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #d1d5db;
+        }
+
+        /* Chart container */
+        #chart-container {
+            width: 100%;
+            height: 480px;
+            position: relative;
+            background: #090e18;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        /* Switch Toggle Component */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .3s;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-blue);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Table Styling */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.85rem;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-muted);
+            padding: 10px 14px;
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            color: #d1d5db;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .badge-buy {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+
+        .badge-sell {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+
+        /* Buttons & Controls */
+        .btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+            border: none;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #4f46e5, var(--accent-blue));
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: rgba(239, 68, 68, 0.5);
+            color: white;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        /* Modals & Popups */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: #0b0f19;
+            border: 1px solid var(--panel-border);
+            width: 90%;
+            max-width: 580px;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, white, var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: left;
+        }
+
+        .form-group label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input, .form-group select {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 10px 14px;
+            color: white;
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-group input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        /* Help Guide Panel */
+        .guide-box {
+            background: rgba(59, 130, 246, 0.03);
+            border: 1px dashed rgba(59, 130, 246, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+            text-align: left;
+        }
+
+        .guide-box h4 {
+            color: var(--accent-blue);
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .guide-box ol {
+            padding-left: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        /* Backtester Box */
+        .dropzone {
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s;
+            margin-bottom: 1rem;
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.03);
+        }
+
+        .dropzone p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .backtest-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 8px 12px;
+            text-align: center;
+        }
+
+        .metric-card .val {
+            font-size: 1rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .metric-card .lbl {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.5rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+            font-weight: 500;
+        }
+
+        .tab-pane {
+            display: none;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .tab-pane.active {
+            display: flex;
+        }
+
+        .flex-row-center {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .badge-regime {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(96, 165, 250, 0.05));
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #93c5fd;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+        
+        @media (max-width: 1024px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+                padding: 1rem;
+                height: auto;
+            }
+            .main-container {
+                grid-template-columns: 1fr;
+                height: auto;
+                overflow: visible;
+                padding: 1rem;
+            }
+            .left-content, .right-content {
+                overflow: visible;
+                height: auto;
+            }
+            #chart-container {
+                height: 380px !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                font-size: 13px;
+            }
+            header {
+                padding: 0.75rem 1rem;
+            }
+            h1 {
+                font-size: 1.1rem;
+            }
+            .main-container {
+                padding: 0.75rem;
+                gap: 0.75rem;
+            }
+            .glass-panel {
+                padding: 0.75rem;
+                border-radius: 8px;
+            }
+            #chart-container {
+                height: 320px !important;
+            }
+            th, td {
+                padding: 8px 10px;
+                font-size: 0.75rem;
+            }
+            .quick-actions {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+        }
+
+        /* Toast Notification */
+        .toast-notification {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-left: 4px solid var(--accent-blue);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            font-size: 0.85rem;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+        .toast-notification.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SECURE PIN / AUTHENTICATION OVERLAY -->
+    <div id="auth-overlay" class="modal-overlay active" style="z-index: 1000; pointer-events: auto;">
+        <div class="modal-content" style="max-width: 420px; text-align: center;">
+            
+            <!-- PIN LOCK PANEL (for existing user) -->
+            <div id="pin-lock-container" style="display: none;">
+                <h2 style="margin-bottom: 1rem; background: linear-gradient(135deg, white, var(--text-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight:700;">Dashboard Locked</h2>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">Enter your 6-digit PIN to access:<br><strong id="lock-email-label" style="color: white; font-family:'JetBrains Mono'; font-size:0.9rem;"></strong></p>
+                <form onsubmit="handlePinLogin(event)">
+                    <div class="form-group">
+                        <input type="password" id="lock-pin" placeholder="••••••" required style="text-align: center; font-size: 2rem; letter-spacing: 8px; font-family: 'JetBrains Mono', monospace;" maxlength="6" pattern="\d{6}" inputmode="numeric">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding:12px;">Unlock Console</button>
+                </form>
+                <a href="#" onclick="showSignInForm()" style="color: var(--accent-blue); display: inline-block; margin-top: 1.25rem; font-size: 0.85rem; text-decoration: none;">Switch Account / Log In</a>
+            </div>
+
+            <!-- SIGN IN PANEL -->
+            <div id="signin-container">
+                <h2 style="margin-bottom: 1rem; background: linear-gradient(135deg, white, var(--text-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight:700;">Existing User Login</h2>
+                <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1.5rem;">Please enter your email and 6-digit PIN to load your live strategy desk.</p>
+                <form onsubmit="handleSignIn(event)">
+                    <div class="form-group">
+                        <label for="signin-email">Email Address</label>
+                        <input type="email" id="signin-email" placeholder="email@example.com" required style="font-family:'JetBrains Mono';">
+                    </div>
+                    <div class="form-group">
+                        <label for="signin-pin">6-Digit PIN</label>
+                        <input type="password" id="signin-pin" placeholder="••••••" required maxlength="6" pattern="\d{6}" inputmode="numeric" style="text-align: center; font-size: 1.5rem; letter-spacing: 6px; font-family: 'JetBrains Mono', monospace;">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding:12px;">Log In</button>
+                </form>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1.5rem;">New user? <a href="#" onclick="showSignUpForm()" style="color: var(--accent-blue); text-decoration: none; font-weight:600;">Create a secure account</a></p>
+            </div>
+
+            <!-- SIGN UP PANEL -->
+            <div id="signup-container" style="display: none;">
+                <h2 style="margin-bottom: 1rem; background: linear-gradient(135deg, white, var(--text-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight:700;">Account Setup</h2>
+                <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1.25rem;">Enter your email, create a 6-digit PIN, and provide your Angel One details. These will be secured inside your local database sandbox.</p>
+                <form onsubmit="handleSignUp(event)">
+                    <div class="form-group">
+                        <label for="signup-email">Email Address</label>
+                        <input type="email" id="signup-email" placeholder="email@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-pin">Create 6-Digit PIN</label>
+                        <input type="password" id="signup-pin" placeholder="••••••" required maxlength="6" pattern="\d{6}" inputmode="numeric" style="text-align: center; font-size: 1.25rem; letter-spacing: 4px; font-family: 'JetBrains Mono', monospace;">
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-api-key">Angel One API Key</label>
+                        <input type="text" id="signup-api-key" placeholder="Developer App API Key" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-client-id">Angel One Client ID</label>
+                        <input type="text" id="signup-client-id" placeholder="Trading Account ID (e.g. AAA96417)" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">MPIN Password</label>
+                        <input type="password" id="signup-password" placeholder="Trading MPIN" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-totp-secret">Angel One TOTP Token Secret</label>
+                        <input type="text" id="signup-totp-secret" placeholder="TOTP Secret (Base32 Key)" required style="font-family:'JetBrains Mono';">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding:12px;">Validate & Create Account</button>
+                </form>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1.25rem;">Already have an account? <a href="#" onclick="showSignInForm()" style="color: var(--accent-blue); text-decoration: none; font-weight:600;">Log In</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP HEADER -->
+    <header>
+        <div class="logo-section">
+            <span class="logo-badge" id="strategy-logo-badge">243A</span>
+            <div style="display: flex; flex-direction: column;">
+                <h1 style="margin: 0; font-size: 1.15rem; font-weight:700;">Multi-User strategy Console</h1>
+                <span class="pulse-badge" style="margin-top: 4px;">
+                    <span class="pulse-dot pulse-connecting" id="conn-dot"></span>
+                    <span id="conn-text" style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">Connecting</span>
+                </span>
+            </div>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span id="header-user-email" style="font-size: 0.85rem; color: #9ca3af; font-family: 'JetBrains Mono', monospace; font-weight:500;"></span>
+            <button class="btn btn-secondary" onclick="toggleRightPanel()" style="padding: 4px 10px; font-size: 0.8rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg> Toggle Sidebar</button>
+            <button class="btn btn-danger" id="btn-signout" onclick="handleSignOut()" style="padding: 4px 10px; font-size: 0.8rem; display: none;">Sign Out</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- Left Side Column -->
+        <div class="left-content">
+            <!-- Candle Graph Panel -->
+            <div class="glass-panel" style="flex: 1;">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+                        Nifty50 spot Chart
+                    </div>
+                    
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap: wrap;">
+                        <div class="calendar-nav" style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 2px 6px;">
+                            <span style="font-size: 0.7rem; color: var(--text-muted); font-family: inherit;">Go to Date:</span>
+                            <input type="date" id="calendar-picker" onchange="jumpToDate()" style="background: transparent; border: none; color: white; font-size: 0.7rem; outline: none; font-family: inherit; cursor: pointer; color-scheme: dark;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <select id="download-year-select" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); color: white; border-radius: 6px; padding: 4px 8px; font-size: 0.7rem; font-family: inherit; outline: none; cursor: pointer; color-scheme: dark;">
+                                <option value="all">All Years</option>
+                                <option value="2026">2026</option>
+                                <option value="2025">2025</option>
+                                <option value="2024">2024</option>
+                                <option value="2023">2023</option>
+                                <option value="2022">2022</option>
+                                <option value="2021">2021</option>
+                            </select>
+                            <button onclick="downloadFilteredOldData()" class="btn" style="font-size: 0.7rem; padding: 6px 10px;" id="btn-download-old"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download Data</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="chart-container" style="position: relative;">
+                    <!-- Legend overlay inside the chart container -->
+                    <div id="chart-legend" style="position: absolute; left: 12px; top: 12px; z-index: 10; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9ca3af; pointer-events: none; display: flex; flex-direction: column; gap: 4px;">
+                        <div>
+                            <span style="color: #60a5fa; font-weight: 600; margin-right: 8px;">NIFTY 50</span>
+                            O <span id="legend-o" style="color: #10b981; margin-right: 6px;">-</span>
+                            H <span id="legend-h" style="color: #10b981; margin-right: 6px;">-</span>
+                            L <span id="legend-l" style="color: #ef4444; margin-right: 6px;">-</span>
+                            C <span id="legend-c" style="color: #10b981; margin-right: 6px;">-</span>
+                            <span id="legend-diff" style="color: #10b981;">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Positions Table Panel -->
+            <div class="glass-panel" style="min-height: auto; margin-top: 1rem;">
+                <div class="panel-header" onclick="togglePositionsPanel()" style="cursor: pointer; user-select: none; margin-bottom: 0;">
+                    <div class="panel-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
+                        Active Nifty Positions <span id="positions-toggle-arrow" style="font-size: 0.7rem; color: var(--text-muted); margin-left: 6px; font-weight: normal;">[Click to Expand]</span>
+                    </div>
+                    <span class="badge-regime" id="active-positions-count">0 Active</span>
+                </div>
+                <div class="table-wrapper" id="positions-table-wrapper" style="display: none; margin-top: 1rem;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Position Type</th>
+                                <th>Nifty Entry</th>
+                                <th>Current Nifty</th>
+                                <th>SL / TP Level</th>
+                                <th>Lots</th>
+                                <th>PnL (Points)</th>
+                                <th>PnL (INR)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positions-tbody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No active positions. Monitoring market signals...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side Sidebar Column -->
+        <div class="right-content">
+            <!-- System Settings Panel -->
+            <div class="glass-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.5 1z"/></svg>
+                        Strategy Control
+                    </div>
+                </div>
+                
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab(event, 'tab-live')">Live Desk</button>
+                    <button class="tab-btn" onclick="switchTab(event, 'tab-backtest')">Backtester</button>
+                </div>
+
+                <div class="tab-content" style="flex: 1;">
+                    <!-- Live Desk Pane -->
+                    <div class="tab-pane active" id="tab-live">
+                        <!-- Strategy Dropdown Selector -->
+                        <div style="margin-bottom: 0.75rem;">
+                            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 6px; letter-spacing: 0.5px;">Active Strategy</label>
+                            <select id="active-strategy-select" onchange="changeActiveStrategy(this.value)" style="width: 100%; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 10px; color: white; outline: none; font-size: 0.85rem; cursor: pointer; font-weight:500;">
+                                <option value="243A">243A Strategy (LGBM+TCN+HMM)</option>
+                                <option value="LONGPINE_ZFTF">Longpine ZFTF Strategy</option>
+                            </select>
+                        </div>
+
+                        <!-- Single-Click Collapsible Strategy Info Card -->
+                        <div class="glass-panel" style="padding: 10px; font-size: 0.8rem; border: 1px dashed rgba(59, 130, 246, 0.2); background: rgba(59, 130, 246, 0.01); border-radius:8px; margin-bottom:0.75rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleStrategyInfo()">
+                                <span style="font-weight: 600; color: var(--accent-blue); display:flex; align-items:center; gap:6px;">ℹ️ Strategy Details</span>
+                                <span id="strategy-info-arrow" style="font-size: 0.75rem; color:var(--text-muted);">[Expand]</span>
+                            </div>
+                            <div id="strategy-info-body" style="display: none; margin-top: 8px; color: #cbd5e1; line-height: 1.4; border-top:1px solid rgba(255,255,255,0.03); padding-top:6px; font-size:0.75rem;">
+                            </div>
+                        </div>
+
+                        <div class="flex-row-center">
+                            <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Display Model Signals</span>
+                            <div class="switch-container">
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-signals" onchange="toggleSignalsPanel(this.checked)" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex-row-center" style="margin-top: 0.75rem;">
+                            <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Display Volume</span>
+                            <div class="switch-container">
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-volume" onchange="toggleVolumeDisplay(this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Signals Panel (Visible by default) -->
+                        <div id="signals-panel" style="margin-top: 1rem;">
+                            <div class="flex-row-center" style="margin-bottom: 12px;">
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">Current Regime</span>
+                                <span class="badge-regime" id="regime-badge">Unknown</span>
+                            </div>
+
+                            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform:uppercase; letter-spacing:0.5px;">Live Desk Trades Log</div>
+                            <div class="table-wrapper" style="max-height: 160px; overflow-y: auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Entry</th>
+                                            <th>Exit</th>
+                                            <th>Dir</th>
+                                            <th>Lots</th>
+                                            <th>PnL</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="signals-tbody">
+                                        <tr>
+                                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 10px;">No executions logged yet.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div style="border-top: 1px solid rgba(255, 255, 255, 0.05); margin-top: 0.5rem; padding-top: 1rem;">
+                            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing:0.5px;">Download Ledger Logs</div>
+                            <div class="quick-actions">
+                                <a href="#" onclick="downloadWithEmail('/api/download/candles')" class="btn" style="text-decoration: none; font-size:0.75rem;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Candles</a>
+                                <a href="#" onclick="downloadWithEmail('/api/download/signals')" class="btn" style="text-decoration: none; font-size:0.75rem;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Signals</a>
+                                <a href="#" onclick="downloadWithEmail('/api/download/trades')" class="btn" style="text-decoration: none; font-size:0.75rem;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Trades</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Backtester Pane -->
+                    <div class="tab-pane" id="tab-backtest">
+                        <!-- Strategy selector for backtesting -->
+                        <div class="form-group">
+                            <label for="backtest-strategy-select">Backtest Strategy</label>
+                            <select id="backtest-strategy-select" style="width: 100%; cursor:pointer; font-weight:500;">
+                                <option value="243A">243A Strategy (LGBM+TCN+HMM)</option>
+                                <option value="LONGPINE_ZFTF">Longpine ZFTF Strategy</option>
+                            </select>
+                        </div>
+                        
+                        <div class="dropzone" id="dropzone" onclick="document.getElementById('backtest-file').click()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <p id="dropzone-text">Click or Drag & Drop OHLCV CSV file to upload</p>
+                            <input type="file" id="backtest-file" style="display: none;" accept=".csv" onchange="handleFileSelect(this.files[0])">
+                        </div>
+                        
+                        <button class="btn btn-primary" id="btn-run-backtest" onclick="runBacktest()" disabled style="width: 100%;">Run Model Backtest</button>
+                        
+                        <!-- Backtest results area -->
+                        <div id="backtest-results-block" style="display: none; margin-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 1rem;">
+                            <div class="flex-row-center">
+                                <span style="font-size: 0.85rem; font-weight: 600;">Backtest Complete</span>
+                                <a href="/api/download/backtest" class="btn btn-primary" style="font-size: 0.75rem; padding: 4px 8px; text-decoration: none;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export CSV</a>
+                            </div>
+                            
+                            <div class="backtest-metrics-grid">
+                                <div class="metric-card">
+                                    <div class="val" id="bt-trades" style="color: #60a5fa;">0</div>
+                                    <div class="lbl">Trades</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="val" id="bt-winrate" style="color: var(--success);">0%</div>
+                                    <div class="lbl">Win Rate</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="val" id="bt-pnl-pts" style="color: var(--success);">0.0</div>
+                                    <div class="lbl">PnL Pts</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="val" id="bt-pnl-inr" style="color: var(--success);">0</div>
+                                    <div class="lbl">PnL INR</div>
+                                </div>
+                            </div>
+                            
+                            <div class="backtest-metrics-grid" style="margin-top: 8px;">
+                                <div class="metric-card" style="grid-column: span 2;">
+                                    <div class="val" id="bt-start-cap" style="color: var(--text-muted);">100,000</div>
+                                    <div class="lbl">Start Capital</div>
+                                </div>
+                                <div class="metric-card" style="grid-column: span 2;">
+                                    <div class="val" id="bt-end-cap" style="color: var(--success);">100,000</div>
+                                    <div class="lbl">End Capital</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global error catcher
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error(message, error);
+            alert("JS ERROR: " + message + " at line " + lineno + ":" + colno);
+            return false;
+        };
+
+        // Global variables
+        let chart;
+        let candleSeries;
+        let volumeSeries;
+        let activePriceLines = [];
+        let historicalCandlesData = [];
+        let selectedBacktestFile = null;
+        let isSignalsPanelVisible = true;
+        let lastTimestamp = 0;
+        
+        // Strategy description map
+        const strategyDescriptions = {
+            "243A": "<strong>243A Consensus Strategy:</strong> Combines predictions from both LightGBM gradient boosting classifier (threshold: 70%) and a PyTorch Temporal Convolutional Network (TCN) deep learning model (threshold: 50%). All consensus entries are filtered by a Hidden Markov Model (HMM) regime blocker to prevent entering trades in unfavorable market regimes.",
+            "EMA_8_20": "<strong>8-20 EMA Crossover Strategy:</strong> Standard trend following system. It enters LONG when the fast 8-period Exponential Moving Average crosses above the slow 20-period EMA. Conversely, it enters SHORT when the 8-period EMA crosses below the 20-period EMA.",
+            "LONGPINE_ZFTF": "<strong>Longpine Z-Score Trend Following (ZFTF):</strong> Long-only momentum breakout strategy. Uses rolling window 20 mean and standard deviation to calculate Z-Score and Linear Regression Slope. Enters LONG on breakout (Z-Score > 2.0 & Slope > 0.001), exits when slope rolls over (< -0.001) or hits 6% target / 3% stop loss. Enforces a strict EOD exit at 15:10 IST."
+        };
+
+        function startApp() {
+            initChart();
+            checkAuthentication();
+        }
+
+        // Initialize App
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            startApp();
+        } else {
+            window.addEventListener('load', startApp);
+        }
+
+        // AUTHENTICATION LOGIC
+        let trialTimer = null;
+        let isTrialActive = false;
+
+        function checkAuthentication() {
+            let email = localStorage.getItem("user_email");
+            const authOverlay = document.getElementById("auth-overlay");
+            
+            if (!email) {
+                // Free Trial Mode: Initialize default developer key for 5 minutes
+                let trialStart = localStorage.getItem("trial_start");
+                const now = Date.now();
+                if (!trialStart) {
+                    localStorage.setItem("trial_start", now.toString());
+                    trialStart = now;
+                } else {
+                    trialStart = parseInt(trialStart);
+                }
+                
+                const elapsed = now - trialStart;
+                if (elapsed >= 300000) {
+                    triggerTrialExpiration();
+                    return;
+                } else {
+                    email = "developer@gmail.com";
+                    localStorage.setItem("user_email", email);
+                    localStorage.setItem("is_trial", "true");
+                    isTrialActive = true;
+                    
+                    const remaining = 300000 - elapsed;
+                    if (trialTimer) clearTimeout(trialTimer);
+                    trialTimer = setTimeout(triggerTrialExpiration, remaining);
+                }
+            } else if (localStorage.getItem("is_trial") === "true") {
+                let trialStart = parseInt(localStorage.getItem("trial_start") || Date.now());
+                const elapsed = Date.now() - trialStart;
+                if (elapsed >= 300000) {
+                    triggerTrialExpiration();
+                    return;
+                } else {
+                    isTrialActive = true;
+                    const remaining = 300000 - elapsed;
+                    if (trialTimer) clearTimeout(trialTimer);
+                    trialTimer = setTimeout(triggerTrialExpiration, remaining);
+                }
+            }
+            
+            if (email && !isTrialActive) {
+                document.getElementById("signin-container").style.display = "none";
+                document.getElementById("signup-container").style.display = "none";
+                document.getElementById("pin-lock-container").style.display = "block";
+                document.getElementById("lock-email-label").innerText = email;
+            } else {
+                // If in active trial, bypass the lock container and let them use the console directly
+                document.getElementById("pin-lock-container").style.display = "none";
+                document.getElementById("signup-container").style.display = "none";
+                document.getElementById("signin-container").style.display = "block";
+            }
+            
+            loginSuccessful(email);
+        }
+
+        function triggerTrialExpiration() {
+            localStorage.removeItem("user_email");
+            localStorage.setItem("is_trial", "false");
+            isTrialActive = false;
+            
+            // Bring up authentication overlay
+            const authOverlay = document.getElementById("auth-overlay");
+            authOverlay.classList.add("active");
+            authOverlay.style.pointerEvents = "auto";
+            
+            const pinLockContainer = document.getElementById("pin-lock-container");
+            const signupContainer = document.getElementById("signup-container");
+            const signinContainer = document.getElementById("signin-container");
+            
+            pinLockContainer.style.display = "none";
+            signupContainer.style.display = "none";
+            signinContainer.style.display = "block";
+            
+            let alertBox = document.getElementById("trial-expired-alert");
+            if (!alertBox) {
+                alertBox = document.createElement("div");
+                alertBox.id = "trial-expired-alert";
+                alertBox.style.color = "#ef4444";
+                alertBox.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
+                alertBox.style.border = "1px solid rgba(239, 68, 68, 0.2)";
+                alertBox.style.padding = "12px";
+                alertBox.style.borderRadius = "8px";
+                alertBox.style.marginBottom = "16px";
+                alertBox.style.fontSize = "0.9rem";
+                alertBox.style.fontWeight = "500";
+                alertBox.style.textAlign = "center";
+                signinContainer.insertBefore(alertBox, signinContainer.firstChild);
+            }
+            alertBox.innerHTML = "⚠️ Free Trial Expired!<br>The 5-minute developer key preview has finished. Please create a secure account or log in with your own API keys to continue using the console.";
+            
+            // Stop WebSocket live updates
+            if (socket) {
+                socket.close();
+            }
+        }
+
+        function showSignUpForm() {
+            document.getElementById("signin-container").style.display = "none";
+            document.getElementById("pin-lock-container").style.display = "none";
+            document.getElementById("signup-container").style.display = "block";
+        }
+
+        function showSignInForm() {
+            document.getElementById("signup-container").style.display = "none";
+            document.getElementById("pin-lock-container").style.display = "none";
+            document.getElementById("signin-container").style.display = "block";
+        }
+
+        async function handlePinLogin(event) {
+            event.preventDefault();
+            const email = localStorage.getItem("user_email");
+            const pin = document.getElementById("lock-pin").value;
+            
+            const formData = new FormData();
+            formData.append("email", email);
+            formData.append("pin", pin);
+            
+            try {
+                const response = await fetch("/api/auth/login", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.status === "success") {
+                    loginSuccessful(email);
+                } else {
+                    alert(data.message);
+                }
+            } catch (err) {
+                alert("Login connection failed: " + err);
+            }
+        }
+
+        async function handleSignIn(event) {
+            event.preventDefault();
+            const email = document.getElementById("signin-email").value;
+            const pin = document.getElementById("signin-pin").value;
+            
+            const formData = new FormData();
+            formData.append("email", email);
+            formData.append("pin", pin);
+            
+            try {
+                const response = await fetch("/api/auth/login", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.status === "success") {
+                    loginSuccessful(email);
+                } else {
+                    alert(data.message);
+                }
+            } catch (err) {
+                alert("Login connection failed: " + err);
+            }
+        }
+
+        async function handleSignUp(event) {
+            event.preventDefault();
+            const email = document.getElementById("signup-email").value;
+            const pin = document.getElementById("signup-pin").value;
+            const apiKey = document.getElementById("signup-api-key").value;
+            const clientId = document.getElementById("signup-client-id").value;
+            const password = document.getElementById("signup-password").value;
+            const totpSecret = document.getElementById("signup-totp-secret").value;
+            
+            const formData = new FormData();
+            formData.append("email", email);
+            formData.append("pin", pin);
+            formData.append("api_key", apiKey);
+            formData.append("client_id", clientId);
+            formData.append("password", password);
+            formData.append("totp_secret", totpSecret);
+            
+            try {
+                const response = await fetch("/api/auth/register", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.status === "success") {
+                    alert(data.message);
+                    showSignInForm();
+                } else {
+                    alert(data.message);
+                }
+            } catch (err) {
+                alert("Registration connection failed: " + err);
+            }
+        }
+
+        let statusInterval = null;
+        let signalsInterval = null;
+
+        function loginSuccessful(email) {
+            localStorage.setItem("user_email", email);
+            if (email !== "developer@gmail.com") {
+                localStorage.setItem("is_trial", "false");
+                localStorage.removeItem("trial_start");
+                isTrialActive = false;
+                if (trialTimer) {
+                    clearTimeout(trialTimer);
+                    trialTimer = null;
+                }
+            }
+            
+            document.getElementById("auth-overlay").classList.remove("active");
+            document.getElementById("auth-overlay").style.pointerEvents = "none";
+            document.getElementById("header-user-email").innerText = email;
+            document.getElementById("btn-signout").style.display = "inline-flex";
+            
+            // Set initial strategy details
+            updateStrategyInfoText("243A");
+            
+            // Fetch unified candles data
+            fetchCandles();
+            
+            // Start status checking loops only if not already active
+            if (!statusInterval) {
+                statusInterval = setInterval(updateStatus, 3000);
+            }
+            if (!signalsInterval) {
+                signalsInterval = setInterval(fetchSignals, 5000);
+            }
+        }
+
+        function handleSignOut() {
+            localStorage.removeItem("user_email");
+            localStorage.removeItem("is_trial");
+            localStorage.removeItem("trial_start");
+            isTrialActive = false;
+            if (trialTimer) {
+                clearTimeout(trialTimer);
+                trialTimer = null;
+            }
+            document.getElementById("btn-signout").style.display = "none";
+            document.getElementById("header-user-email").innerText = "";
+            document.getElementById("auth-overlay").classList.add("active");
+            document.getElementById("auth-overlay").style.pointerEvents = "auto";
+            checkAuthentication();
+        }
+
+        function downloadWithEmail(endpoint) {
+            const email = localStorage.getItem("user_email");
+            if (email) {
+                window.location.href = `${endpoint}?email=${encodeURIComponent(email)}`;
+            }
+        }
+
+        // STRATEGY LOGIC
+        function toggleStrategyInfo() {
+            const body = document.getElementById("strategy-info-body");
+            const arrow = document.getElementById("strategy-info-arrow");
+            if (body.style.display === "none") {
+                body.style.display = "block";
+                arrow.innerText = "[Collapse]";
+            } else {
+                body.style.display = "none";
+                arrow.innerText = "[Expand]";
+            }
+        }
+
+        function updateStrategyInfoText(strategy) {
+            const body = document.getElementById("strategy-info-body");
+            body.innerHTML = strategyDescriptions[strategy] || "No strategy description available.";
+            document.getElementById("strategy-logo-badge").innerText = strategy.split("_")[0];
+        }
+
+        function changeActiveStrategy(strategy) {
+            updateStrategyInfoText(strategy);
+            // Reload unified candles & strategy signals markers
+            fetchCandles();
+        }
+
+        // CHART AND STATUS LOGIC
+        async function fetchCandles() {
+            const email = localStorage.getItem("user_email");
+            if (!email) return;
+            
+            const strategy = document.getElementById("active-strategy-select").value;
+            
+            try {
+                const response = await fetch(`/api/candles?email=${encodeURIComponent(email)}&strategy=${strategy}`);
+                const data = await response.json();
+                if (data && data.candles && data.candles.length > 0) {
+                    historicalCandlesData = data.candles;
+                    candleSeries.setData(historicalCandlesData);
+                    
+                    const volumeData = historicalCandlesData.map(c => ({
+                        time: c.time,
+                        value: c.volume || 0,
+                        color: c.close >= c.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+                    }));
+                    volumeSeries.setData(volumeData);
+                    
+                    lastTimestamp = historicalCandlesData[historicalCandlesData.length - 1].time;
+                    
+                    // Render markers calculated by backend
+                    if (isSignalsPanelVisible && data.markers) {
+                        candleSeries.setMarkers(data.markers);
+                    } else {
+                        candleSeries.setMarkers([]);
+                    }
+                    
+                    // Scroll to real-time so they see today's last candle
+                    chart.timeScale().scrollToRealTime();
+                    updateLegend(historicalCandlesData[historicalCandlesData.length - 1]);
+                }
+            } catch (err) {
+                console.error("Error loading candles:", err);
+            }
+        }
+
+        function updateLegend(candle) {
+            const oElement = document.getElementById('legend-o');
+            const hElement = document.getElementById('legend-h');
+            const lElement = document.getElementById('legend-l');
+            const cElement = document.getElementById('legend-c');
+            const diffElement = document.getElementById('legend-diff');
+
+            if (candle) {
+                const open = candle.open;
+                const high = candle.high;
+                const low = candle.low;
+                const close = candle.close;
+                const diff = close - open;
+                const diffPct = open > 0 ? (diff / open) * 100 : 0;
+                const sign = diff >= 0 ? '+' : '';
+                const color = diff >= 0 ? 'var(--success)' : 'var(--danger)';
+
+                oElement.innerText = open.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                hElement.innerText = high.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                lElement.innerText = low.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                cElement.innerText = close.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                
+                diffElement.innerText = `${sign}${diff.toFixed(2)} (${sign}${diffPct.toFixed(2)}%)`;
+                diffElement.style.color = color;
+
+                oElement.style.color = color;
+                hElement.style.color = color;
+                lElement.style.color = color;
+                cElement.style.color = color;
+            }
+        }
+
+        function initChart() {
+            const container = document.getElementById('chart-container');
+            chart = LightweightCharts.createChart(container, {
+                width: container.clientWidth || 800,
+                height: 480,
+                layout: {
+                    background: { type: 'solid', color: '#030712' },
+                    textColor: '#9ca3af',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
+                },
+                crosshair: {
+                    vertLine: {
+                        color: 'rgba(255, 255, 255, 0.1)',
+                        width: 1,
+                        style: 3,
+                        labelBackgroundColor: '#1f2937',
+                    },
+                    horzLine: {
+                        color: 'rgba(255, 255, 255, 0.1)',
+                        width: 1,
+                        style: 3,
+                        labelBackgroundColor: '#1f2937',
+                    },
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.05)',
+                },
+                timeScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.05)',
+                    timeVisible: true,
+                    secondsVisible: false,
+                    tickMarkFormatter: (time, tickMarkType, locale) => {
+                        const date = new Date(time * 1000);
+                        const options = {
+                            timeZone: 'Asia/Kolkata',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        };
+                        if (tickMarkType === 0 || tickMarkType === 1) {
+                            options.day = '2-digit';
+                            options.month = 'short';
+                        }
+                        try {
+                            return new Intl.DateTimeFormat('en-IN', options).format(date);
+                        } catch (e) {
+                            return date.toLocaleTimeString('en-IN', options);
+                        }
+                    }
+                },
+                localization: {
+                    timeFormatter: (time) => {
+                        const date = new Date(time * 1000);
+                        const options = {
+                            timeZone: 'Asia/Kolkata',
+                            year: 'numeric',
+                            month: 'short',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        };
+                        try {
+                            return new Intl.DateTimeFormat('en-IN', options).format(date);
+                        } catch (e) {
+                            return date.toLocaleString('en-IN', options);
+                        }
+                    }
+                },
+            });
+
+            candleSeries = chart.addCandlestickSeries({
+                upColor: '#10b981',
+                downColor: '#ef4444',
+                borderVisible: false,
+                wickUpColor: '#10b981',
+                wickDownColor: '#ef4444',
+            });
+
+            volumeSeries = chart.addHistogramSeries({
+                color: 'rgba(38, 166, 154, 0.3)',
+                priceFormat: { type: 'volume' },
+                priceScaleId: '',
+            });
+
+            volumeSeries.priceScale().applyOptions({
+                scaleMargins: {
+                    top: 0.8,
+                    bottom: 0,
+                },
+            });
+
+            volumeSeries.applyOptions({ visible: false });
+
+            chart.subscribeCrosshairMove((param) => {
+                let candle = null;
+                if (param.time) {
+                    candle = param.seriesData.get(candleSeries);
+                }
+                if (!candle && historicalCandlesData && historicalCandlesData.length > 0) {
+                    candle = historicalCandlesData[historicalCandlesData.length - 1];
+                }
+                updateLegend(candle);
+            });
+
+            window.addEventListener('resize', () => {
+                if (chart && container) {
+                    chart.resize(container.clientWidth, 480);
+                }
+            });
+        }
+
+        async function updateStatus() {
+            const email = localStorage.getItem("user_email");
+            if (!email) return;
+            
+            const strategy = document.getElementById("active-strategy-select").value;
+            
+            try {
+                const response = await fetch(`/api/status?email=${encodeURIComponent(email)}&strategy=${strategy}`);
+                const data = await response.json();
+                
+                if (data.logs && data.logs.length > 0 && data.logs[0].includes("Please log in")) {
+                    handleSignOut();
+                    return;
+                }
+
+                // Update Connection status badge
+                const connDot = document.getElementById('conn-dot');
+                const connText = document.getElementById('conn-text');
+                
+                connDot.className = 'pulse-dot';
+                let sourceLabel = data.mode === 'angel' ? 'Angel One' : 'Custom Feed';
+                
+                if (data.connection_status === 'live') {
+                    connDot.classList.add('pulse-live');
+                    connText.innerText = `${sourceLabel} - Live`;
+                } else if (data.connection_status === 'connecting') {
+                    connDot.classList.add('pulse-connecting');
+                    connText.innerText = `${sourceLabel} - Connecting`;
+                } else if (data.connection_status === 'error') {
+                    connDot.classList.add('pulse-error');
+                    connText.innerText = `${sourceLabel} - Offline/Failed`;
+                } else {
+                    connDot.classList.add('pulse-connecting');
+                    connText.innerText = `${sourceLabel} - Idle`;
+                }
+
+                // Active Positions Count
+                const posCountBadge = document.getElementById('active-positions-count');
+                posCountBadge.innerText = `${data.active_positions.length} Active`;
+
+                // Update Active Positions Table (Pure Nifty Spot, no option details)
+                const tbody = document.getElementById('positions-tbody');
+                if (data.active_positions.length > 0) {
+                    tbody.innerHTML = '';
+                    data.active_positions.forEach(pos => {
+                        const tr = document.createElement('tr');
+                        const pnlColor = pos.pnl >= 0 ? 'var(--success)' : 'var(--danger)';
+                        tr.innerHTML = `
+                            <td><span class="${pos.position_type === 'LONG' ? 'badge-buy' : 'badge-sell'}">${pos.position_type}</span></td>
+                            <td style="font-family: 'JetBrains Mono';">${pos.entry_nifty.toFixed(2)}</td>
+                            <td style="font-family: 'JetBrains Mono'; font-weight: 500;">${data.index_ltp.toFixed(2)}</td>
+                            <td style="font-family: 'JetBrains Mono'; color:var(--text-muted); font-size:0.75rem;">SL: ${pos.sl_nifty.toFixed(2)}<br>TP: ${pos.tp_nifty.toFixed(2)}</td>
+                            <td style="font-family: 'JetBrains Mono';">${pos.lots}</td>
+                            <td style="font-family: 'JetBrains Mono'; color:${pnlColor};">${(pos.pnl_points >= 0 ? '+' : '')}${pos.pnl_points.toFixed(2)}</td>
+                            <td style="font-family: 'JetBrains Mono'; color:${pnlColor}; font-weight:600;">${(pos.pnl >= 0 ? '+' : '')}${pos.pnl.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No active positions. Monitoring market signals...</td>
+                        </tr>
+                    `;
+                }
+
+                // Handle live candle update in graph
+                if (data.current_candle && historicalCandlesData.length > 0) {
+                    const latest = data.current_candle;
+                    if (latest.time >= lastTimestamp) {
+                        candleSeries.update(latest);
+                        volumeSeries.update({
+                            time: latest.time,
+                            value: latest.volume || 0,
+                            color: latest.close >= latest.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+                        });
+                        
+                        // Update active position price lines dynamically on the chart
+                        activePriceLines.forEach(line => {
+                            try { candleSeries.removePriceLine(line); } catch (e) {}
+                        });
+                        activePriceLines = [];
+
+                        data.active_positions.forEach(pos => {
+                            const slLine = candleSeries.createPriceLine({
+                                price: pos.sl_nifty,
+                                color: 'rgba(239, 68, 68, 0.4)',
+                                lineWidth: 1,
+                                lineStyle: 2,
+                                axisLabelVisible: true,
+                                title: `${pos.position_type} SL`,
+                            });
+                            const tpLine = candleSeries.createPriceLine({
+                                price: pos.tp_nifty,
+                                color: 'rgba(16, 185, 129, 0.4)',
+                                lineWidth: 1,
+                                lineStyle: 2,
+                                axisLabelVisible: true,
+                                title: `${pos.position_type} TP`,
+                            });
+                            activePriceLines.push(slLine, tpLine);
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("Error updating status:", err);
+            }
+        }
+
+        async function fetchSignals() {
+            const email = localStorage.getItem("user_email");
+            if (!email) return;
+            
+            try {
+                const response = await fetch(`/api/signals?email=${encodeURIComponent(email)}`);
+                const data = await response.json();
+
+                // Update regime badge
+                const regimeBadge = document.getElementById('regime-badge');
+                if (regimeBadge) {
+                    regimeBadge.innerText = data.current_regime;
+                }
+
+                // Update executed signals table
+                const tbody = document.getElementById('signals-tbody');
+                if (tbody) {
+                    if (data.signal_history && data.signal_history.length > 0) {
+                        tbody.innerHTML = '';
+                        data.signal_history.forEach(sig => {
+                            const tr = document.createElement('tr');
+                            const pnlColor = sig.pnl >= 0 ? 'var(--success)' : 'var(--danger)';
+                            const exitTimeText = sig.exit_time ? sig.exit_time.split(' ')[1] : '-';
+                            const entryTimeText = sig.entry_time ? sig.entry_time.split(' ')[1] : '-';
+                            
+                            tr.innerHTML = `
+                                <td style="font-size:0.75rem;">${entryTimeText}<br><span style="color:var(--text-muted); font-size:0.7rem;">${sig.entry_nifty.toFixed(2)}</span></td>
+                                <td style="font-size:0.75rem;">${exitTimeText}<br><span style="color:var(--text-muted); font-size:0.7rem;">${sig.exit_nifty ? sig.exit_nifty.toFixed(2) : '-'}</span></td>
+                                <td><span class="${sig.signal_type === 'BUY' ? 'badge-buy' : 'badge-sell'}">${sig.signal_type}</span></td>
+                                <td style="font-family: 'JetBrains Mono';">${sig.lot_size}L</td>
+                                <td style="font-family: 'JetBrains Mono'; color:${pnlColor}; font-weight:600;">${(sig.pnl >= 0 ? '+' : '')}${sig.pnl.toFixed(0)}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 10px;">No executions logged yet.</td>
+                            </tr>
+                        `;
+                    }
+                }
+            } catch (err) {
+                console.error("Error loading signals:", err);
+            }
+        }
+
+        function toggleSignalsPanel(checked) {
+            isSignalsPanelVisible = checked;
+            // Toggle markers visibility
+            fetchCandles();
+        }
+
+        function toggleVolumeDisplay(checked) {
+            if (volumeSeries) {
+                volumeSeries.applyOptions({ visible: checked });
+            }
+        }
+
+        // TABS CONTROLS
+        function switchTab(evt, tabId) {
+            const tabContents = document.getElementsByClassName("tab-content")[0].getElementsByClassName("tab-pane");
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove("active");
+            }
+            const tabBtns = document.getElementsByClassName("tabs")[0].getElementsByClassName("tab-btn");
+            for (let i = 0; i < tabBtns.length; i++) {
+                tabBtns[i].classList.remove("active");
+            }
+            document.getElementById(tabId).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        // BACKTEST CONTROLS
+        const dropzone = document.getElementById('dropzone');
+        const dropzoneText = document.getElementById('dropzone-text');
+        const btnRunBacktest = document.getElementById('btn-run-backtest');
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+            }, false);
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        }, false);
+
+        function handleFileSelect(file) {
+            if (file && file.name.endsWith('.csv')) {
+                selectedBacktestFile = file;
+                dropzoneText.innerText = "Selected File: " + file.name;
+                btnRunBacktest.disabled = false;
+            } else {
+                alert("Please select a valid CSV data file.");
+            }
+        }
+
+        async function runBacktest() {
+            if (!selectedBacktestFile) return;
+            
+            btnRunBacktest.innerText = "Executing simulation...";
+            btnRunBacktest.disabled = true;
+            
+            const strategy = document.getElementById("backtest-strategy-select").value;
+            const formData = new FormData();
+            formData.append("file", selectedBacktestFile);
+            formData.append("strategy", strategy);
+            
+            try {
+                const response = await fetch('/api/backtest', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const m = data.metrics;
+                    document.getElementById('bt-trades').innerText = m.total_trades;
+                    document.getElementById('bt-winrate').innerText = m.win_rate + "%";
+                    document.getElementById('bt-pnl-pts').innerText = m.total_pnl_points.toFixed(1);
+                    document.getElementById('bt-pnl-inr').innerText = "Rs. " + m.total_pnl_inr.toLocaleString('en-IN');
+                    document.getElementById('bt-start-cap').innerText = "Rs. " + m.starting_capital.toLocaleString('en-IN');
+                    document.getElementById('bt-end-cap').innerText = "Rs. " + m.ending_capital.toLocaleString('en-IN');
+                    
+                    document.getElementById('backtest-results-block').style.display = 'block';
+                } else {
+                    alert("Error: " + data.message);
+                }
+            } catch (err) {
+                console.error("Backtest execution failed:", err);
+                alert("Connection failed during backtest run.");
+            } finally {
+                btnRunBacktest.innerText = "Run Model Backtest";
+                btnRunBacktest.disabled = false;
+            }
+        }
+
+        // Calendar Direct Shift Chart
+        function jumpToDate() {
+            const dateVal = document.getElementById('calendar-picker').value;
+            if (!dateVal || !historicalCandlesData || historicalCandlesData.length === 0) return;
+            
+            // Selected date is local, convert to start of day epoch in IST (Asia/Kolkata timezone)
+            const parts = dateVal.split('-');
+            if (parts.length !== 3) return;
+            
+            const targetDateStr = `${parts[0]}-${parts[1]}-${parts[2]} 09:15:00`;
+            const targetTime = new Date(targetDateStr).getTime() / 1000;
+            
+            // Find closest candle index
+            let closestIdx = -1;
+            let minDiff = Infinity;
+            
+            for (let i = 0; i < historicalCandlesData.length; i++) {
+                const diff = Math.abs(historicalCandlesData[i].time - targetTime);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestIdx = i;
+                }
+            }
+            
+            if (closestIdx !== -1) {
+                // Focus time scale on target date index
+                const barSpan = 80; // display roughly 80 bars on screen
+                const from = closestIdx - 10; // offset slightly so target date candle is near left-middle of screen
+                const to = closestIdx + barSpan - 10;
+                
+                chart.timeScale().setVisibleLogicalRange({ from, to });
+                showToast(`Shifted chart to ${dateVal}`);
+            } else {
+                showToast(`No Nifty data found for ${dateVal}`, 'warning');
+            }
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            let toast = document.getElementById('app-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'app-toast';
+                toast.className = 'toast-notification';
+                document.body.appendChild(toast);
+            }
+            
+            toast.innerText = message;
+            if (type === 'warning' || type === 'error') {
+                toast.style.borderLeftColor = 'var(--danger)';
+            } else {
+                toast.style.borderLeftColor = 'var(--accent-blue)';
+            }
+            
+            toast.classList.add('active');
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 3000);
+        }
+
+        // Download Filtered Old Data
+        function downloadFilteredOldData() {
+            const year = document.getElementById('download-year-select').value;
+            showToast(`Downloading historical old data for: ${year}...`);
+            window.location.href = `/api/download/old_data?year=${year}`;
+        }
+
+        // Toggle Sidebar
+        function toggleRightPanel() {
+            const rightPanel = document.querySelector('.right-content');
+            const mainContainer = document.querySelector('.main-container');
+            if (rightPanel.style.display === 'none') {
+                rightPanel.style.display = 'flex';
+                mainContainer.style.gridTemplateColumns = '1fr 360px';
+                showToast("Strategy panel shown");
+            } else {
+                rightPanel.style.display = 'none';
+                mainContainer.style.gridTemplateColumns = '1fr';
+                showToast("Strategy panel hidden. Chart expanded!");
+            }
+            setTimeout(() => {
+                const container = document.getElementById('chart-container');
+                if (chart && container) {
+                    chart.resize(container.clientWidth, 480);
+                }
+            }, 100);
+        }
+
+        // Toggle Positions Table
+        function togglePositionsPanel() {
+            const wrapper = document.getElementById('positions-table-wrapper');
+            const arrow = document.getElementById('positions-toggle-arrow');
+            if (wrapper.style.display === 'none') {
+                wrapper.style.display = 'block';
+                arrow.innerText = '[Click to Collapse]';
+            } else {
+                wrapper.style.display = 'none';
+                arrow.innerText = '[Click to Expand]';
+            }
+        }
+    </script>
+</body>
+</html>

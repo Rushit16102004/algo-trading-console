@@ -1,0 +1,583 @@
+# PASSKEY: rushit2712
+import asyncio
+import os
+import sys
+import datetime
+import requests
+import pandas as pd
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
+
+# Add parent directory to path to allow correct absolute/relative imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from backend_engine.strategies import get_strategy
+from backend_engine.candle_builder import CandleBuilder, INDEX_TOKEN
+from backend_engine.trade_logger import TradeLogger
+from backend_engine.paper_trade_engine import PaperTradeEngine
+from backend_engine.websocket_handler import WSHandler
+from backend_engine.angel_ws_handler import AngelOneWSHandler
+from backend_engine.risk_manager import RiskManager
+from backend_engine.config import FIXED_SL, PYRAMIDING_LIMIT
+
+# Global registries
+active_sessions = {}  # user_id -> UserSession
+restart_checker_task = None
+
+# Cache for Nifty Future Token to avoid repeated scrip master downloads
+cached_future_token = None
+cached_future_date = None
+
+def get_cached_future_token():
+    global cached_future_token, cached_future_date
+    today = datetime.date.today()
+    if cached_future_token is not None and cached_future_date == today:
+        return cached_future_token
+        
+    try:
+        print("[ScripMaster] Fetching scrip master to resolve Nifty Future token...")
+        url = "https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json"
+        resp = requests.get(url, timeout=15)
+        if resp.status_code == 200:
+            instruments = resp.json()
+            nifty_futs = [
+                i for i in instruments
+                if i.get("name") == "NIFTY"
+                and i.get("instrumenttype") == "FUTIDX"
+                and i.get("exch_seg") == "NFO"
+            ]
+            if nifty_futs:
+                nifty_futs.sort(key=lambda i: datetime.datetime.strptime(i["expiry"], "%d%b%Y"))
+                cached_future_token = nifty_futs[0]["token"]
+                cached_future_date = today
+                print(f"[ScripMaster] Resolved front-month Nifty Future token: {cached_future_token}")
+                return cached_future_token
+    except Exception as e:
+        print(f"[ScripMaster] Error fetching future token: {e}")
+    return None
+
+class UserSession:
+    def __init__(self, user_id, credentials, strategy_name="243A"):
+        self.user_id = user_id
+        self.credentials = credentials
+        self.strategy_name = strategy_name
+        data_dir = os.getenv("DATA_DIR", "data")
+        self.user_dir = f"{data_dir}/user_{user_id}"
+        os.makedirs(self.user_dir, exist_ok=True)
+        
+        self.candle_data_path = "backend_engine/old data.csv"
+        self.active_positions_path = f"{self.user_dir}/active_positions.json"
+        
+        self.trade_logger = TradeLogger(user_dir=self.user_dir)
+        self.risk_manager = RiskManager()
+        self.paper_trade_engine = PaperTradeEngine(
+            trade_logger=self.trade_logger,
+            state_path=self.active_positions_path
+        )
+        self.candles_df = None
+        self.ws_handler = None
+        self.candle_builder = None
+        self.future_token = None
+        
+        self.index_ltp = 0.0
+        self.last_index_time = None
+        
+        self.system_running = False
+        self.tasks = []
+
+    def load_mixed_csv(self, file_path: str) -> pd.DataFrame:
+        rows = []
+        with open(file_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        if not lines:
+            return pd.DataFrame(columns=["timestamp", "open", "high", "low", "close", "volume"])
+            
+        headers = [h.strip().lower() for h in lines[0].split(",")]
+        has_volume = "volume" in headers
+        
+        for idx in range(1, len(lines)):
+            line = lines[idx].strip()
+            if not line:
+                continue
+            parts = line.split(",")
+            if len(parts) >= 5:
+                try:
+                    row_dict = {
+                        "timestamp": parts[0].strip(),
+                        "open": float(parts[1].strip()),
+                        "high": float(parts[2].strip()),
+                        "low": float(parts[3].strip()),
+                        "close": float(parts[4].strip()),
+                        "volume": float(parts[5].strip()) if (has_volume and len(parts) >= 6) else 0.0
+                    }
+                    rows.append(row_dict)
+                except ValueError:
+                    continue
+        return pd.DataFrame(rows)
+
+    def bootstrap_candles(self):
+        """Warms up the user's candle database."""
+        if os.path.exists(self.candle_data_path):
+            try:
+                self.candles_df = self.load_mixed_csv(self.candle_data_path)
+                if len(self.candles_df) >= 400:
+                    self.candles_df['timestamp'] = pd.to_datetime(self.candles_df['timestamp'], format='mixed').dt.strftime('%Y-%m-%d %H:%M:%S')
+                    self.trade_logger.log_activity(f"Candle CSV loaded with {len(self.candles_df)} rows.")
+                    return
+            except Exception as e:
+                self.trade_logger.log_activity(f"Error bootstrapping from {self.candle_data_path}: {e}")
+                pass
+
+        warmup_file = "backend_engine/old data.csv"
+        if os.path.exists(warmup_file):
+            self.trade_logger.log_activity(f"Bootstrapping candles from warmup file: {warmup_file} ...")
+            df_hist = self.load_mixed_csv(warmup_file)
+            df_hist['timestamp'] = pd.to_datetime(df_hist['timestamp'], format='mixed').dt.strftime('%Y-%m-%d %H:%M:%S')
+            self.candles_df = df_hist
+            self.trade_logger.log_activity(f"Loaded bootstrap candle file with {len(df_hist)} records.")
+        else:
+            self.candles_df = pd.DataFrame(columns=["timestamp", "open", "high", "low", "close", "volume"])
+            self.trade_logger.log_activity("Warning: No historical file found. Features will be warm-up delayed.")
+
+    def fill_historical_gap(self, smart_connect=None):
+        """
+        Queries missing 5-minute Nifty Spot candles from Angel One API
+        between the end of old data and the current time, appending them to the database CSV.
+        """
+        if self.candles_df is None or self.candles_df.empty:
+            return
+            
+        try:
+            # Parse the last timestamp in our database
+            last_timestamp = pd.to_datetime(self.candles_df.iloc[-1]['timestamp'])
+            if last_timestamp.tzinfo is not None:
+                last_timestamp = last_timestamp.tz_localize(None)
+        except Exception:
+            return
+            
+        now = datetime.datetime.now()
+        
+        # Check if the gap is larger than 10 minutes (to avoid unnecessary fetches)
+        if (now - last_timestamp).total_seconds() < 600:
+            self.trade_logger.log_activity("Database is up to date. No historical gap found.")
+            return
+            
+        self.trade_logger.log_activity(f"Calculating missing candles since {last_timestamp} up to {now}...")
+        
+        sc = smart_connect
+        if sc is None:
+            self.trade_logger.log_activity("No active user session found. Logging in with default developer credentials...")
+            try:
+                import pyotp
+                from SmartApi import SmartConnect
+                sc = SmartConnect(api_key="YOUR_API_KEY")
+                totp = pyotp.TOTP("YOUR_TOTP_SECRET").now()
+                data = sc.generateSession("YOUR_CLIENT_ID", "YOUR_MPIN", totp)
+                if data.get('status') != True:
+                    self.trade_logger.log_activity("Developer credentials authentication failed. Cannot sync missing candles.")
+                    return
+            except Exception as e:
+                self.trade_logger.log_activity(f"Error authenticating with developer credentials: {e}")
+                return
+                
+        # Fetch the missing candles from last_timestamp to now
+        gap_candles = []
+        curr_start = last_timestamp
+        
+        while curr_start < now:
+            curr_end = min(curr_start + datetime.timedelta(days=30), now)
+            from_str = curr_start.strftime("%Y-%m-%d %H:%M")
+            to_str = curr_end.strftime("%Y-%m-%d %H:%M")
+            
+            historicParam = {
+                "exchange": "NSE",
+                "symboltoken": "99926000",
+                "interval": "FIVE_MINUTE",
+                "fromdate": from_str,
+                "todate": to_str
+            }
+            
+            try:
+                data = sc.getCandleData(historicParam)
+                if data and data.get('status') == True and data.get('data'):
+                    for item in data['data']:
+                        dt_parsed = pd.to_datetime(item[0])
+                        if dt_parsed.tzinfo is not None:
+                            dt_parsed = dt_parsed.tz_localize(None)
+                        if dt_parsed > last_timestamp:
+                            gap_candles.append({
+                                "timestamp": dt_parsed.strftime('%Y-%m-%d %H:%M:%S'),
+                                "open": float(item[1]),
+                                "high": float(item[2]),
+                                "low": float(item[3]),
+                                "close": float(item[4]),
+                                "volume": 0.0
+                            })
+            except Exception as e:
+                self.trade_logger.log_activity(f"Error fetching historical gap block {from_str} to {to_str}: {e}")
+                break
+                
+            curr_start = curr_end + datetime.timedelta(days=1)
+            import time
+            time.sleep(0.3)
+            
+        if gap_candles:
+            self.trade_logger.log_activity(f"Downloaded {len(gap_candles)} missing candles.")
+            df_gap = pd.DataFrame(gap_candles)
+            self.candles_df = pd.concat([self.candles_df, df_gap], ignore_index=True)
+            self.candles_df = self.candles_df.drop_duplicates(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
+            self.candles_df.to_csv(self.candle_data_path, index=False)
+            self.trade_logger.log_activity("Historical database updated with missing candles successfully.")
+        else:
+            self.trade_logger.log_activity("No new missing candles found to sync.")
+
+    async def start(self):
+        if self.system_running:
+            return
+        self.system_running = True
+        self.bootstrap_candles()
+        
+        # 1. Get Future token for volume fetching
+        self.future_token = get_cached_future_token()
+        
+        # 2. Init websocket queue
+        tick_queue = asyncio.Queue()
+        
+        api_key = self.credentials.get("api_key", "")
+        client_id = self.credentials.get("client_id", "")
+        password = self.credentials.get("password", "")
+        totp_secret = self.credentials.get("totp_secret", "")
+        
+        if api_key and client_id:
+            self.trade_logger.log_activity("Starting in Angel One Mode. Authenticating...")
+            import pyotp
+            from SmartApi import SmartConnect
+            
+            try:
+                smart_connect = SmartConnect(api_key=api_key)
+                totp = pyotp.TOTP(totp_secret).now()
+                data = smart_connect.generateSession(client_id, password, totp)
+                if data.get('status') == True:
+                    jwt_token = data['data']['jwtToken']
+                    feed_token = smart_connect.getfeedToken()
+                    
+                    # Launch the historical gap filler task in a background thread to prevent login/startup delays
+                    self.trade_logger.log_activity("Launching historical gap sync task in background thread...")
+                    asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, smart_connect))
+                        
+                    self.ws_handler = AngelOneWSHandler(
+                        tick_queue, api_key, client_id, jwt_token, feed_token, 
+                        trade_logger=self.trade_logger, future_token=self.future_token
+                    )
+                    self.trade_logger.log_activity("Angel One authentication successful. Live feed started.")
+                else:
+                    err_msg = data.get('message', 'Session generation failed')
+                    self.trade_logger.log_activity(f"Angel One authentication failed: {err_msg}. Syncing candles with default credentials and falling back to custom feed.")
+                    asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
+                    self.ws_handler = WSHandler(tick_queue, trade_logger=self.trade_logger)
+            except Exception as e:
+                self.trade_logger.log_activity(f"Error during Angel One auth: {e}. Syncing candles with default credentials and falling back to custom feed.")
+                asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
+                self.ws_handler = WSHandler(tick_queue, trade_logger=self.trade_logger)
+        else:
+            self.trade_logger.log_activity("Starting in Custom Feed Mode. Syncing candles with default credentials.")
+            asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
+            self.ws_handler = WSHandler(tick_queue, trade_logger=self.trade_logger)
+            
+        self.paper_trade_engine.ws_handler = self.ws_handler
+        self.candle_builder = CandleBuilder(
+            on_candle_completed_cb=self.on_candle_completed,
+            trade_logger=self.trade_logger,
+            candle_data_path=self.candle_data_path,
+            future_token=self.future_token
+        )
+        
+        # Start worker tasks
+        self.tasks.append(asyncio.create_task(self.ws_handler.connect_and_stream()))
+        self.tasks.append(asyncio.create_task(self.tick_consumer(tick_queue)))
+        self.tasks.append(asyncio.create_task(self.force_flush_timer()))
+        self.tasks.append(asyncio.create_task(self.monitor_loop()))
+
+    def on_candle_completed(self, timestamp, o, h, l, c, vol):
+        asyncio.create_task(self.on_candle_completed_async(timestamp, o, h, l, c, vol))
+
+    async def on_candle_completed_async(self, timestamp, o, h, l, c, vol):
+        # 1. Append the new candle to our database
+        new_row = pd.DataFrame([{
+            "timestamp": timestamp,
+            "open": o,
+            "high": h,
+            "low": l,
+            "close": c,
+            "volume": vol
+        }])
+        self.candles_df = pd.concat([self.candles_df, new_row], ignore_index=True)
+            
+        # 2. Evaluate Strategy
+        strategy = get_strategy(self.strategy_name)
+        in_pos = len(self.paper_trade_engine.active_positions) > 0
+        try:
+            result = strategy.predict(self.candles_df, in_position=in_pos)
+            signal = result.get('signal', 0)
+            metrics = result.get('metrics', {})
+        except Exception as e:
+            self.trade_logger.log_activity(f"Error during strategy predict: {e}")
+            return
+            
+        # Format predictions dict for logging
+        predictions = {
+            'hmm_regime_name': metrics.get('hmm_regime', 'Unknown'),
+            'gbm_prob_buy': metrics.get('gbm_prob_buy', 0.5 if signal == 1 else 0.1),
+            'gbm_prob_sell': metrics.get('gbm_prob_sell', 0.5 if signal == -1 else 0.1),
+            'tcn_predicted': 'BUY' if signal == 1 else ('SELL' if signal == -1 else 'HOLD'),
+            'tcn_prob_buy': metrics.get('tcn_prob_buy', 0.5 if signal == 1 else 0.1),
+            'tcn_prob_sell': metrics.get('tcn_prob_sell', 0.5 if signal == -1 else 0.1)
+        }
+        hmm_regime = metrics.get('hmm_regime', 'Unknown')
+        
+        self.trade_logger.log_activity(
+            f"[{self.strategy_name} Candle Completed] Close: {c:.2f} | Signal: {signal} | Metrics: {metrics}"
+        )
+        
+        # 3. Position Management
+        dt_obj = pd.to_datetime(timestamp, format='mixed')
+        entry_time = dt_obj + datetime.timedelta(minutes=5)
+        entry_time_str = entry_time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        active_positions_snapshot = list(self.paper_trade_engine.active_positions)
+        reverse_pos_type = None
+        exited_this_bar = False
+        
+        # 3a. Check candle exits (EOD force exit, or strategy reversions)
+        eod_minute = 0 if self.strategy_name == "LONGPINE_ZFTF" else 10
+        for pos in active_positions_snapshot:
+            is_eod = False
+            if (entry_time.hour == 15 and entry_time.minute >= eod_minute) or entry_time.hour > 15:
+                is_eod = True
+                
+            exit_reason = None
+            if is_eod:
+                exit_reason = "EOD"
+            elif self.strategy_name == "LONGPINE_ZFTF":
+                # Check linear regression slope at completed candle close
+                if len(self.candles_df) >= 20:
+                    import numpy as np
+                    y = self.candles_df['close'].tail(20).values
+                    x = np.arange(20)
+                    x_mean = x.mean()
+                    x_dev = x - x_mean
+                    x_var = (x_dev**2).sum()
+                    slope_val = np.dot(x_dev, y) / x_var if x_var > 0 else 0.0
+                else:
+                    slope_val = 0.0
+                    
+                if pos["position_type"] == "LONG" and slope_val < -0.001:
+                    exit_reason = "Longpine Trend Exit"
+            else: # 243A
+                if signal == -1 and pos["position_type"] == "LONG":
+                    exit_reason = "REV"
+                elif signal == 1 and pos["position_type"] == "SHORT":
+                    exit_reason = "REV"
+                    
+            if exit_reason:
+                self.trade_logger.log_activity(f"[CANDLE EXIT] Exit triggered: {exit_reason} at Nifty {c:.2f}")
+                rev_type = self.paper_trade_engine.exit_position(pos, exit_reason, c, entry_time_str, signal)
+                exited_this_bar = True
+                if rev_type and self.strategy_name != "LONGPINE_ZFTF":
+                    reverse_pos_type = rev_type
+
+        # 3b. Check Entry
+        pos_type = None
+        if len(self.paper_trade_engine.active_positions) < PYRAMIDING_LIMIT and not exited_this_bar:
+            entry_reason = f"{self.strategy_name} entry signal"
+            
+            if reverse_pos_type:
+                pos_type = reverse_pos_type
+                entry_reason = "Reverse Entry"
+            elif signal != 0:
+                allow_entry = True
+                if entry_time.hour == 9 and entry_time.minute == 15:
+                    allow_entry = False
+                if (entry_time.hour == 15 and entry_time.minute >= eod_minute) or entry_time.hour > 15:
+                    allow_entry = False
+                    
+                if allow_entry:
+                    if signal == 1:
+                        pos_type = "LONG"
+                    elif signal == -1 and self.strategy_name != "LONGPINE_ZFTF":
+                        pos_type = "SHORT"
+                        
+            if pos_type:
+                self.paper_trade_engine.enter_position(
+                    pos_type=pos_type,
+                    nifty_close=c,
+                    current_time=entry_time_str,
+                    entry_reason=entry_reason,
+                    hmm_regime=hmm_regime
+                )
+                
+        # Write the executed signals to the new row
+        last_idx = len(self.candles_df) - 1
+        if self.strategy_name == "LONGPINE_ZFTF":
+            if exited_this_bar:
+                self.candles_df.at[last_idx, 'signal_zftf'] = "SELL"
+            elif pos_type == "LONG":
+                self.candles_df.at[last_idx, 'signal_zftf'] = "BUY"
+        elif self.strategy_name == "243A":
+            if exited_this_bar:
+                self.candles_df.at[last_idx, 'signal_243a'] = "EXIT"
+            elif pos_type == "LONG":
+                self.candles_df.at[last_idx, 'signal_243a'] = "BUY"
+            elif pos_type == "SHORT":
+                self.candles_df.at[last_idx, 'signal_243a'] = "SELL"
+                
+        # Write completed candles to CSV file
+        self.candles_df.to_csv(self.candle_data_path, index=False)
+                
+        # Log candle metrics
+        ohlcv_dict = {"open": o, "high": h, "low": l, "close": c, "volume": vol}
+        self.trade_logger.log_candle_metrics(timestamp, ohlcv_dict, predictions, signal, "BUY" if signal == 1 else ("SELL" if signal == -1 else "nan"))
+
+    async def tick_consumer(self, queue):
+        self.trade_logger.log_activity("Tick consumer started.")
+        while True:
+            try:
+                tick = await queue.get()
+                scrip = int(tick["ScripCode"])
+                rec_type = tick["RecType"]
+                
+                # 1. Update Spot Price LTP
+                if scrip == INDEX_TOKEN and rec_type in ("A", "H") and tick["LTP"] is not None:
+                    self.index_ltp = tick["LTP"]
+                    self.last_index_time = tick["Time"]
+                    
+                    # Check SL/TP in real-time
+                    active_positions_snapshot = list(self.paper_trade_engine.active_positions)
+                    for pos in active_positions_snapshot:
+                        pos_type = pos["position_type"]
+                        entry_nifty = pos["entry_nifty_price"]
+                        sl_nifty = pos["sl_nifty_price"]
+                        tp_nifty = pos["tp_nifty_price"]
+                        
+                        exit_reason = None
+                        if pos_type == "LONG":
+                            if self.index_ltp <= sl_nifty:
+                                exit_reason = "SL"
+                            elif self.index_ltp >= tp_nifty:
+                                exit_reason = "TP"
+                        else:
+                            if self.index_ltp >= sl_nifty:
+                                exit_reason = "SL"
+                            elif self.index_ltp <= tp_nifty:
+                                exit_reason = "TP"
+                                
+                        if exit_reason:
+                            self.trade_logger.log_activity(
+                                f"[REAL-TIME TICK EXIT] Spot Index {self.index_ltp:.2f} touched {exit_reason} limit. Exiting..."
+                            )
+                            tick_time_str = tick["Time"].strftime('%Y-%m-%d %H:%M:%S')
+                            self.paper_trade_engine.exit_position(pos, exit_reason, self.index_ltp, tick_time_str)
+                            
+                # 2. Pass ticks to candle builder
+                self.candle_builder.process_tick(tick)
+                queue.task_done()
+            except Exception as e:
+                self.trade_logger.log_activity(f"Error in tick consumer: {e}")
+
+    async def force_flush_timer(self):
+        while True:
+            await asyncio.sleep(10)
+            try:
+                if self.candle_builder:
+                    self.candle_builder.force_flush_stale(30)
+            except Exception as e:
+                self.trade_logger.log_activity(f"Timer Error: {e}")
+
+    async def monitor_loop(self):
+        while True:
+            await asyncio.sleep(60)
+            try:
+                current_time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                realized = sum(t.get("pnl", 0.0) for t in self.paper_trade_engine.trades)
+                unrealized = 0.0
+                for pos in self.paper_trade_engine.active_positions:
+                    pos_type = pos["position_type"]
+                    entry_nifty = pos["entry_nifty_price"]
+                    qty = pos.get("lot_size", 75) * pos.get("option_lots", 1)
+                    pnl_pts = (self.index_ltp - entry_nifty) if pos_type == "LONG" else (entry_nifty - self.index_ltp)
+                    unrealized += pnl_pts * qty
+                
+                self.trade_logger.log_activity(f"LTP: {self.index_ltp:.2f} | Active Positions: {len(self.paper_trade_engine.active_positions)} | Today PnL: {realized+unrealized:+.2f}")
+            except Exception:
+                pass
+
+    def stop(self):
+        self.system_running = False
+        if self.ws_handler:
+            try:
+                self.ws_handler.stop()
+            except Exception:
+                pass
+        for t in self.tasks:
+            try:
+                t.cancel()
+            except Exception:
+                pass
+        self.tasks = []
+
+def start_user_system(user_id, credentials, strategy_name="243A"):
+    if user_id in active_sessions:
+        active_sessions[user_id].stop()
+        
+    session = UserSession(user_id, credentials, strategy_name)
+    active_sessions[user_id] = session
+    asyncio.create_task(session.start())
+    return session
+
+def stop_user_system(user_id):
+    if user_id in active_sessions:
+        active_sessions[user_id].stop()
+        del active_sessions[user_id]
+
+async def daily_restart_checker_loop():
+    """Daily check to restart all user systems cleanly at 9:00 AM IST."""
+    last_reset_date = None
+    while True:
+        try:
+            now = datetime.datetime.now()
+            if now.hour == 9 and now.minute == 0 and now.date() != last_reset_date:
+                last_reset_date = now.date()
+                print("[Daily Restart] Running daily reset checker for all users...")
+                from users_db import get_all_users
+                users = get_all_users()
+                for user in users:
+                    user_id = user["id"]
+                    if user_id in active_sessions:
+                        print(f"[Daily Restart] Restarting session for user {user['email']}...")
+                        credentials = {
+                            "api_key": user["api_key"],
+                            "client_id": user["client_id"],
+                            "password": user["password"],
+                            "totp_secret": user["totp_secret"]
+                        }
+                        strategy_name = active_sessions[user_id].strategy_name
+                        stop_user_system(user_id)
+                        await asyncio.sleep(2)
+                        start_user_system(user_id, credentials, strategy_name)
+        except Exception as e:
+            print(f"Error in daily restart checker: {e}")
+        await asyncio.sleep(30)
+
+def start_background_system():
+    # Deprecated single-user launcher wrapper
+    global restart_checker_task
+    if restart_checker_task is None or restart_checker_task.done():
+        restart_checker_task = asyncio.create_task(daily_restart_checker_loop())
+
+def stop_background_system():
+    # Cancel all sessions
+    for user_id in list(active_sessions.keys()):
+        stop_user_system(user_id)

@@ -1,0 +1,25 @@
+# PASSKEY: rushit2712
+# Exclude SQLite user registration database
+users.db
+users.db-journal
+
+# Exclude multi-user live sandbox datasets and logs
+data/
+logs/
+
+# Python caching
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Environment configurations containing secrets
+.env
+.flaskenv
+backend_engine/settings.json

@@ -1,0 +1,16 @@
+//@version=5
+indicator("ZFTF - Z Score Trend Following Indicator", overlay=true)
+
+window      = input.int(20, "Rolling Window")
+z_threshold = input.float(2.0, "Z Entry Threshold")
+slope_entry = input.float(0.001, "Slope Entry Threshold")
+slope_exit  = input.float(-0.001, "Slope Exit Threshold")
+
+target_pct  = input.float(0.06, "Target %")
+stop_pct    = input.float(0.03, "Stop %")
+
+mean = ta.sma(close, window)
+std  = ta.stdev(close, window)
+
+z = (close - mean) / std
+slope = ta.linreg(close, window, 0) - ta.linreg(close, window, 1)
