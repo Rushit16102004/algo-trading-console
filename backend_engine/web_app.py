@@ -400,6 +400,21 @@ async def get_signals(email: str = Query(None)):
         "signal_history": trade_history
     }
 
+@app.get("/api/sync_72")
+async def api_sync_72(email: str = Query(None)):
+    session = get_user_session(email)
+    sc = session.smart_connect if session else None
+    
+    from backend_engine.live_dryrun import sync_last_72_candles
+    success = await asyncio.to_thread(sync_last_72_candles, sc, CANDLE_DATA_PATH, email)
+    
+    if success:
+        if session:
+            session.candles_df = pd.read_csv(CANDLE_DATA_PATH)
+        return {"status": "success", "message": "Successfully synchronized last 72 candles and updated signals."}
+    else:
+        return {"status": "error", "message": "Failed to sync candles. Please check credentials or try again later."}
+
 @app.get("/api/candles")
 async def get_candles(email: str = Query(None), strategy: str = Query("243A")):
     """
@@ -411,6 +426,17 @@ async def get_candles(email: str = Query(None), strategy: str = Query("243A")):
         live_markers = []
         
         session = get_user_session(email)
+        
+        # Check and sync missing candles automatically to keep dataset fresh!
+        from backend_engine.live_dryrun import check_and_sync_missing, sync_last_72_candles
+        sc = session.smart_connect if session else None
+        should_sync = await asyncio.to_thread(check_and_sync_missing, CANDLE_DATA_PATH)
+        if should_sync:
+            print("[Auto-Sync] Missing candles detected! Syncing last 72 candles...")
+            await asyncio.to_thread(sync_last_72_candles, sc, CANDLE_DATA_PATH, email)
+            if session:
+                session.candles_df = pd.read_csv(CANDLE_DATA_PATH)
+        
         if session and session.candles_df is not None and not session.candles_df.empty:
             df_live = session.candles_df.copy()
             df_live['timestamp'] = pd.to_datetime(df_live['timestamp'], format='mixed')

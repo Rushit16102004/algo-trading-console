@@ -206,23 +206,16 @@ class UserSession:
             
             spot_data = []
             try:
-                # Add retry backoff for rate limit
                 for attempt in range(3):
                     try:
                         res = sc.getCandleData(historicParam)
                         if res and res.get('status') == True and res.get('data'):
                             spot_data = res['data']
                             break
-                        elif res and "exceeding access rate" in str(res.get('message', '')).lower():
-                            self.trade_logger.log_activity(f"Index history rate limited. Retrying in 1.5s (attempt {attempt+1}/3)...")
-                            time.sleep(1.5)
                         else:
-                            break
-                    except Exception as e:
-                        if "exceeding access rate" in str(e).lower():
-                            time.sleep(1.5)
-                        else:
-                            raise e
+                            time.sleep(2.0)
+                    except Exception:
+                        time.sleep(2.0)
             except Exception as e:
                 self.trade_logger.log_activity(f"Error fetching Nifty Spot history: {e}")
                 break
@@ -251,15 +244,10 @@ class UserSession:
                             if res and res.get('status') == True and res.get('data'):
                                 stock_candles = res['data']
                                 break
-                            elif res and "exceeding access rate" in str(res.get('message', '')).lower():
-                                time.sleep(1.5)
                             else:
-                                break
-                        except Exception as e:
-                            if "exceeding access rate" in str(e).lower():
-                                time.sleep(1.5)
-                            else:
-                                raise e
+                                time.sleep(2.0)
+                        except Exception:
+                            time.sleep(2.0)
                                 
                     for item in stock_candles:
                         dt_val = pd.to_datetime(item[0])
@@ -649,3 +637,188 @@ def stop_background_system():
     # Cancel all sessions
     for user_id in list(active_sessions.keys()):
         stop_user_system(user_id)
+
+
+def check_and_sync_missing(candle_data_path):
+    import pandas as pd
+    import datetime as dt
+    import os
+    if not os.path.exists(candle_data_path):
+        return True
+        
+    try:
+        df = pd.read_csv(candle_data_path)
+        if df.empty:
+            return True
+        last_ts = pd.to_datetime(df.iloc[-1]['timestamp'])
+        if last_ts.tzinfo is not None:
+            last_ts = last_ts.tz_localize(None)
+            
+        now = dt.datetime.now()
+        
+        # Check if the gap is larger than 10 minutes (to see if we have missing candles)
+        # We only check regular trading days (Mon-Fri) and during or after market hours
+        if now.weekday() < 5:
+            market_start = now.replace(hour=9, minute=15, second=0, microsecond=0)
+            if now > market_start:
+                gap_seconds = (now - last_ts).total_seconds()
+                if gap_seconds > 600:
+                    return True
+        else:
+            # On weekends, if the last candle in DB is older than Friday 15:30
+            pass
+            
+    except Exception:
+        return True
+        
+    return False
+
+def sync_last_72_candles(sc, candle_data_path, email=None):
+    import datetime as dt
+    import pandas as pd
+    import time
+    from backend_engine.websocket_handler import CONSTITUENT_TOKENS
+    
+    # 72 candles at 5m interval is 6 hours of trading time.
+    # To cover weekends and non-trading hours, we go back 3 days.
+    to_dt = dt.datetime.now()
+    from_dt = to_dt - dt.timedelta(days=3)
+    
+    from_str = from_dt.strftime("%Y-%m-%d %H:%M")
+    to_str = to_dt.strftime("%Y-%m-%d %H:%M")
+    
+    # Authenticate with default developer key if no active user session
+    if sc is None:
+        try:
+            import pyotp
+            from SmartApi import SmartConnect
+            sc = SmartConnect(api_key="YOUR_API_KEY")
+            totp = pyotp.TOTP("YOUR_TOTP_SECRET").now()
+            data = sc.generateSession("YOUR_CLIENT_ID", "YOUR_MPIN", totp)
+            if data.get('status') != True:
+                return False
+        except Exception:
+            return False
+            
+    # 1. Fetch Nifty Spot candles
+    params = {
+        "exchange": "NSE",
+        "symboltoken": "99926000",
+        "interval": "FIVE_MINUTE",
+        "fromdate": from_str,
+        "todate": to_str
+    }
+    
+    spot_data = []
+    for attempt in range(3):
+        try:
+            res = sc.getCandleData(params)
+            if res and res.get('status') == True and res.get('data'):
+                spot_data = res['data']
+                break
+            else:
+                time.sleep(2.0)
+        except Exception:
+            time.sleep(2.0)
+            
+    if not spot_data:
+        return False
+        
+    # Get last 72 candles
+    spot_data = spot_data[-72:]
+    
+    # 2. Fetch constituent stock volumes for the same time period
+    volume_by_time = {}
+    for idx, token in enumerate(CONSTITUENT_TOKENS):
+        stock_params = {
+            "exchange": "NSE",
+            "symboltoken": str(token),
+            "interval": "FIVE_MINUTE",
+            "fromdate": from_str,
+            "todate": to_str
+        }
+        try:
+            stock_candles = []
+            for attempt in range(3):
+                try:
+                    res = sc.getCandleData(stock_params)
+                    if res and res.get('status') == True and res.get('data'):
+                        stock_candles = res['data']
+                        break
+                    else:
+                        time.sleep(2.0)
+                except Exception:
+                    time.sleep(2.0)
+                    
+            for item in stock_candles:
+                dt_val = pd.to_datetime(item[0])
+                if dt_val.tzinfo is not None:
+                    dt_val = dt_val.tz_localize(None)
+                ts_str = dt_val.strftime('%Y-%m-%d %H:%M:%S')
+                volume_by_time[ts_str] = volume_by_time.get(ts_str, 0) + int(item[5])
+        except Exception:
+            pass
+        time.sleep(0.35) # strict sleep to prevent hitting rate limit
+        
+    # 3. Read existing dataset
+    df_old = pd.read_csv(candle_data_path)
+    df_old['timestamp'] = pd.to_datetime(df_old['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+    
+    # 4. Merge new/updated candles (ensure no duplicates, replace if already exists)
+    new_rows = []
+    for item in spot_data:
+        dt_parsed = pd.to_datetime(item[0])
+        if dt_parsed.tzinfo is not None:
+            dt_parsed = dt_parsed.tz_localize(None)
+        ts_str = dt_parsed.strftime('%Y-%m-%d %H:%M:%S')
+        
+        summed_vol = float(volume_by_time.get(ts_str, 0))
+        
+        df_old = df_old[df_old['timestamp'] != ts_str]
+        
+        new_rows.append({
+            "timestamp": ts_str,
+            "open": float(item[1]),
+            "high": float(item[2]),
+            "low": float(item[3]),
+            "close": float(item[4]),
+            "volume": summed_vol
+        })
+        
+    df_new = pd.DataFrame(new_rows)
+    df_combined = pd.concat([df_old, df_new], ignore_index=True)
+    df_combined = df_combined.sort_values('timestamp').drop_duplicates(subset=['timestamp']).reset_index(drop=True)
+    df_combined.to_csv(candle_data_path, index=False)
+    
+    # 5. Precalculate and cache predictions for these 72 candles (saving runtime!)
+    df_updated = pd.read_csv(candle_data_path)
+    df_updated['timestamp'] = pd.to_datetime(df_updated['timestamp'])
+    
+    from backend_engine.strategies import get_strategy
+    strategy = get_strategy("243A")
+    
+    start_idx = max(150, len(df_updated) - 72)
+    new_predictions = []
+    
+    for idx in range(start_idx, len(df_updated)):
+        lookback = df_updated.iloc[max(0, idx - 149) : idx + 1].reset_index(drop=True)
+        timestamp = lookback.iloc[-1]['timestamp']
+        if isinstance(timestamp, pd.Timestamp):
+            timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            
+        try:
+            pred = strategy.predict(lookback)
+            new_predictions.append({
+                "timestamp": timestamp,
+                "strategy": "243A",
+                "signal": pred.get("signal", 0),
+                "metrics": pred.get("metrics", {})
+            })
+        except Exception:
+            pass
+            
+    if new_predictions:
+        from backend_engine.signal_cacher import save_predictions_batch
+        save_predictions_batch(new_predictions)
+        
+    return True

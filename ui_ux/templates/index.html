@@ -190,12 +190,12 @@
         /* Chart container */
         #chart-container {
             width: 100%;
-            height: 480px;
+            height: 600px;
             position: relative;
-            background: #090e18;
+            background: #000000;
             border-radius: 8px;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         /* Switch Toggle Component */
@@ -594,7 +594,7 @@
                 height: auto;
             }
             #chart-container {
-                height: 380px !important;
+                height: 480px !important;
             }
         }
 
@@ -617,7 +617,7 @@
                 border-radius: 8px;
             }
             #chart-container {
-                height: 320px !important;
+                height: 400px !important;
             }
             th, td {
                 padding: 8px 10px;
@@ -779,6 +779,7 @@
                                 <option value="2021">2021</option>
                             </select>
                             <button onclick="downloadFilteredOldData()" class="btn" style="font-size: 0.7rem; padding: 6px 10px;" id="btn-download-old"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download Data</button>
+                            <button onclick="sync72Candles()" class="btn" style="font-size: 0.7rem; padding: 6px 10px; background: rgba(59, 130, 246, 0.2); border-color: var(--accent-blue);" id="btn-sync-72"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Sync 72 Candles</button>
                         </div>
                     </div>
                 </div>
@@ -1382,34 +1383,34 @@
             const container = document.getElementById('chart-container');
             chart = LightweightCharts.createChart(container, {
                 width: container.clientWidth || 800,
-                height: 480,
+                height: container.clientHeight || 600,
                 layout: {
-                    background: { type: 'solid', color: '#030712' },
-                    textColor: '#9ca3af',
+                    background: { type: 'solid', color: '#000000' },
+                    textColor: '#d1d5db',
                 },
                 grid: {
-                    vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
-                    horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
+                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
                 },
                 crosshair: {
                     vertLine: {
-                        color: 'rgba(255, 255, 255, 0.1)',
+                        color: 'rgba(255, 255, 255, 0.15)',
                         width: 1,
                         style: 3,
                         labelBackgroundColor: '#1f2937',
                     },
                     horzLine: {
-                        color: 'rgba(255, 255, 255, 0.1)',
+                        color: 'rgba(255, 255, 255, 0.15)',
                         width: 1,
                         style: 3,
                         labelBackgroundColor: '#1f2937',
                     },
                 },
                 rightPriceScale: {
-                    borderColor: 'rgba(255, 255, 255, 0.05)',
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
                 },
                 timeScale: {
-                    borderColor: 'rgba(255, 255, 255, 0.05)',
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
                     timeVisible: true,
                     secondsVisible: false,
                     tickMarkFormatter: (time, tickMarkType, locale) => {
@@ -1488,7 +1489,7 @@
 
             window.addEventListener('resize', () => {
                 if (chart && container) {
-                    chart.resize(container.clientWidth, 480);
+                    chart.resize(container.clientWidth, container.clientHeight);
                 }
             });
         }
@@ -1835,7 +1836,7 @@
             setTimeout(() => {
                 const container = document.getElementById('chart-container');
                 if (chart && container) {
-                    chart.resize(container.clientWidth, 480);
+                    chart.resize(container.clientWidth, container.clientHeight);
                 }
             }, 100);
         }
@@ -1850,6 +1851,31 @@
             } else {
                 wrapper.style.display = 'none';
                 arrow.innerText = '[Click to Expand]';
+            }
+        }
+
+        async function sync72Candles() {
+            const btn = document.getElementById('btn-sync-72');
+            const email = localStorage.getItem("user_email") || "developer@gmail.com";
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Syncing...';
+            showToast("Starting 72 candle sync...", "info");
+            
+            try {
+                const response = await fetch(`/api/sync_72?email=${encodeURIComponent(email)}`);
+                const data = await response.json();
+                if (data.status === "success") {
+                    showToast(data.message, "success");
+                    await loadChartData();
+                } else {
+                    showToast(data.message, "danger");
+                }
+            } catch (err) {
+                showToast("Failed to sync candles: " + err, "danger");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Sync 72 Candles';
             }
         }
     </script>

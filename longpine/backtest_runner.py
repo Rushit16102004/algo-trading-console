@@ -48,6 +48,7 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
     elif strategy_name == "243A":
         csv_sig_path = "243A/backtest_signals.csv"
         csv_results_path = "243A/backtest_results.csv"
+        last_backtest_time = None
         if os.path.exists(csv_sig_path) and os.path.exists(csv_results_path):
             try:
                 df_results = pd.read_csv(csv_results_path)
@@ -58,6 +59,9 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
                     exit_time = pd.to_datetime(row["Exit Time"])
                     exit_reason = row.get("Exit Reason", "EOD")
                     
+                    if last_backtest_time is None or exit_time > last_backtest_time:
+                        last_backtest_time = exit_time
+                        
                     t_entry = to_epoch(entry_time)
                     t_exit = to_epoch(exit_time)
                     
@@ -78,7 +82,6 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
                         "shape": "circle",
                         "text": exit_label
                     })
-                return markers
             except Exception as e:
                 print(f"Error loading 243A backtest signals: {e}")
 
@@ -127,16 +130,30 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
                     markers.append({"time": t, "position": "aboveBar", "color": "#ef4444", "shape": "arrowDown", "text": "SELL"})
                     in_position = False
                     
-    # 2. Fallback for 243A Consensus Strategy Markers
+    # 2. Cache-enabled 243A Consensus Strategy Markers simulation
     elif strategy_name == "243A":
         strategy = get_strategy("243A")
-        last_date = df['timestamp'].max()
-        cutoff_date = last_date - pd.Timedelta(days=30)
+        
+        # Determine simulation start period
+        if 'last_backtest_time' in locals() and last_backtest_time is not None:
+            # Start slightly before the last backtest trade to capture any live continuation
+            cutoff_date = last_backtest_time - pd.Timedelta(hours=24)
+        else:
+            last_date = df['timestamp'].max()
+            cutoff_date = last_date - pd.Timedelta(days=30)
+            
         matching_indices = df[df['timestamp'] >= cutoff_date].index
         start_idx = max(150, matching_indices[0]) if len(matching_indices) > 0 else 150
         
+        # Load persistent signals cache
+        from backend_engine.signal_cacher import load_cached_predictions, get_cached_prediction, save_predictions_batch
+        cache_df = load_cached_predictions()
+        
+        existing_marker_times = set(m["time"] for m in markers)
         active_positions = []
-        trade_counter = 0
+        trade_counter = len(df_results) if 'df_results' in locals() else 0
+        
+        new_predictions = []
         
         for idx in range(start_idx, len(df)):
             row = df.iloc[idx]
@@ -146,15 +163,26 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
                 
             t = int(row['time_epoch'])
             close = float(row['close'])
+            timestamp = row['timestamp']
             
-            in_pos = len(active_positions) > 0
-            lookback = df.iloc[max(0, idx - 149) : idx + 1].reset_index(drop=True)
-            try:
-                pred = strategy.predict(lookback)
-                signal = pred.get('signal', 0)
-            except Exception:
-                signal = 0
-                
+            # Read from prediction cache or evaluate ML model
+            pred = get_cached_prediction(cache_df, timestamp, "243A")
+            if pred is None:
+                lookback = df.iloc[max(0, idx - 149) : idx + 1].reset_index(drop=True)
+                try:
+                    pred = strategy.predict(lookback)
+                    new_predictions.append({
+                        "timestamp": timestamp,
+                        "strategy": "243A",
+                        "signal": pred.get("signal", 0),
+                        "metrics": pred.get("metrics", {})
+                    })
+                except Exception:
+                    pred = {"signal": 0, "metrics": {}}
+                    
+            signal = pred.get('signal', 0)
+            
+            # Position management tracking
             exited_positions = []
             for pos in list(active_positions):
                 pos_type = pos["type"]
@@ -180,13 +208,14 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
                         
                 if sl_hit or tp_hit or trend_exit:
                     reason = "SL" if sl_hit else ("TP" if tp_hit else "REV")
-                    markers.append({
-                        "time": t,
-                        "position": "aboveBar" if pos_type == "LONG" else "belowBar",
-                        "color": "#3b82f6",
-                        "shape": "circle",
-                        "text": f"EXIT {pos['num']} ({reason})"
-                    })
+                    if t not in existing_marker_times:
+                        markers.append({
+                            "time": t,
+                            "position": "aboveBar" if pos_type == "LONG" else "belowBar",
+                            "color": "#3b82f6",
+                            "shape": "circle",
+                            "text": f"EXIT {pos['num']} ({reason})"
+                        })
                     exited_positions.append(pos)
                     
             for pos in exited_positions:
@@ -200,13 +229,17 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
                     "entry_price": close,
                     "num": trade_counter
                 })
-                markers.append({
-                    "time": t,
-                    "position": "belowBar" if pos_type == "LONG" else "aboveBar",
-                    "color": "#10b981" if pos_type == "LONG" else "#ef4444",
-                    "shape": "arrowUp" if pos_type == "LONG" else "arrowDown",
-                    "text": f"BUY {trade_counter}" if pos_type == "LONG" else f"SELL {trade_counter}"
-                })
+                if t not in existing_marker_times:
+                    markers.append({
+                        "time": t,
+                        "position": "belowBar" if pos_type == "LONG" else "aboveBar",
+                        "color": "#10b981" if pos_type == "LONG" else "#ef4444",
+                        "shape": "arrowUp" if pos_type == "LONG" else "arrowDown",
+                        "text": f"BUY {trade_counter}" if pos_type == "LONG" else f"SELL {trade_counter}"
+                    })
+                    
+        if new_predictions:
+            save_predictions_batch(new_predictions)
                 
     return markers
 
