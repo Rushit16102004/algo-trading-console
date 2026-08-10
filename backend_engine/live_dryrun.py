@@ -295,10 +295,10 @@ class UserSession:
         if self.system_running:
             return
         self.system_running = True
-        self.bootstrap_candles()
         
-        # 1. Get Future token for volume fetching
-        self.future_token = get_cached_future_token()
+        # Use asyncio.to_thread to run heavy synchronous loading operations off the main event loop
+        await asyncio.to_thread(self.bootstrap_candles)
+        self.future_token = await asyncio.to_thread(get_cached_future_token)
         
         # 2. Init websocket queue
         tick_queue = asyncio.Queue()
@@ -316,11 +316,11 @@ class UserSession:
             try:
                 smart_connect = SmartConnect(api_key=api_key)
                 totp = pyotp.TOTP(totp_secret).now()
-                data = smart_connect.generateSession(client_id, password, totp)
+                data = await asyncio.to_thread(smart_connect.generateSession, client_id, password, totp)
                 if data.get('status') == True:
                     self.smart_connect = smart_connect
                     jwt_token = data['data']['jwtToken']
-                    feed_token = smart_connect.getfeedToken()
+                    feed_token = await asyncio.to_thread(smart_connect.getfeedToken)
                     
                     # Launch the historical gap filler task in a background thread to prevent login/startup delays
                     self.trade_logger.log_activity("Launching historical gap sync task in background thread...")
