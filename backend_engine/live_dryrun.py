@@ -81,6 +81,7 @@ class UserSession:
         self.ws_handler = None
         self.candle_builder = None
         self.future_token = None
+        self.smart_connect = None
         
         self.index_ltp = 0.0
         self.last_index_time = None
@@ -317,6 +318,7 @@ class UserSession:
                 totp = pyotp.TOTP(totp_secret).now()
                 data = smart_connect.generateSession(client_id, password, totp)
                 if data.get('status') == True:
+                    self.smart_connect = smart_connect
                     jwt_token = data['data']['jwtToken']
                     feed_token = smart_connect.getfeedToken()
                     
