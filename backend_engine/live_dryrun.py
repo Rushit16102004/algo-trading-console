@@ -379,6 +379,14 @@ class UserSession:
             result = strategy.predict(self.candles_df, in_position=in_pos)
             signal = result.get('signal', 0)
             metrics = result.get('metrics', {})
+            # Save this live completed candle prediction to our persistent cache
+            from backend_engine.signal_cacher import save_predictions_batch
+            save_predictions_batch([{
+                "timestamp": timestamp,
+                "strategy": self.strategy_name,
+                "signal": signal,
+                "metrics": metrics
+            }])
         except Exception as e:
             self.trade_logger.log_activity(f"Error during strategy predict: {e}")
             return
