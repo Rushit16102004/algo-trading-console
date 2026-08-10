@@ -254,18 +254,26 @@ async def register(
         return {"status": "success", "message": "Account created successfully! You can now log in using your PIN."}
     return {"status": "error", "message": "An account with this email already exists."}
 
-@app.post("/api/auth/login")
-async def login(
-    email: str = Form(...),
-    pin: str = Form(...)
-):
-    """Log in an existing user with their 6-digit PIN."""
-    user = verify_user(email.strip().lower(), pin.strip())
-    if user:
-        # Start their live session
-        get_user_session(user["email"])
-        return {"status": "success", "user": {"email": user["email"]}}
-    return {"status": "error", "message": "Invalid email or 6-digit PIN."}
+is_syncing_in_progress = False
+
+async def run_auto_sync_in_background(sc, email, session):
+    global is_syncing_in_progress
+    if is_syncing_in_progress:
+        return
+    is_syncing_in_progress = True
+    try:
+        print("[Background Auto-Sync] Syncing last 72 candles...")
+        from backend_engine.live_dryrun import sync_last_72_candles
+        success = await asyncio.to_thread(sync_last_72_candles, sc, CANDLE_DATA_PATH, email)
+        if success:
+            print("[Background Auto-Sync] Sync complete! Re-initializing RAM cache...")
+            init_historical_caches()
+            if session:
+                session.candles_df = pd.read_csv(CANDLE_DATA_PATH)
+    except Exception as e:
+        print(f"[Background Auto-Sync] Error: {e}")
+    finally:
+        is_syncing_in_progress = False
 
 @app.get("/api/status")
 async def get_status(email: str = Query(None), strategy: str = Query("243A")):
@@ -280,7 +288,8 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
             "today_total_pnl": 0.0,
             "active_positions": [],
             "current_candle": None,
-            "logs": ["Please log in to view status."]
+            "logs": ["Please log in to view status."],
+            "sync_in_progress": is_syncing_in_progress
         }
         
     # Update active strategy name dynamically
@@ -355,7 +364,8 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
         "today_total_pnl": round(realized_pnl_inr + unrealized_pnl_inr, 2),
         "active_positions": active_positions,
         "current_candle": current_candle,
-        "logs": recent_logs
+        "logs": recent_logs,
+        "sync_in_progress": is_syncing_in_progress
     }
 
 @app.get("/api/signals")
@@ -403,20 +413,28 @@ async def get_signals(email: str = Query(None)):
 
 @app.get("/api/sync_72")
 async def api_sync_72(email: str = Query(None)):
+    global is_syncing_in_progress
+    if is_syncing_in_progress:
+        return {"status": "error", "message": "A synchronization is already running. Please wait."}
+        
     session = get_user_session(email)
     sc = session.smart_connect if session else None
     
-    from backend_engine.live_dryrun import sync_last_72_candles
-    success = await asyncio.to_thread(sync_last_72_candles, sc, CANDLE_DATA_PATH, email)
-    
-    if success:
-        # Re-initialize the historical cache to load the newly synchronized data into RAM
-        init_historical_caches()
-        if session:
-            session.candles_df = pd.read_csv(CANDLE_DATA_PATH)
-        return {"status": "success", "message": "Successfully synchronized last 72 candles and updated signals."}
-    else:
-        return {"status": "error", "message": "Failed to sync candles. Please check credentials or try again later."}
+    is_syncing_in_progress = True
+    try:
+        from backend_engine.live_dryrun import sync_last_72_candles
+        success = await asyncio.to_thread(sync_last_72_candles, sc, CANDLE_DATA_PATH, email)
+        if success:
+            init_historical_caches()
+            if session:
+                session.candles_df = pd.read_csv(CANDLE_DATA_PATH)
+            return {"status": "success", "message": "Successfully synchronized last 72 candles and updated signals."}
+    except Exception as e:
+        print(f"Manual sync error: {e}")
+    finally:
+        is_syncing_in_progress = False
+        
+    return {"status": "error", "message": "Failed to sync candles. Please check credentials or try again later."}
 
 @app.get("/api/candles")
 async def get_candles(email: str = Query(None), strategy: str = Query("243A")):
@@ -430,17 +448,12 @@ async def get_candles(email: str = Query(None), strategy: str = Query("243A")):
         
         session = get_user_session(email)
         
-        # Check and sync missing candles automatically to keep dataset fresh!
-        from backend_engine.live_dryrun import check_and_sync_missing, sync_last_72_candles
+        # Check and sync missing candles automatically in the background to avoid page blocking!
+        from backend_engine.live_dryrun import check_and_sync_missing
         sc = session.smart_connect if session else None
         should_sync = await asyncio.to_thread(check_and_sync_missing, CANDLE_DATA_PATH)
-        if should_sync:
-            print("[Auto-Sync] Missing candles detected! Syncing last 72 candles...")
-            await asyncio.to_thread(sync_last_72_candles, sc, CANDLE_DATA_PATH, email)
-            # Re-initialize the historical cache to load the newly synchronized data into RAM
-            init_historical_caches()
-            if session:
-                session.candles_df = pd.read_csv(CANDLE_DATA_PATH)
+        if should_sync and not is_syncing_in_progress:
+            asyncio.create_task(run_auto_sync_in_background(sc, email, session))
         
         if session and session.candles_df is not None and not session.candles_df.empty:
             df_live = session.candles_df.copy()

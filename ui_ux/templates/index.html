@@ -742,6 +742,9 @@
                     <span class="pulse-dot pulse-connecting" id="conn-dot"></span>
                     <span id="conn-text" style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">Connecting</span>
                 </span>
+                <span id="sync-status-badge" class="pulse-badge" style="margin-top: 4px; display: none; background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); align-items: center; gap: 4px;">
+                    Syncing gap...
+                </span>
             </div>
         </div>
         
@@ -1494,6 +1497,8 @@
             });
         }
 
+        let wasSyncing = false;
+
         async function updateStatus() {
             const email = localStorage.getItem("user_email");
             if (!email) return;
@@ -1503,6 +1508,28 @@
             try {
                 const response = await fetch(`/api/status?email=${encodeURIComponent(email)}&strategy=${strategy}`);
                 const data = await response.json();
+                
+                // Sync status monitoring
+                const syncBadge = document.getElementById('sync-status-badge');
+                if (data.sync_in_progress) {
+                    if (!wasSyncing) {
+                        showToast("Auto-syncing missing candles in background...", "info");
+                    }
+                    if (syncBadge) {
+                        syncBadge.style.display = 'inline-flex';
+                        syncBadge.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="width: 10px; height: 10px; border-width: 0.125em;"></span> Syncing gap...';
+                    }
+                    wasSyncing = true;
+                } else {
+                    if (wasSyncing) {
+                        showToast("Sync complete! Refreshing chart...", "success");
+                        loadChartData();
+                    }
+                    if (syncBadge) {
+                        syncBadge.style.display = 'none';
+                    }
+                    wasSyncing = false;
+                }
                 
                 if (data.logs && data.logs.length > 0 && data.logs[0].includes("Please log in")) {
                     handleSignOut();
