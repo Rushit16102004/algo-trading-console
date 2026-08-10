@@ -28,6 +28,7 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Global variables for caching 108k historical candles and precalculated markers in RAM
+CANDLE_DATA_PATH = "backend_engine/old data.csv"
 HISTORICAL_CANDLES = []
 HISTORICAL_MARKERS = {
     "243A": [],
