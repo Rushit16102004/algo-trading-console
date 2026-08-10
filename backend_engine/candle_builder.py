@@ -138,7 +138,6 @@ class CandleBuilder:
             
         if self.future_token:
             # For Future volume, check if the single future token's volume tick for that bucket has been recorded
-            # If not, wait up to a few ticks or use 0 volume fallback if spot has closed
             if bucket not in self.pending_volume:
                 # Retrieve last volume from cache as fallback
                 vol_now = self.latest_seen.get(self.future_token, 0)
@@ -147,11 +146,29 @@ class CandleBuilder:
                 self.pending_volume[bucket] = {self.future_token: five_min_vol}
             self._write_candle(bucket)
         else:
-            # Original constituent stocks logic
+            # Real-time constituent stocks volume sum logic
+            # Instead of waiting for all constituent ticks, we populate any missing stock volumes
+            # from the last known values to flush the candle immediately without any delay.
             if bucket not in self.pending_volume:
-                return
-            if len(self.pending_volume[bucket]) < len(CONSTITUENT_TOKENS):
-                return
+                self.pending_volume[bucket] = {}
+                
+            now = datetime.datetime.now()
+            now_bucket = self.get_5min_bucket(now)
+            
+            for scrip in CONSTITUENT_TOKENS:
+                if scrip in self.pending_volume[bucket]:
+                    continue
+                vol_now = self.latest_seen.get(scrip, 0)
+                vol_base = self.last_volume.get(scrip, vol_now)
+                five_min_vol = max(0, vol_now - vol_base)
+                
+                # Store in pending
+                self.pending_volume[bucket][scrip] = five_min_vol
+                
+                # Update baseline
+                self.last_bucket[scrip] = now_bucket
+                self.last_volume[scrip] = vol_now
+                
             self._write_candle(bucket)
 
     def _write_candle(self, bucket):

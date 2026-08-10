@@ -116,6 +116,8 @@ def init_historical_caches():
     HISTORICAL_MARKERS["LONGPINE_ZFTF"] = get_strategy_signals_for_chart(df_old, "LONGPINE_ZFTF")
     print(f"[CACHE INITIALIZER] Pre-calculation complete! (243A Markers: {len(HISTORICAL_MARKERS['243A'])}, ZFTF Markers: {len(HISTORICAL_MARKERS['LONGPINE_ZFTF'])})")
 
+starting_sessions = set()
+
 def get_user_session(email: str, strategy_name: str = "243A"):
     if not email:
         return None
@@ -124,25 +126,38 @@ def get_user_session(email: str, strategy_name: str = "243A"):
         return None
         
     user_id = user["id"]
+    if user_id in starting_sessions:
+        # Wait a brief moment if another request is currently initializing this session
+        import time
+        for _ in range(30):
+            if user_id in live_dryrun.active_sessions:
+                break
+            time.sleep(0.1)
+            
     if user_id not in live_dryrun.active_sessions:
-        # Stop developer session if a custom user logs in to release resources
-        dev_user = get_user_by_email("developer@gmail.com")
-        if dev_user and dev_user["id"] != user_id:
-            try:
-                live_dryrun.stop_user_system(dev_user["id"])
-                print(f"[Session Manager] Stopped developer default session for custom user {email}")
-            except Exception as e:
-                print(f"[Session Manager] Error stopping dev session: {e}")
+        starting_sessions.add(user_id)
+        try:
+            # Stop developer session if a custom user logs in to release resources
+            dev_user = get_user_by_email("developer@gmail.com")
+            if dev_user and dev_user["id"] != user_id:
+                try:
+                    live_dryrun.stop_user_system(dev_user["id"])
+                    print(f"[Session Manager] Stopped developer default session for custom user {email}")
+                except Exception as e:
+                    print(f"[Session Manager] Error stopping dev session: {e}")
 
-        # Auto-start dryrun worker tasks on demand for this user
-        credentials = {
-            "api_key": user["api_key"],
-            "client_id": user["client_id"],
-            "password": user["password"],
-            "totp_secret": user["totp_secret"]
-        }
-        live_dryrun.start_user_system(user_id, credentials, strategy_name=strategy_name)
-    return live_dryrun.active_sessions[user_id]
+            # Auto-start dryrun worker tasks on demand for this user
+            credentials = {
+                "api_key": user["api_key"],
+                "client_id": user["client_id"],
+                "password": user["password"],
+                "totp_secret": user["totp_secret"]
+            }
+            live_dryrun.start_user_system(user_id, credentials, strategy_name=strategy_name)
+        finally:
+            starting_sessions.discard(user_id)
+            
+    return live_dryrun.active_sessions.get(user_id)
 
 def get_recent_logs(system_log_path: str, num_lines=150):
     if not os.path.exists(system_log_path):

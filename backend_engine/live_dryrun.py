@@ -144,8 +144,9 @@ class UserSession:
 
     def fill_historical_gap(self, smart_connect=None):
         """
-        Queries missing 5-minute Nifty Spot candles from Angel One API
-        between the end of old data and the current time, appending them to the database CSV.
+        Queries missing 5-minute Nifty Spot candles from Angel One API,
+        downloads historical constituent volumes for the top 50 stocks,
+        sums their volumes, and appends the contiguous candles to the database.
         """
         if self.candles_df is None or self.candles_df.empty:
             return
@@ -187,6 +188,9 @@ class UserSession:
         gap_candles = []
         curr_start = last_timestamp
         
+        from backend_engine.websocket_handler import CONSTITUENT_TOKENS
+        import time
+        
         while curr_start < now:
             curr_end = min(curr_start + datetime.timedelta(days=30), now)
             from_str = curr_start.strftime("%Y-%m-%d %H:%M")
@@ -200,32 +204,96 @@ class UserSession:
                 "todate": to_str
             }
             
+            spot_data = []
             try:
-                data = sc.getCandleData(historicParam)
-                if data and data.get('status') == True and data.get('data'):
-                    for item in data['data']:
-                        dt_parsed = pd.to_datetime(item[0])
-                        if dt_parsed.tzinfo is not None:
-                            dt_parsed = dt_parsed.tz_localize(None)
-                        if dt_parsed > last_timestamp:
-                            gap_candles.append({
-                                "timestamp": dt_parsed.strftime('%Y-%m-%d %H:%M:%S'),
-                                "open": float(item[1]),
-                                "high": float(item[2]),
-                                "low": float(item[3]),
-                                "close": float(item[4]),
-                                "volume": 0.0
-                            })
+                # Add retry backoff for rate limit
+                for attempt in range(3):
+                    try:
+                        res = sc.getCandleData(historicParam)
+                        if res and res.get('status') == True and res.get('data'):
+                            spot_data = res['data']
+                            break
+                        elif res and "exceeding access rate" in str(res.get('message', '')).lower():
+                            self.trade_logger.log_activity(f"Index history rate limited. Retrying in 1.5s (attempt {attempt+1}/3)...")
+                            time.sleep(1.5)
+                        else:
+                            break
+                    except Exception as e:
+                        if "exceeding access rate" in str(e).lower():
+                            time.sleep(1.5)
+                        else:
+                            raise e
             except Exception as e:
-                self.trade_logger.log_activity(f"Error fetching historical gap block {from_str} to {to_str}: {e}")
+                self.trade_logger.log_activity(f"Error fetching Nifty Spot history: {e}")
                 break
                 
+            if not spot_data:
+                curr_start = curr_end + datetime.timedelta(days=1)
+                continue
+                
+            # Fetch constituent volume data for the same period
+            volume_by_time = {}
+            self.trade_logger.log_activity(f"Downloading constituent volumes for {len(spot_data)} gap candles...")
+            
+            for idx, token in enumerate(CONSTITUENT_TOKENS):
+                stockParam = {
+                    "exchange": "NSE",
+                    "symboltoken": str(token),
+                    "interval": "FIVE_MINUTE",
+                    "fromdate": from_str,
+                    "todate": to_str
+                }
+                try:
+                    stock_candles = []
+                    for attempt in range(3):
+                        try:
+                            res = sc.getCandleData(stockParam)
+                            if res and res.get('status') == True and res.get('data'):
+                                stock_candles = res['data']
+                                break
+                            elif res and "exceeding access rate" in str(res.get('message', '')).lower():
+                                time.sleep(1.5)
+                            else:
+                                break
+                        except Exception as e:
+                            if "exceeding access rate" in str(e).lower():
+                                time.sleep(1.5)
+                            else:
+                                raise e
+                                
+                    for item in stock_candles:
+                        dt_val = pd.to_datetime(item[0])
+                        if dt_val.tzinfo is not None:
+                            dt_val = dt_val.tz_localize(None)
+                        ts_str = dt_val.strftime('%Y-%m-%d %H:%M:%S')
+                        volume_by_time[ts_str] = volume_by_time.get(ts_str, 0) + int(item[5])
+                except Exception:
+                    pass
+                time.sleep(0.35) # keep requests spaced out under the 3 TPS history API rate limit
+                
+            # Merge Spot OHLC with summed stock volumes
+            for item in spot_data:
+                dt_parsed = pd.to_datetime(item[0])
+                if dt_parsed.tzinfo is not None:
+                    dt_parsed = dt_parsed.tz_localize(None)
+                    
+                if dt_parsed > last_timestamp:
+                    ts_str = dt_parsed.strftime('%Y-%m-%d %H:%M:%S')
+                    summed_vol = float(volume_by_time.get(ts_str, 0))
+                    gap_candles.append({
+                        "timestamp": ts_str,
+                        "open": float(item[1]),
+                        "high": float(item[2]),
+                        "low": float(item[3]),
+                        "close": float(item[4]),
+                        "volume": summed_vol
+                    })
+                    
             curr_start = curr_end + datetime.timedelta(days=1)
-            import time
-            time.sleep(0.3)
+            time.sleep(0.5)
             
         if gap_candles:
-            self.trade_logger.log_activity(f"Downloaded {len(gap_candles)} missing candles.")
+            self.trade_logger.log_activity(f"Downloaded {len(gap_candles)} missing candles with constituent volume sums.")
             df_gap = pd.DataFrame(gap_candles)
             self.candles_df = pd.concat([self.candles_df, df_gap], ignore_index=True)
             self.candles_df = self.candles_df.drop_duplicates(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
@@ -270,7 +338,7 @@ class UserSession:
                         
                     self.ws_handler = AngelOneWSHandler(
                         tick_queue, api_key, client_id, jwt_token, feed_token, 
-                        trade_logger=self.trade_logger, future_token=self.future_token
+                        trade_logger=self.trade_logger, future_token=None
                     )
                     self.trade_logger.log_activity("Angel One authentication successful. Live feed started.")
                 else:
@@ -292,7 +360,7 @@ class UserSession:
             on_candle_completed_cb=self.on_candle_completed,
             trade_logger=self.trade_logger,
             candle_data_path=self.candle_data_path,
-            future_token=self.future_token
+            future_token=None
         )
         
         # Start worker tasks
