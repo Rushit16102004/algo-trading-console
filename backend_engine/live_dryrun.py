@@ -27,6 +27,8 @@ from backend_engine.config import FIXED_SL, PYRAMIDING_LIMIT
 active_sessions = {}  # user_id -> UserSession
 restart_checker_task = None
 
+import json
+
 # Cache for Nifty Future Token to avoid repeated scrip master downloads
 cached_future_token = None
 cached_future_date = None
@@ -37,6 +39,20 @@ def get_cached_future_token():
     if cached_future_token is not None and cached_future_date == today:
         return cached_future_token
         
+    # Check disk cache first to bypass download if we already resolved it today!
+    cache_path = "backend_engine/resolved_future_token.json"
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, "r") as f:
+                cached_data = json.load(f)
+                if cached_data.get("date") == str(today):
+                    cached_future_token = cached_data.get("token")
+                    cached_future_date = today
+                    print(f"[ScripMaster] Loaded cached Nifty Future token from disk: {cached_future_token}")
+                    return cached_future_token
+        except Exception as e:
+            print(f"[ScripMaster] Error reading disk cache: {e}")
+            
     try:
         print("[ScripMaster] Fetching scrip master to resolve Nifty Future token...")
         url = "https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json"
@@ -53,6 +69,14 @@ def get_cached_future_token():
                 nifty_futs.sort(key=lambda i: datetime.datetime.strptime(i["expiry"], "%d%b%Y"))
                 cached_future_token = nifty_futs[0]["token"]
                 cached_future_date = today
+                
+                # Write to disk cache
+                try:
+                    with open(cache_path, "w") as f:
+                        json.dump({"date": str(today), "token": cached_future_token}, f)
+                except Exception as e:
+                    print(f"[ScripMaster] Error writing disk cache: {e}")
+                    
                 print(f"[ScripMaster] Resolved front-month Nifty Future token: {cached_future_token}")
                 return cached_future_token
     except Exception as e:
