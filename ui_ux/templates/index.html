@@ -1859,8 +1859,19 @@
             const email = localStorage.getItem("user_email") || "developer@gmail.com";
             
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Syncing...';
             showToast("Starting 72 candle sync...", "info");
+            
+            let secondsLeft = 30;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Syncing (${secondsLeft}s)...`;
+            
+            const countdownInterval = setInterval(() => {
+                secondsLeft--;
+                if (secondsLeft > 0) {
+                    btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Syncing (${secondsLeft}s)...`;
+                } else {
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
             
             try {
                 const response = await fetch(`/api/sync_72?email=${encodeURIComponent(email)}`);
@@ -1874,6 +1885,7 @@
             } catch (err) {
                 showToast("Failed to sync candles: " + err, "danger");
             } finally {
+                clearInterval(countdownInterval);
                 btn.disabled = false;
                 btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Sync 72 Candles';
             }

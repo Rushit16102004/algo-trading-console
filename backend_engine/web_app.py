@@ -410,6 +410,8 @@ async def api_sync_72(email: str = Query(None)):
     success = await asyncio.to_thread(sync_last_72_candles, sc, CANDLE_DATA_PATH, email)
     
     if success:
+        # Re-initialize the historical cache to load the newly synchronized data into RAM
+        init_historical_caches()
         if session:
             session.candles_df = pd.read_csv(CANDLE_DATA_PATH)
         return {"status": "success", "message": "Successfully synchronized last 72 candles and updated signals."}
@@ -435,6 +437,8 @@ async def get_candles(email: str = Query(None), strategy: str = Query("243A")):
         if should_sync:
             print("[Auto-Sync] Missing candles detected! Syncing last 72 candles...")
             await asyncio.to_thread(sync_last_72_candles, sc, CANDLE_DATA_PATH, email)
+            # Re-initialize the historical cache to load the newly synchronized data into RAM
+            init_historical_caches()
             if session:
                 session.candles_df = pd.read_csv(CANDLE_DATA_PATH)
         
