@@ -27,22 +27,27 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
         return int(dt.astimezone(ist_tz).timestamp())
 
     # Try to load precalculated backtest signals from CSV files (instant!)
+    last_zftf_backtest_time = None
     if strategy_name == "LONGPINE_ZFTF":
         csv_sig_path = "longpine/backtest_signals.csv"
         if os.path.exists(csv_sig_path):
             try:
                 df_sig = pd.read_csv(csv_sig_path)
                 df_sig['timestamp'] = pd.to_datetime(df_sig['timestamp'])
+                last_zftf_backtest_time = df_sig['timestamp'].max()
+                try:
+                    df_sig['time'] = df_sig['timestamp'].dt.tz_convert('Asia/Kolkata').astype('int64') // 10**9
+                except TypeError:
+                    df_sig['time'] = df_sig['timestamp'].dt.tz_localize('Asia/Kolkata').astype('int64') // 10**9
+                
                 for _, row in df_sig.iterrows():
-                    t = to_epoch(row['timestamp'])
+                    t = int(row['time'])
                     sig_type = row['type']
-                    sig_text = row['signal'] # BUY or SELL
                     
                     if sig_type == "ENTRY":
                         markers.append({"time": t, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "BUY"})
                     else:
                         markers.append({"time": t, "position": "aboveBar", "color": "#ef4444", "shape": "arrowDown", "text": "SELL"})
-                return markers
             except Exception as e:
                 print(f"Error loading ZFTF backtest signals: {e}")
     elif strategy_name == "243A":
@@ -52,18 +57,26 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
         if os.path.exists(csv_sig_path) and os.path.exists(csv_results_path):
             try:
                 df_results = pd.read_csv(csv_results_path)
+                df_results['Entry Time'] = pd.to_datetime(df_results['Entry Time'])
+                df_results['Exit Time'] = pd.to_datetime(df_results['Exit Time'])
+                try:
+                    df_results['t_entry'] = df_results['Entry Time'].dt.tz_convert('Asia/Kolkata').astype('int64') // 10**9
+                    df_results['t_exit'] = df_results['Exit Time'].dt.tz_convert('Asia/Kolkata').astype('int64') // 10**9
+                except TypeError:
+                    df_results['t_entry'] = df_results['Entry Time'].dt.tz_localize('Asia/Kolkata').astype('int64') // 10**9
+                    df_results['t_exit'] = df_results['Exit Time'].dt.tz_localize('Asia/Kolkata').astype('int64') // 10**9
+                
                 for idx, row in df_results.iterrows():
                     num = idx + 1
                     direction = row.get("Direction", "BUY")
-                    entry_time = pd.to_datetime(row["Entry Time"])
-                    exit_time = pd.to_datetime(row["Exit Time"])
+                    exit_time = row["Exit Time"]
                     exit_reason = row.get("Exit Reason", "EOD")
                     
                     if last_backtest_time is None or exit_time > last_backtest_time:
                         last_backtest_time = exit_time
                         
-                    t_entry = to_epoch(entry_time)
-                    t_exit = to_epoch(exit_time)
+                    t_entry = int(row['t_entry'])
+                    t_exit = int(row['t_exit'])
                     
                     entry_label = f"BUY {num}" if direction == "BUY" else f"SELL {num}"
                     exit_label = f"EXIT {num} ({exit_reason})"
@@ -85,7 +98,10 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
             except Exception as e:
                 print(f"Error loading 243A backtest signals: {e}")
 
-    df['time_epoch'] = df['timestamp'].apply(lambda x: to_epoch(x))
+    try:
+        df['time_epoch'] = df['timestamp'].dt.tz_convert('Asia/Kolkata').astype('int64') // 10**9
+    except TypeError:
+        df['time_epoch'] = df['timestamp'].dt.tz_localize('Asia/Kolkata').astype('int64') // 10**9
     
     # 1. Fallback for Longpine ZFTF Strategy Markers
     if strategy_name == "LONGPINE_ZFTF":
@@ -110,11 +126,30 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
         in_position = False
         entry_price = 0.0
         
+        # Load persistent signals cache
+        from backend_engine.signal_cacher import load_cached_predictions, get_cached_prediction
+        cache_df = load_cached_predictions()
+        
         for idx in range(20, len(df)):
+            timestamp = df['timestamp'].iloc[idx]
+            if last_zftf_backtest_time is not None and pd.to_datetime(timestamp) <= pd.to_datetime(last_zftf_backtest_time):
+                continue
+                
+            t = int(epochs[idx])
             close = float(close_prices[idx])
+            
+            # Check cache first
+            pred = get_cached_prediction(cache_df, timestamp, "LONGPINE_ZFTF")
+            if pred is not None:
+                sig = pred.get("signal", 0)
+                if sig == 1:
+                    markers.append({"time": t, "position": "belowBar", "color": "#10b981", "shape": "arrowUp", "text": "BUY"})
+                elif sig == -1:
+                    markers.append({"time": t, "position": "aboveBar", "color": "#ef4444", "shape": "arrowDown", "text": "SELL"})
+                continue
+                
             z = float(zscores[idx]) if not np.isnan(zscores[idx]) else 0.0
             slope = float(slopes[idx]) if not np.isnan(slopes[idx]) else 0.0
-            t = int(epochs[idx])
             
             if not in_position:
                 if z > 2.0 and slope > 0.001:
@@ -157,17 +192,16 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
         
         for idx in range(start_idx, len(df)):
             row = df.iloc[idx]
-            volume = float(row.get('volume', 0))
-            if volume <= 0:
-                continue
-                
+            timestamp = row['timestamp']
             t = int(row['time_epoch'])
             close = float(row['close'])
-            timestamp = row['timestamp']
             
-            # Read from prediction cache or evaluate ML model
+            # Read from prediction cache first
             pred = get_cached_prediction(cache_df, timestamp, "243A")
             if pred is None:
+                volume = float(row.get('volume', 0))
+                if volume <= 0:
+                    continue
                 lookback = df.iloc[max(0, idx - 149) : idx + 1].reset_index(drop=True)
                 try:
                     pred = strategy.predict(lookback)
@@ -254,9 +288,10 @@ def run_strategy_backtest(data_df: pd.DataFrame, strategy_name: str, out_csv_pat
     df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed')
     df = df.sort_values('timestamp').reset_index(drop=True)
     
-    # Calculate 6-month cutoff date (180 days)
+    # Calculate cutoff date based on strategy computational complexity
     last_date = df['timestamp'].max()
-    cutoff_date = last_date - pd.Timedelta(days=180)
+    days_to_sim = 15 if strategy_name == "243A" else 180
+    cutoff_date = last_date - pd.Timedelta(days=days_to_sim)
     matching_indices = df[df['timestamp'] >= cutoff_date].index
     
     capital = 100000.0

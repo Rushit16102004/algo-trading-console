@@ -7,7 +7,7 @@ from backend_engine.config import ACTIVE_POSITIONS_PATH, INITIAL_CAPITAL, FIXED_
 from src.risk_manager import ThermalDissipationSizer
 
 class PaperTradeEngine:
-    def __init__(self, ws_handler=None, option_ltp_cache=None, trade_logger=None, state_path=None):
+    def __init__(self, ws_handler=None, option_ltp_cache=None, trade_logger=None, state_path=None, user_id=None):
         self.ws_handler = ws_handler
         self.option_ltp_cache = option_ltp_cache if option_ltp_cache is not None else {}
         self.capital = INITIAL_CAPITAL
@@ -16,8 +16,8 @@ class PaperTradeEngine:
         self.trade_logger = trade_logger
         self.state_path = state_path if state_path is not None else ACTIVE_POSITIONS_PATH
         self.sizer = ThermalDissipationSizer(base_qty=65) # NIFTY standard lot size is 65
+        self.user_id = user_id
         self.load_state()
-
     def log(self, message):
         """Helper to write to trade logger if available, otherwise print."""
         if self.trade_logger:
@@ -105,6 +105,28 @@ class PaperTradeEngine:
         self.last_signal = "Long" if pos_type == "LONG" else "Short"
         self.log(f"[PaperTradeEngine] NIFTY ENTRY {pos_type} | Nifty: {nifty_close:.2f} | SL: {sl_nifty:.2f} | TP: {tp_nifty:.2f} | Lots: {lots}")
         self.save_state()
+
+        if self.user_id:
+            try:
+                from backend_engine.database import SessionLocal
+                from backend_engine.models import PaperTrade
+                db = SessionLocal()
+                db_pos = PaperTrade(
+                    user_id=self.user_id,
+                    strategy="243A" if "consensus" in entry_reason.lower() else "LONGPINE_ZFTF",
+                    symbol="NIFTY",
+                    side=pos_type,
+                    quantity=int(lots),
+                    entry_price=float(nifty_close),
+                    entry_time=datetime.now(),
+                    status="OPEN"
+                )
+                db.add(db_pos)
+                db.commit()
+                db.close()
+            except Exception as e:
+                self.log(f"[PaperTradeEngine] Database insertion error in enter_position: {e}")
+
         return True
 
     def exit_position(self, pos, exit_reason, nifty_exit_price, current_time, signal=0):
@@ -151,6 +173,27 @@ class PaperTradeEngine:
         self.active_positions.remove(pos)
         self.sizer.record_outcome(nifty_pnl_points)
         self.save_state()
+
+        if self.user_id:
+            try:
+                from backend_engine.database import SessionLocal
+                from backend_engine.models import PaperTrade
+                db = SessionLocal()
+                db_pos = db.query(PaperTrade).filter(
+                    PaperTrade.user_id == self.user_id,
+                    PaperTrade.symbol == "NIFTY",
+                    PaperTrade.side == pos_type,
+                    PaperTrade.status == "OPEN"
+                ).order_by(PaperTrade.id.asc()).first()
+                if db_pos:
+                    db_pos.exit_price = float(nifty_exit_price)
+                    db_pos.exit_time = datetime.now()
+                    db_pos.pnl = float(pnl)
+                    db_pos.status = "CLOSED"
+                    db.commit()
+                db.close()
+            except Exception as e:
+                self.log(f"[PaperTradeEngine] Database update error in exit_position: {e}")
         
         # Log via TradeLogger
         if self.trade_logger:

@@ -83,11 +83,79 @@ def get_cached_future_token():
         print(f"[ScripMaster] Error fetching future token: {e}")
     return None
 
+class DemoMarketSimulator:
+    def __init__(self, tick_queue, trade_logger=None):
+        self.tick_queue = tick_queue
+        self.trade_logger = trade_logger
+        self.is_running = False
+        self.conn_status = {INDEX_TOKEN: "live"}
+        
+    def log(self, msg):
+        if self.trade_logger:
+            self.trade_logger.log_activity(msg)
+            
+    async def connect_and_stream(self):
+        self.is_running = True
+        self.log("[DEMO] Starting Demo Market Simulator (data replay/random walk)...")
+        
+        base_price = 24600.0
+        try:
+            import pandas as pd
+            if os.path.exists("backend_engine/old data.csv"):
+                df = pd.read_csv("backend_engine/old data.csv")
+                if not df.empty:
+                    base_price = float(df.iloc[-1]['close'])
+        except Exception:
+            pass
+            
+        import random
+        from backend_engine.angel_ws_handler import CONSTITUENT_TOKENS
+        
+        while self.is_running:
+            try:
+                # Random walk simulation
+                change = random.normalvariate(0, 1.5)
+                base_price += change
+                base_price = round(base_price, 2)
+                
+                # Nifty Spot tick (Token 26000 or INDEX_TOKEN)
+                tick = {
+                    "ScripCode": INDEX_TOKEN,
+                    "LTP": base_price,
+                    "Volume64": 0,
+                    "Time": datetime.datetime.now(),
+                    "RecType": "A"
+                }
+                await self.tick_queue.put(tick)
+                
+                # Constituent stock volume simulation
+                fake_vol = random.randint(1000, 5000)
+                vol_tick = {
+                    "ScripCode": random.choice(CONSTITUENT_TOKENS),
+                    "LTP": base_price / 100,
+                    "Volume64": fake_vol,
+                    "Time": datetime.datetime.now(),
+                    "RecType": "d"
+                }
+                await self.tick_queue.put(vol_tick)
+                
+                await asyncio.sleep(2)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                self.log(f"[DEMO] Error in simulator loop: {e}")
+                await asyncio.sleep(5)
+                
+    def stop(self):
+        self.is_running = False
+
 class UserSession:
     def __init__(self, user_id, credentials, strategy_name="243A"):
         self.user_id = user_id
         self.credentials = credentials
         self.strategy_name = strategy_name
+        self.email = credentials.get("email", "")
+        self.is_demo = self.email in ("demo@gmail.com", "developer@gmail.com")
         data_dir = os.getenv("DATA_DIR", "data")
         self.user_dir = f"{data_dir}/user_{user_id}"
         os.makedirs(self.user_dir, exist_ok=True)
@@ -98,8 +166,10 @@ class UserSession:
         self.trade_logger = TradeLogger(user_dir=self.user_dir)
         self.risk_manager = RiskManager()
         self.paper_trade_engine = PaperTradeEngine(
+            ws_handler=None, option_ltp_cache=None,
             trade_logger=self.trade_logger,
-            state_path=self.active_positions_path
+            state_path=self.active_positions_path,
+            user_id=self.user_id
         )
         self.candles_df = None
         self.ws_handler = None
@@ -193,15 +263,30 @@ class UserSession:
             
         self.trade_logger.log_activity(f"Calculating missing candles since {last_timestamp} up to {now}...")
         
+        from backend_engine.config import DEMO_MODE
+        if DEMO_MODE:
+            self.trade_logger.log_activity("[DEMO] Bypassing historical gap filler sync in Demo Mode.")
+            return
+
         sc = smart_connect
         if sc is None:
+            # Only attempt developer credential fallback if DEMO_MODE is False
             self.trade_logger.log_activity("No active user session found. Logging in with default developer credentials...")
             try:
                 import pyotp
                 from SmartApi import SmartConnect
-                sc = SmartConnect(api_key="YOUR_API_KEY")
-                totp = pyotp.TOTP("YOUR_TOTP_SECRET").now()
-                data = sc.generateSession("YOUR_CLIENT_ID", "YOUR_MPIN", totp)
+                dev_api_key = os.getenv("DEV_API_KEY", "")
+                dev_client_id = os.getenv("DEV_CLIENT_ID", "")
+                dev_password = os.getenv("DEV_PASSWORD", "")
+                dev_totp_secret = os.getenv("DEV_TOTP_SECRET", "")
+                
+                if not (dev_api_key and dev_client_id):
+                    self.trade_logger.log_activity("Developer credentials not configured in environment variables. Cannot sync missing candles.")
+                    return
+                    
+                sc = SmartConnect(api_key=dev_api_key)
+                totp = pyotp.TOTP(dev_totp_secret).now()
+                data = sc.generateSession(dev_client_id, dev_password, totp)
                 if data.get('status') != True:
                     self.trade_logger.log_activity("Developer credentials authentication failed. Cannot sync missing candles.")
                     return
@@ -314,6 +399,10 @@ class UserSession:
             self.trade_logger.log_activity("Historical database updated with missing candles successfully.")
         else:
             self.trade_logger.log_activity("No new missing candles found to sync.")
+            
+        # Sync strategy signals for both models!
+        sync_model_signals(self.candles_df, "243A", self.trade_logger)
+        sync_model_signals(self.candles_df, "LONGPINE_ZFTF", self.trade_logger)
 
     async def start(self):
         if self.system_running:
@@ -322,52 +411,63 @@ class UserSession:
         
         # Use asyncio.to_thread to run heavy synchronous loading operations off the main event loop
         await asyncio.to_thread(self.bootstrap_candles)
+        
+        if self.is_demo:
+            self.trade_logger.log_activity("[DEMO] Starting in Demo Mode. Displaying static cached candles & signals.")
+            return
+            
         self.future_token = await asyncio.to_thread(get_cached_future_token)
         
         # 2. Init websocket queue
         tick_queue = asyncio.Queue()
         
-        api_key = self.credentials.get("api_key", "")
-        client_id = self.credentials.get("client_id", "")
-        password = self.credentials.get("password", "")
-        totp_secret = self.credentials.get("totp_secret", "")
+        from backend_engine.config import DEMO_MODE, TRADING_MODE
         
-        if api_key and client_id:
-            self.trade_logger.log_activity("Starting in Angel One Mode. Authenticating...")
-            import pyotp
-            from SmartApi import SmartConnect
+        if DEMO_MODE or TRADING_MODE == "DEMO":
+            self.trade_logger.log_activity("[DEMO] Starting in Demo Mode. Replaying historical data...")
+            self.ws_handler = DemoMarketSimulator(tick_queue, trade_logger=self.trade_logger)
+            asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
+        else:
+            api_key = self.credentials.get("api_key", "")
+            client_id = self.credentials.get("client_id", "")
+            password = self.credentials.get("password", "")
+            totp_secret = self.credentials.get("totp_secret", "")
             
-            try:
-                smart_connect = SmartConnect(api_key=api_key)
-                totp = pyotp.TOTP(totp_secret).now()
-                data = await asyncio.to_thread(smart_connect.generateSession, client_id, password, totp)
-                if data.get('status') == True:
-                    self.smart_connect = smart_connect
-                    jwt_token = data['data']['jwtToken']
-                    feed_token = await asyncio.to_thread(smart_connect.getfeedToken)
-                    
-                    # Launch the historical gap filler task in a background thread to prevent login/startup delays
-                    self.trade_logger.log_activity("Launching historical gap sync task in background thread...")
-                    asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, smart_connect))
+            if api_key and client_id:
+                self.trade_logger.log_activity("Starting in Angel One Mode. Authenticating...")
+                import pyotp
+                from SmartApi import SmartConnect
+                
+                try:
+                    smart_connect = SmartConnect(api_key=api_key)
+                    totp = pyotp.TOTP(totp_secret).now()
+                    data = await asyncio.to_thread(smart_connect.generateSession, client_id, password, totp)
+                    if data.get('status') == True:
+                        self.smart_connect = smart_connect
+                        jwt_token = data['data']['jwtToken']
+                        feed_token = await asyncio.to_thread(smart_connect.getfeedToken)
                         
-                    self.ws_handler = AngelOneWSHandler(
-                        tick_queue, api_key, client_id, jwt_token, feed_token, 
-                        trade_logger=self.trade_logger, future_token=None
-                    )
-                    self.trade_logger.log_activity("Angel One authentication successful. Live feed started.")
-                else:
-                    err_msg = data.get('message', 'Session generation failed')
-                    self.trade_logger.log_activity(f"Angel One authentication failed: {err_msg}. Syncing candles with default credentials and falling back to custom feed.")
+                        self.trade_logger.log_activity("Launching historical gap sync task in background thread...")
+                        asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, smart_connect))
+                            
+                        self.ws_handler = AngelOneWSHandler(
+                            tick_queue, api_key, client_id, jwt_token, feed_token, 
+                            trade_logger=self.trade_logger, future_token=None
+                        )
+                        self.trade_logger.log_activity("Angel One authentication successful. Live feed started.")
+                    else:
+                        err_msg = data.get('message', 'Session generation failed')
+                        self.trade_logger.log_activity(f"Angel One authentication failed: {err_msg}. Syncing candles with default credentials and falling back to custom feed.")
+                        asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
+                        self.ws_handler = WSHandler(tick_queue, trade_logger=self.trade_logger)
+                except Exception as e:
+                    self.trade_logger.log_activity(f"Error during Angel One auth: {e}. Syncing candles with default credentials and falling back to custom feed.")
                     asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
                     self.ws_handler = WSHandler(tick_queue, trade_logger=self.trade_logger)
-            except Exception as e:
-                self.trade_logger.log_activity(f"Error during Angel One auth: {e}. Syncing candles with default credentials and falling back to custom feed.")
+            else:
+                self.trade_logger.log_activity("Starting in Custom Feed Mode. Syncing candles with default credentials.")
                 asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
                 self.ws_handler = WSHandler(tick_queue, trade_logger=self.trade_logger)
-        else:
-            self.trade_logger.log_activity("Starting in Custom Feed Mode. Syncing candles with default credentials.")
-            asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
-            self.ws_handler = WSHandler(tick_queue, trade_logger=self.trade_logger)
             
         self.paper_trade_engine.ws_handler = self.ws_handler
         self.candle_builder = CandleBuilder(
@@ -474,8 +574,29 @@ class UserSession:
                     
             if exit_reason:
                 self.trade_logger.log_activity(f"[CANDLE EXIT] Exit triggered: {exit_reason} at Nifty {c:.2f}")
-                rev_type = self.paper_trade_engine.exit_position(pos, exit_reason, c, entry_time_str, signal)
-                exited_this_bar = True
+                from backend_engine.execution_engine import execution_engine
+                success, status = execution_engine.execute_order(
+                    user_session=self,
+                    strategy=self.strategy_name,
+                    symbol="NIFTY",
+                    side="CLOSE",
+                    quantity=pos.get("option_lots", 1) * pos.get("lot_size", 65),
+                    price=c,
+                    current_time=entry_time_str,
+                    entry_reason=exit_reason,
+                    hmm_regime=None
+                )
+                rev_type = None
+                if success:
+                    exited_this_bar = True
+                    should_reverse = False
+                    if pos["position_type"] == "LONG" and signal == -1:
+                        should_reverse = True
+                    elif pos["position_type"] == "SHORT" and signal == 1:
+                        should_reverse = True
+                    if should_reverse and not (entry_time.hour == 15 and entry_time.minute >= 10):
+                        rev_type = "SHORT" if pos["position_type"] == "LONG" else "LONG"
+                
                 if rev_type and self.strategy_name != "LONGPINE_ZFTF":
                     reverse_pos_type = rev_type
 
@@ -501,9 +622,14 @@ class UserSession:
                         pos_type = "SHORT"
                         
             if pos_type:
-                self.paper_trade_engine.enter_position(
-                    pos_type=pos_type,
-                    nifty_close=c,
+                from backend_engine.execution_engine import execution_engine
+                execution_engine.execute_order(
+                    user_session=self,
+                    strategy=self.strategy_name,
+                    symbol="NIFTY",
+                    side=pos_type,
+                    quantity=65,
+                    price=c,
                     current_time=entry_time_str,
                     entry_reason=entry_reason,
                     hmm_regime=hmm_regime
@@ -533,9 +659,11 @@ class UserSession:
 
     async def tick_consumer(self, queue):
         self.trade_logger.log_activity("Tick consumer started.")
+        from backend_engine.health_monitor import monitor as health_monitor
         while True:
             try:
                 tick = await queue.get()
+                health_monitor.record_tick()
                 scrip = int(tick["ScripCode"])
                 rec_type = tick["RecType"]
                 
@@ -569,7 +697,18 @@ class UserSession:
                                 f"[REAL-TIME TICK EXIT] Spot Index {self.index_ltp:.2f} touched {exit_reason} limit. Exiting..."
                             )
                             tick_time_str = tick["Time"].strftime('%Y-%m-%d %H:%M:%S')
-                            self.paper_trade_engine.exit_position(pos, exit_reason, self.index_ltp, tick_time_str)
+                            from backend_engine.execution_engine import execution_engine
+                            execution_engine.execute_order(
+                                user_session=self,
+                                strategy=self.strategy_name,
+                                symbol="NIFTY",
+                                side="CLOSE",
+                                quantity=pos.get("option_lots", 1) * pos.get("lot_size", 65),
+                                price=self.index_ltp,
+                                current_time=tick_time_str,
+                                entry_reason=exit_reason,
+                                hmm_regime=None
+                            )
                             
                 # 2. Pass ticks to candle builder
                 self.candle_builder.process_tick(tick)
@@ -617,6 +756,71 @@ class UserSession:
             except Exception:
                 pass
         self.tasks = []
+
+def sync_model_signals(candles_df, strategy_name, trade_logger=None):
+    if candles_df is None or candles_df.empty:
+        return
+        
+    last_candle_ts = pd.to_datetime(candles_df['timestamp'].iloc[-1])
+    
+    from backend_engine.signal_cacher import load_cached_predictions, save_predictions_batch
+    cache_df = load_cached_predictions()
+    
+    strategy_cache = cache_df[cache_df['strategy'] == strategy_name]
+    
+    if strategy_cache.empty:
+        # If no cache exists, default to last candle minus 2 days to calculate gap
+        last_signal_ts = last_candle_ts - datetime.timedelta(days=2)
+    else:
+        last_signal_ts = pd.to_datetime(strategy_cache['timestamp'].iloc[-1])
+        
+    # Calculate calendar day difference
+    days_missing = (last_candle_ts.date() - last_signal_ts.date()).days
+    msg = f"[Model Sync] Strategy: {strategy_name} | Last Signal: {last_signal_ts} | Last Candle: {last_candle_ts} | Days Missing: {days_missing}"
+    if trade_logger:
+        trade_logger.log_activity(msg)
+    else:
+        print(msg)
+        
+    if days_missing >= 2:
+        msg = f"[Model Sync] Syncing missing signals for strategy: {strategy_name}..."
+        if trade_logger:
+            trade_logger.log_activity(msg)
+        else:
+            print(msg)
+            
+        # Parse missing timestamps
+        missing_indices = candles_df[pd.to_datetime(candles_df['timestamp']) > last_signal_ts].index
+        from backend_engine.strategies import get_strategy
+        strategy = get_strategy(strategy_name)
+        
+        predictions_to_save = []
+        for idx in missing_indices:
+            lookback = candles_df.iloc[:idx+1].copy()
+            try:
+                result = strategy.predict(lookback, in_position=False)
+                signal = result.get('signal', 0)
+                metrics = result.get('metrics', {})
+                predictions_to_save.append({
+                    "timestamp": candles_df['timestamp'].iloc[idx],
+                    "strategy": strategy_name,
+                    "signal": signal,
+                    "metrics": metrics
+                })
+            except Exception as e:
+                err_msg = f"[Model Sync] Error syncing signal at idx {idx}: {e}"
+                if trade_logger:
+                    trade_logger.log_activity(err_msg)
+                else:
+                    print(err_msg)
+                    
+        if predictions_to_save:
+            save_predictions_batch(predictions_to_save)
+            msg = f"[Model Sync] Completed! Saved {len(predictions_to_save)} missing signals to cache."
+            if trade_logger:
+                trade_logger.log_activity(msg)
+            else:
+                print(msg)
 
 def start_user_system(user_id, credentials, strategy_name="243A"):
     if user_id in active_sessions:
@@ -721,14 +925,27 @@ def sync_last_72_candles(sc, candle_data_path, email=None):
     from_str = from_dt.strftime("%Y-%m-%d %H:%M")
     to_str = to_dt.strftime("%Y-%m-%d %H:%M")
     
+    from backend_engine.config import DEMO_MODE
+    if DEMO_MODE:
+        print("[DEMO] Manual 72-candle sync bypassed in Demo Mode.")
+        return True
+
     # Authenticate with default developer key if no active user session
     if sc is None:
         try:
             import pyotp
             from SmartApi import SmartConnect
-            sc = SmartConnect(api_key="YOUR_API_KEY")
-            totp = pyotp.TOTP("YOUR_TOTP_SECRET").now()
-            data = sc.generateSession("YOUR_CLIENT_ID", "YOUR_MPIN", totp)
+            dev_api_key = os.getenv("DEV_API_KEY", "")
+            dev_client_id = os.getenv("DEV_CLIENT_ID", "")
+            dev_password = os.getenv("DEV_PASSWORD", "")
+            dev_totp_secret = os.getenv("DEV_TOTP_SECRET", "")
+            
+            if not (dev_api_key and dev_client_id):
+                return False
+                
+            sc = SmartConnect(api_key=dev_api_key)
+            totp = pyotp.TOTP(dev_totp_secret).now()
+            data = sc.generateSession(dev_client_id, dev_password, totp)
             if data.get('status') != True:
                 return False
         except Exception:

@@ -23,13 +23,10 @@ import pyotp
 from SmartApi import SmartConnect   # pip package name: smartapi-python
 from SmartApi.smartExceptions import DataException
 
-
-# ---------------------- CONFIG ----------------------
-API_KEY      = os.getenv("ANGEL_API_KEY",   "7cRESEFK")
-CLIENT_ID    = os.getenv("ANGEL_CLIENT_ID", "AAAE696417")
-PASSWORD     = os.getenv("ANGEL_PASSWORD",  "2712")
-TOTP_SECRET  = os.getenv("ANGEL_TOTP_SECRET", "75RYCYW4P72HU6D2E6QV3APOUA")
-
+API_KEY      = os.getenv("ANGEL_API_KEY",   "")
+CLIENT_ID    = os.getenv("ANGEL_CLIENT_ID", "")
+PASSWORD     = os.getenv("ANGEL_PASSWORD",  "")
+TOTP_SECRET  = os.getenv("ANGEL_TOTP_SECRET", "")
 
 # Instruments to fetch. You need the exchange symbol token (not the trading symbol).
 # Find tokens from the master contract file:

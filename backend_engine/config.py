@@ -9,6 +9,24 @@ load_dotenv()
 WS_URL = os.getenv("WS_URL", "wss://trading.supernalventures.info/feeds/handlerequest")
 USER_ID = os.getenv("USER_ID", "AL01")
 
+# Deployed Application Modes
+DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
+TRADING_MODE = os.getenv("TRADING_MODE", "DEMO").upper() # DEMO, PAPER, LIVE
+
+# PostgreSQL & Security Keys
+DATABASE_URL = os.getenv("DATABASE_URL")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-session-secret-key-928131")
+JWT_SECRET = os.getenv("JWT_SECRET", "dev-jwt-secret-key-38291")
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "6u8_YcN46fHSnt96Y9wfDyJuAN1pyCqtMPyYYxC4K8s=")
+
+# Central Risk Limits
+MAX_DAILY_LOSS = float(os.getenv("MAX_DAILY_LOSS", "999999.0"))
+MAX_TRADES_PER_DAY = int(os.getenv("MAX_TRADES_PER_DAY", "999999"))
+MAX_CONCURRENT_POSITIONS = int(os.getenv("MAX_CONCURRENT_POSITIONS", "999999"))
+
+# CORS Domains
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:8050,http://localhost:8050")
+
 # ============================================================
 # Strategy / Trading Config (Matching main3_10exit_user.py)
 # ============================================================

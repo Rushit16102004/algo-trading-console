@@ -1,146 +1,204 @@
 # PASSKEY: rushit2712
 import os
-import sqlite3
-import hashlib
-from cryptography.fernet import Fernet
-
-DB_PATH = "users.db"
-
-# Static Fernet key for symmetric encryption of API keys and credentials
-# This allows background threads/workers to decrypt credentials during auto-restarts.
-SECRET_KEY = b'NGI13jlaczp6MbF9XE9eNzx0rBCvP06yxMrnk5lWUac='
-fernet = Fernet(SECRET_KEY)
+from sqlalchemy.orm import Session
+from backend_engine.database import SessionLocal, engine, Base
+from backend_engine.models import User, BrokerAccount
+from backend_engine.auth import hash_password, verify_password
+from backend_engine.credentials_encryptor import encryptor
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            pin_hash TEXT NOT NULL,
-            enc_api_key TEXT,
-            enc_client_id TEXT,
-            enc_password TEXT,
-            enc_totp_secret TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-def encrypt_value(value: str) -> str:
-    if not value:
-        return ""
-    return fernet.encrypt(value.encode('utf-8')).decode('utf-8')
-
-def decrypt_value(encrypted_value: str) -> str:
-    if not encrypted_value:
-        return ""
-    try:
-        return fernet.decrypt(encrypted_value.encode('utf-8')).decode('utf-8')
-    except Exception:
-        return ""
-
-def hash_pin(pin: str, salt: str) -> str:
-    # Use SHA-256 with the user's email as salt
-    salted = pin + salt
-    return hashlib.sha256(salted.encode('utf-8')).hexdigest()
+    # If using local SQLite users.db, check if it's the old schema
+    from backend_engine.database import db_url
+    if db_url.startswith("sqlite"):
+        # Resolve path
+        db_path = db_url.replace("sqlite:///", "")
+        if os.path.exists(db_path):
+            import sqlite3
+            try:
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA table_info(users)")
+                cols = [c[1] for c in cursor.fetchall()]
+                conn.close()
+                if cols and "pin_hash" in cols and "password_hash" not in cols:
+                    print("[Migration] Detected legacy SQLite database. Resetting schema for secure password hashing...")
+                    # Dispose engine connections to unlock the file
+                    engine.dispose()
+                    # Remove database files
+                    for suffix in ["", "-wal", "-shm"]:
+                        p = db_path + suffix
+                        if os.path.exists(p):
+                            try:
+                                os.remove(p)
+                            except Exception as ex:
+                                print(f"[Migration] Could not remove {p}: {ex}")
+            except Exception as e:
+                print(f"[Migration] Error checking legacy SQLite: {e}")
+                
+    # Create all schemas
+    Base.metadata.create_all(bind=engine)
 
 def register_user(email: str, pin: str, api_key: str, client_id: str, password: str, totp_secret: str) -> bool:
     init_db()
     email_clean = email.strip().lower()
-    hashed = hash_pin(pin, email_clean)
     
-    enc_api = encrypt_value(api_key.strip())
-    enc_client = encrypt_value(client_id.strip())
-    enc_pass = encrypt_value(password.strip())
-    enc_totp = encrypt_value(totp_secret.strip())
-    
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    db = SessionLocal()
     try:
-        cursor.execute("""
-            INSERT INTO users (email, pin_hash, enc_api_key, enc_client_id, enc_password, enc_totp_secret)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (email_clean, hashed, enc_api, enc_client, enc_pass, enc_totp))
-        conn.commit()
-        success = True
-    except sqlite3.IntegrityError:
-        success = False
-    conn.close()
-    return success
+        existing = db.query(User).filter(User.email == email_clean).first()
+        if existing:
+            return False
+            
+        hashed_pin = hash_password(pin)
+        user = User(
+            email=email_clean,
+            password_hash=hashed_pin,
+            role="ADMIN" if email_clean == "developer@gmail.com" else "USER"
+        )
+        db.add(user)
+        db.flush()
+        
+        enc_api = encryptor.encrypt(api_key.strip())
+        enc_pass = encryptor.encrypt(password.strip())
+        enc_totp = encryptor.encrypt(totp_secret.strip())
+        
+        account = BrokerAccount(
+            user_id=user.id,
+            client_id=client_id.strip(),
+            encrypted_api_key=enc_api,
+            encrypted_password=enc_pass,
+            encrypted_totp_secret=enc_totp
+        )
+        db.add(account)
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"Error registering user: {e}")
+        return False
+    finally:
+        db.close()
 
 def verify_user(email: str, pin: str) -> dict:
     init_db()
     email_clean = email.strip().lower()
-    hashed = hash_pin(pin, email_clean)
     
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT id, email, enc_api_key, enc_client_id, enc_password, enc_totp_secret
-        FROM users
-        WHERE email = ? AND pin_hash = ?
-    """, (email_clean, hashed))
-    row = cursor.fetchone()
-    conn.close()
-    
-    if row:
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email_clean).first()
+        if not user:
+            return None
+            
+        if not verify_password(pin, user.password_hash):
+            return None
+            
+        account = db.query(BrokerAccount).filter(
+            BrokerAccount.user_id == user.id,
+            BrokerAccount.is_active == True
+        ).first()
+        
+        api_key = ""
+        client_id = ""
+        password = ""
+        totp_secret = ""
+        if account:
+            api_key = encryptor.decrypt(account.encrypted_api_key)
+            client_id = account.client_id
+            password = encryptor.decrypt(account.encrypted_password)
+            totp_secret = encryptor.decrypt(account.encrypted_totp_secret)
+            
         return {
-            "id": row[0],
-            "email": row[1],
-            "api_key": decrypt_value(row[2]),
-            "client_id": decrypt_value(row[3]),
-            "password": decrypt_value(row[4]),
-            "totp_secret": decrypt_value(row[5])
+            "id": user.id,
+            "email": user.email,
+            "api_key": api_key,
+            "client_id": client_id,
+            "password": password,
+            "totp_secret": totp_secret
         }
-    return None
+    finally:
+        db.close()
 
 def get_user_by_email(email: str) -> dict:
     init_db()
     email_clean = email.strip().lower()
     
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT id, email, enc_api_key, enc_client_id, enc_password, enc_totp_secret
-        FROM users
-        WHERE email = ?
-    """, (email_clean,))
-    row = cursor.fetchone()
-    conn.close()
-    
-    if row:
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email_clean).first()
+        if not user:
+            return None
+            
+        account = db.query(BrokerAccount).filter(
+            BrokerAccount.user_id == user.id,
+            BrokerAccount.is_active == True
+        ).first()
+        
+        api_key = ""
+        client_id = ""
+        password = ""
+        totp_secret = ""
+        if account:
+            api_key = encryptor.decrypt(account.encrypted_api_key)
+            client_id = account.client_id
+            password = encryptor.decrypt(account.encrypted_password)
+            totp_secret = encryptor.decrypt(account.encrypted_totp_secret)
+            
         return {
-            "id": row[0],
-            "email": row[1],
-            "api_key": decrypt_value(row[2]),
-            "client_id": decrypt_value(row[3]),
-            "password": decrypt_value(row[4]),
-            "totp_secret": decrypt_value(row[5])
+            "id": user.id,
+            "email": user.email,
+            "api_key": api_key,
+            "client_id": client_id,
+            "password": password,
+            "totp_secret": totp_secret
         }
-    return None
+    finally:
+        db.close()
 
 def get_all_users() -> list:
     init_db()
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, email, enc_api_key, enc_client_id, enc_password, enc_totp_secret FROM users")
-    rows = cursor.fetchall()
-    conn.close()
     
-    users = []
-    for r in rows:
-        users.append({
-            "id": r[0],
-            "email": r[1],
-            "api_key": decrypt_value(r[2]),
-            "client_id": decrypt_value(r[3]),
-            "password": decrypt_value(r[4]),
-            "totp_secret": decrypt_value(r[5])
-        })
-    return users
+    db = SessionLocal()
+    try:
+        users = db.query(User).all()
+        result = []
+        for user in users:
+            account = db.query(BrokerAccount).filter(
+                BrokerAccount.user_id == user.id,
+                BrokerAccount.is_active == True
+            ).first()
+            
+            api_key = ""
+            client_id = ""
+            password = ""
+            totp_secret = ""
+            if account:
+                api_key = encryptor.decrypt(account.encrypted_api_key)
+                client_id = account.client_id
+                password = encryptor.decrypt(account.encrypted_password)
+                totp_secret = encryptor.decrypt(account.encrypted_totp_secret)
+                
+            result.append({
+                "id": user.id,
+                "email": user.email,
+                "api_key": api_key,
+                "client_id": client_id,
+                "password": password,
+                "totp_secret": totp_secret
+            })
+        return result
+    finally:
+        db.close()
 
-# Ensure database is initialized upon import
+def check_any_custom_user_exists() -> bool:
+    init_db()
+    db = SessionLocal()
+    try:
+        count = db.query(User).filter(
+            User.email != "developer@gmail.com",
+            User.email != "demo@gmail.com"
+        ).count()
+        return count > 0
+    finally:
+        db.close()
+
+# Ensure tables exist
 init_db()

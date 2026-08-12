@@ -21,5 +21,12 @@ env/
 
 # Environment configurations containing secrets
 .env
+.env.*
 .flaskenv
 backend_engine/settings.json
+*.key
+*.pem
+secrets/
+credentials/
+.pytest_cache/
+.mypy_cache/

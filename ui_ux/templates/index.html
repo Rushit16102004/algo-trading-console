@@ -674,6 +674,7 @@
                         <input type="password" id="lock-pin" placeholder="••••••" required style="text-align: center; font-size: 2rem; letter-spacing: 8px; font-family: 'JetBrains Mono', monospace;" maxlength="6" pattern="\d{6}" inputmode="numeric">
                     </div>
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding:12px;">Unlock Console</button>
+                    <button type="button" class="btn btn-secondary" onclick="enterDemoMode()" style="width: 100%; margin-top: 10px; padding:12px; font-weight:600; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: white;">⚡ Try Demo Mode</button>
                 </form>
                 <a href="#" onclick="showSignInForm()" style="color: var(--accent-blue); display: inline-block; margin-top: 1.25rem; font-size: 0.85rem; text-decoration: none;">Switch Account / Log In</a>
             </div>
@@ -692,6 +693,7 @@
                         <input type="password" id="signin-pin" placeholder="••••••" required maxlength="6" pattern="\d{6}" inputmode="numeric" style="text-align: center; font-size: 1.5rem; letter-spacing: 6px; font-family: 'JetBrains Mono', monospace;">
                     </div>
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding:12px;">Log In</button>
+                    <button type="button" class="btn btn-secondary" onclick="enterDemoMode()" style="width: 100%; margin-top: 10px; padding:12px; font-weight:600; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: white;">⚡ Try Demo Mode</button>
                 </form>
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1.5rem;">New user? <a href="#" onclick="showSignUpForm()" style="color: var(--accent-blue); text-decoration: none; font-weight:600;">Create a secure account</a></p>
             </div>
@@ -726,6 +728,7 @@
                         <input type="text" id="signup-totp-secret" placeholder="TOTP Secret (Base32 Key)" required style="font-family:'JetBrains Mono';">
                     </div>
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding:12px;">Validate & Create Account</button>
+                    <button type="button" class="btn btn-secondary" onclick="enterDemoMode()" style="width: 100%; margin-top: 10px; padding:12px; font-weight:600; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: white;">⚡ Try Demo Mode</button>
                 </form>
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1.25rem;">Already have an account? <a href="#" onclick="showSignInForm()" style="color: var(--accent-blue); text-decoration: none; font-weight:600;">Log In</a></p>
             </div>
@@ -821,12 +824,11 @@
                                 <th>SL / TP Level</th>
                                 <th>Lots</th>
                                 <th>PnL (Points)</th>
-                                <th>PnL (INR)</th>
                             </tr>
                         </thead>
                         <tbody id="positions-tbody">
                             <tr>
-                                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No active positions. Monitoring market signals...</td>
+                                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No active positions. Monitoring market signals...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -844,13 +846,7 @@
                         Strategy Control
                     </div>
                 </div>
-                
-                <div class="tabs">
-                    <button class="tab-btn active" onclick="switchTab(event, 'tab-live')">Live Desk</button>
-                    <button class="tab-btn" onclick="switchTab(event, 'tab-backtest')">Backtester</button>
-                </div>
-
-                <div class="tab-content" style="flex: 1;">
+                <div class="tab-content" style="flex: 1; padding-top: 10px;">
                     <!-- Live Desk Pane -->
                     <div class="tab-pane active" id="tab-live">
                         <!-- Strategy Dropdown Selector -->
@@ -870,13 +866,39 @@
                             </div>
                             <div id="strategy-info-body" style="display: none; margin-top: 8px; color: #cbd5e1; line-height: 1.4; border-top:1px solid rgba(255,255,255,0.03); padding-top:6px; font-size:0.75rem;">
                             </div>
+                        <!-- SYSTEM STATUS AREA -->
+                        <div class="glass-panel" style="padding: 10px; margin-bottom: 0.75rem; border-color: rgba(239, 68, 68, 0.15); background: rgba(17, 24, 39, 0.4);">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">System Security & Risk Status</div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; margin-bottom: 10px;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>Database:</span>
+                                    <span id="status-db" style="color: #10b981;">Connected</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>Market Feed:</span>
+                                    <span id="status-feed" style="color: #10b981;">Connected</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>Risk Engine:</span>
+                                    <span id="status-risk" style="color: #10b981;">Healthy</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>Daily Trades:</span>
+                                    <span id="status-trades">0</span>
+                                </div>
+                            </div>
+
+                            <!-- EMERGENCY STOP BUTTON -->
+                            <button id="btn-emergency-stop" class="btn btn-danger" onclick="toggleEmergencyStop(true)" style="width: 100%; padding: 8px; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.5px;">🚨 EMERGENCY STOP</button>
+                            <button id="btn-emergency-resume" class="btn" style="width: 100%; padding: 8px; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.5px; display: none; background: #10b981; border-color: #10b981; color: white;" onclick="toggleEmergencyStop(false)">🟢 RESUME TRADING</button>
                         </div>
 
                         <div class="flex-row-center">
                             <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Display Model Signals</span>
                             <div class="switch-container">
                                 <label class="switch">
-                                    <input type="checkbox" id="toggle-signals" onchange="toggleSignalsPanel(this.checked)" checked>
+                                    <input type="checkbox" id="toggle-signals" onchange="toggleSignalsPanel(this.checked)">
                                     <span class="slider"></span>
                                 </label>
                             </div>
@@ -930,62 +952,6 @@
                         </div>
                     </div>
 
-                    <!-- Backtester Pane -->
-                    <div class="tab-pane" id="tab-backtest">
-                        <!-- Strategy selector for backtesting -->
-                        <div class="form-group">
-                            <label for="backtest-strategy-select">Backtest Strategy</label>
-                            <select id="backtest-strategy-select" style="width: 100%; cursor:pointer; font-weight:500;">
-                                <option value="243A">243A Strategy (LGBM+TCN+HMM)</option>
-                                <option value="LONGPINE_ZFTF">Longpine ZFTF Strategy</option>
-                            </select>
-                        </div>
-                        
-                        <div class="dropzone" id="dropzone" onclick="document.getElementById('backtest-file').click()">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                            <p id="dropzone-text">Click or Drag & Drop OHLCV CSV file to upload</p>
-                            <input type="file" id="backtest-file" style="display: none;" accept=".csv" onchange="handleFileSelect(this.files[0])">
-                        </div>
-                        
-                        <button class="btn btn-primary" id="btn-run-backtest" onclick="runBacktest()" disabled style="width: 100%;">Run Model Backtest</button>
-                        
-                        <!-- Backtest results area -->
-                        <div id="backtest-results-block" style="display: none; margin-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 1rem;">
-                            <div class="flex-row-center">
-                                <span style="font-size: 0.85rem; font-weight: 600;">Backtest Complete</span>
-                                <a href="/api/download/backtest" class="btn btn-primary" style="font-size: 0.75rem; padding: 4px 8px; text-decoration: none;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export CSV</a>
-                            </div>
-                            
-                            <div class="backtest-metrics-grid">
-                                <div class="metric-card">
-                                    <div class="val" id="bt-trades" style="color: #60a5fa;">0</div>
-                                    <div class="lbl">Trades</div>
-                                </div>
-                                <div class="metric-card">
-                                    <div class="val" id="bt-winrate" style="color: var(--success);">0%</div>
-                                    <div class="lbl">Win Rate</div>
-                                </div>
-                                <div class="metric-card">
-                                    <div class="val" id="bt-pnl-pts" style="color: var(--success);">0.0</div>
-                                    <div class="lbl">PnL Pts</div>
-                                </div>
-                                <div class="metric-card">
-                                    <div class="val" id="bt-pnl-inr" style="color: var(--success);">0</div>
-                                    <div class="lbl">PnL INR</div>
-                                </div>
-                            </div>
-                            
-                            <div class="backtest-metrics-grid" style="margin-top: 8px;">
-                                <div class="metric-card" style="grid-column: span 2;">
-                                    <div class="val" id="bt-start-cap" style="color: var(--text-muted);">100,000</div>
-                                    <div class="lbl">Start Capital</div>
-                                </div>
-                                <div class="metric-card" style="grid-column: span 2;">
-                                    <div class="val" id="bt-end-cap" style="color: var(--success);">100,000</div>
-                                    <div class="lbl">End Capital</div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1007,7 +973,7 @@
         let activePriceLines = [];
         let historicalCandlesData = [];
         let selectedBacktestFile = null;
-        let isSignalsPanelVisible = true;
+        let isSignalsPanelVisible = false;
         let lastTimestamp = 0;
         
         // Strategy description map
@@ -1033,82 +999,96 @@
         let trialTimer = null;
         let isTrialActive = false;
 
-        function checkAuthentication() {
+        async function checkAuthentication() {
             let email = localStorage.getItem("user_email");
             const authOverlay = document.getElementById("auth-overlay");
             
-            if (!email) {
-                // Free Trial Mode: Initialize default developer key for 5 minutes
-                let trialStart = localStorage.getItem("trial_start");
-                const now = Date.now();
-                if (!trialStart) {
-                    localStorage.setItem("trial_start", now.toString());
-                    trialStart = now;
-                } else {
-                    trialStart = parseInt(trialStart);
-                }
-                
-                const elapsed = now - trialStart;
-                if (elapsed >= 300000) {
-                    triggerTrialExpiration();
-                    return;
-                } else {
-                    email = "developer@gmail.com";
-                    localStorage.setItem("user_email", email);
-                    localStorage.setItem("is_trial", "true");
-                    isTrialActive = true;
-                    
-                    const remaining = 300000 - elapsed;
-                    if (trialTimer) clearTimeout(trialTimer);
-                    trialTimer = setTimeout(triggerTrialExpiration, remaining);
-                }
-            } else if (localStorage.getItem("is_trial") === "true") {
+            // Check if Demo session is active
+            if (localStorage.getItem("is_trial") === "true") {
                 let trialStart = parseInt(localStorage.getItem("trial_start") || Date.now());
                 const elapsed = Date.now() - trialStart;
                 if (elapsed >= 300000) {
-                    triggerTrialExpiration();
-                    return;
+                    // Demo mode expired! Clear and redirect
+                    localStorage.removeItem("user_email");
+                    localStorage.setItem("is_trial", "false");
+                    localStorage.removeItem("trial_start");
+                    email = null;
+                    isTrialActive = false;
                 } else {
                     isTrialActive = true;
+                    email = "demo@gmail.com";
+                    localStorage.setItem("user_email", email);
                     const remaining = 300000 - elapsed;
                     if (trialTimer) clearTimeout(trialTimer);
                     trialTimer = setTimeout(triggerTrialExpiration, remaining);
+                    
+                    document.getElementById("pin-lock-container").style.display = "none";
+                    document.getElementById("signup-container").style.display = "none";
+                    document.getElementById("signin-container").style.display = "none";
+                    authOverlay.classList.remove("active");
+                    authOverlay.style.pointerEvents = "none";
+                    loginSuccessful(email);
+                    return;
                 }
             }
             
+            // If they signed out explicitly
+            if (localStorage.getItem("signed_out") === "true") {
+                document.getElementById("pin-lock-container").style.display = "none";
+                document.getElementById("signup-container").style.display = "none";
+                document.getElementById("signin-container").style.display = "block";
+                authOverlay.classList.add("active");
+                authOverlay.style.pointerEvents = "auto";
+                return;
+            }
+            
+            // If locked custom user session exists
             if (email && !isTrialActive) {
                 document.getElementById("signin-container").style.display = "none";
                 document.getElementById("signup-container").style.display = "none";
                 document.getElementById("pin-lock-container").style.display = "block";
                 document.getElementById("lock-email-label").innerText = email;
-            } else {
-                // If in active trial, bypass the lock container and let them use the console directly
-                document.getElementById("pin-lock-container").style.display = "none";
-                document.getElementById("signup-container").style.display = "none";
-                document.getElementById("signin-container").style.display = "block";
+                authOverlay.classList.add("active");
+                authOverlay.style.pointerEvents = "auto";
+                return;
             }
             
-            loginSuccessful(email);
+            // No session active -> check if database contains any account
+            try {
+                const res = await fetch("/api/auth/exists");
+                const data = await res.json();
+                
+                document.getElementById("pin-lock-container").style.display = "none";
+                if (data.exists) {
+                    // Account exists -> show Enter PIN / Login
+                    document.getElementById("signup-container").style.display = "none";
+                    document.getElementById("signin-container").style.display = "block";
+                } else {
+                    // No account -> show Create Account
+                    document.getElementById("signin-container").style.display = "none";
+                    document.getElementById("signup-container").style.display = "block";
+                }
+                authOverlay.classList.add("active");
+                authOverlay.style.pointerEvents = "auto";
+            } catch (err) {
+                console.error("Error checking account existence:", err);
+            }
         }
 
         function triggerTrialExpiration() {
             localStorage.removeItem("user_email");
             localStorage.setItem("is_trial", "false");
+            localStorage.removeItem("trial_start");
             isTrialActive = false;
+            if (trialTimer) {
+                clearTimeout(trialTimer);
+                trialTimer = null;
+            }
+            document.getElementById("btn-signout").style.display = "none";
+            document.getElementById("header-user-email").innerText = "";
             
-            // Bring up authentication overlay
-            const authOverlay = document.getElementById("auth-overlay");
-            authOverlay.classList.add("active");
-            authOverlay.style.pointerEvents = "auto";
-            
-            const pinLockContainer = document.getElementById("pin-lock-container");
-            const signupContainer = document.getElementById("signup-container");
+            // Show alert box on signin modal
             const signinContainer = document.getElementById("signin-container");
-            
-            pinLockContainer.style.display = "none";
-            signupContainer.style.display = "none";
-            signinContainer.style.display = "block";
-            
             let alertBox = document.getElementById("trial-expired-alert");
             if (!alertBox) {
                 alertBox = document.createElement("div");
@@ -1124,12 +1104,25 @@
                 alertBox.style.textAlign = "center";
                 signinContainer.insertBefore(alertBox, signinContainer.firstChild);
             }
-            alertBox.innerHTML = "⚠️ Free Trial Expired!<br>The 5-minute developer key preview has finished. Please create a secure account or log in with your own API keys to continue using the console.";
+            alertBox.innerHTML = "⚠️ Demo Mode Expired!<br>The 5-minute preview has finished. Please create an account or log in with your credentials to continue.";
             
-            // Stop WebSocket live updates
             if (socket) {
                 socket.close();
             }
+            checkAuthentication();
+        }
+
+        function enterDemoMode() {
+            localStorage.setItem("user_email", "demo@gmail.com");
+            localStorage.setItem("is_trial", "true");
+            localStorage.setItem("trial_start", Date.now().toString());
+            localStorage.removeItem("signed_out");
+            
+            const alertBox = document.getElementById("trial-expired-alert");
+            if (alertBox) {
+                alertBox.remove();
+            }
+            checkAuthentication();
         }
 
         function showSignUpForm() {
@@ -1233,6 +1226,7 @@
 
         function loginSuccessful(email) {
             localStorage.setItem("user_email", email);
+            localStorage.removeItem("signed_out");
             if (email !== "developer@gmail.com") {
                 localStorage.setItem("is_trial", "false");
                 localStorage.removeItem("trial_start");
@@ -1267,6 +1261,7 @@
             localStorage.removeItem("user_email");
             localStorage.removeItem("is_trial");
             localStorage.removeItem("trial_start");
+            localStorage.setItem("signed_out", "true");
             isTrialActive = false;
             if (trialTimer) {
                 clearTimeout(trialTimer);
@@ -1575,14 +1570,13 @@
                             <td style="font-family: 'JetBrains Mono'; color:var(--text-muted); font-size:0.75rem;">SL: ${pos.sl_nifty.toFixed(2)}<br>TP: ${pos.tp_nifty.toFixed(2)}</td>
                             <td style="font-family: 'JetBrains Mono';">${pos.lots}</td>
                             <td style="font-family: 'JetBrains Mono'; color:${pnlColor};">${(pos.pnl_points >= 0 ? '+' : '')}${pos.pnl_points.toFixed(2)}</td>
-                            <td style="font-family: 'JetBrains Mono'; color:${pnlColor}; font-weight:600;">${(pos.pnl >= 0 ? '+' : '')}${pos.pnl.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         `;
                         tbody.appendChild(tr);
                     });
                 } else {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No active positions. Monitoring market signals...</td>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No active positions. Monitoring market signals...</td>
                         </tr>
                     `;
                 }
@@ -1623,6 +1617,66 @@
                             });
                             activePriceLines.push(slLine, tpLine);
                         });
+                    }
+                }
+
+                // Update Risk & Security status card fields
+                const statusMode = document.getElementById('status-trading-mode');
+                const statusDb = document.getElementById('status-db');
+                const statusFeed = document.getElementById('status-feed');
+                const statusRisk = document.getElementById('status-risk');
+                const statusPnl = document.getElementById('status-pnl');
+                const statusTrades = document.getElementById('status-trades');
+                
+                const btnStop = document.getElementById('btn-emergency-stop');
+                const btnResume = document.getElementById('btn-emergency-resume');
+                
+                if (statusMode) {
+                    statusMode.innerText = data.mode ? data.mode.toUpperCase() : 'DEMO';
+                    if (data.mode === 'LIVE') {
+                        statusMode.style.color = '#ef4444';
+                        statusMode.style.textShadow = '0 0 8px rgba(239, 68, 68, 0.4)';
+                    } else {
+                        statusMode.style.color = 'var(--accent-blue)';
+                        statusMode.style.textShadow = 'none';
+                    }
+                }
+                
+                if (statusFeed) {
+                    statusFeed.innerText = data.connection_status === 'live' ? 'Connected' : 'Offline';
+                    statusFeed.style.color = data.connection_status === 'live' ? '#10b981' : '#ef4444';
+                }
+                
+                if (statusRisk) {
+                    if (data.kill_switch_active) {
+                        statusRisk.innerText = 'HALTED';
+                        statusRisk.style.color = '#ef4444';
+                    } else if (data.connection_status === 'error') {
+                        statusRisk.innerText = 'STALE FEED';
+                        statusRisk.style.color = '#f59e0b';
+                    } else {
+                        statusRisk.innerText = 'HEALTHY';
+                        statusRisk.style.color = '#10b981';
+                    }
+                }
+                
+                if (statusPnl) {
+                    const totalPnl = data.today_total_pnl || 0.0;
+                    statusPnl.innerText = (totalPnl >= 0 ? '+' : '') + '₹' + totalPnl.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                    statusPnl.style.color = totalPnl >= 0 ? '#10b981' : '#ef4444';
+                }
+                
+                if (statusTrades) {
+                    statusTrades.innerText = data.trades_count || 0;
+                }
+                
+                if (btnStop && btnResume) {
+                    if (data.kill_switch_active) {
+                        btnStop.style.display = 'none';
+                        btnResume.style.display = 'block';
+                    } else {
+                        btnStop.style.display = 'block';
+                        btnResume.style.display = 'none';
                     }
                 }
             } catch (err) {
@@ -1703,82 +1757,7 @@
             evt.currentTarget.classList.add("active");
         }
 
-        // BACKTEST CONTROLS
-        const dropzone = document.getElementById('dropzone');
-        const dropzoneText = document.getElementById('dropzone-text');
-        const btnRunBacktest = document.getElementById('btn-run-backtest');
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropzone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                dropzone.classList.add('dragover');
-            }, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropzone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                dropzone.classList.remove('dragover');
-            }, false);
-        });
-
-        dropzone.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            if (files.length > 0) {
-                handleFileSelect(files[0]);
-            }
-        }, false);
-
-        function handleFileSelect(file) {
-            if (file && file.name.endsWith('.csv')) {
-                selectedBacktestFile = file;
-                dropzoneText.innerText = "Selected File: " + file.name;
-                btnRunBacktest.disabled = false;
-            } else {
-                alert("Please select a valid CSV data file.");
-            }
-        }
-
-        async function runBacktest() {
-            if (!selectedBacktestFile) return;
-            
-            btnRunBacktest.innerText = "Executing simulation...";
-            btnRunBacktest.disabled = true;
-            
-            const strategy = document.getElementById("backtest-strategy-select").value;
-            const formData = new FormData();
-            formData.append("file", selectedBacktestFile);
-            formData.append("strategy", strategy);
-            
-            try {
-                const response = await fetch('/api/backtest', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    const m = data.metrics;
-                    document.getElementById('bt-trades').innerText = m.total_trades;
-                    document.getElementById('bt-winrate').innerText = m.win_rate + "%";
-                    document.getElementById('bt-pnl-pts').innerText = m.total_pnl_points.toFixed(1);
-                    document.getElementById('bt-pnl-inr').innerText = "Rs. " + m.total_pnl_inr.toLocaleString('en-IN');
-                    document.getElementById('bt-start-cap').innerText = "Rs. " + m.starting_capital.toLocaleString('en-IN');
-                    document.getElementById('bt-end-cap').innerText = "Rs. " + m.ending_capital.toLocaleString('en-IN');
-                    
-                    document.getElementById('backtest-results-block').style.display = 'block';
-                } else {
-                    alert("Error: " + data.message);
-                }
-            } catch (err) {
-                console.error("Backtest execution failed:", err);
-                alert("Connection failed during backtest run.");
-            } finally {
-                btnRunBacktest.innerText = "Run Model Backtest";
-                btnRunBacktest.disabled = false;
-            }
-        }
+        // CALENDAR JUMP TO DATE
 
         // Calendar Direct Shift Chart
         function jumpToDate() {
@@ -1915,6 +1894,24 @@
                 clearInterval(countdownInterval);
                 btn.disabled = false;
                 btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Sync 72 Candles';
+            }
+        }
+
+        async function toggleEmergencyStop(active) {
+            const formData = new FormData();
+            formData.append("active", active ? "true" : "false");
+            
+            try {
+                const response = await fetch("/api/killswitch/toggle", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.status === "success") {
+                    showToast(active ? "EMERGENCY STOP ACTIVATED!" : "Trading resumed successfully.", active ? "danger" : "success");
+                }
+            } catch (err) {
+                showToast("Failed to toggle emergency switch: " + err, "danger");
             }
         }
     </script>
