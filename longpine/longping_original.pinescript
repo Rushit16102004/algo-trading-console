@@ -1,5 +1,5 @@
 //@version=5
-indicator("ZFTF - Z Score Trend Following Indicator", overlay=true)
+indicator("LONGPING - Z Score Trend Following Indicator", overlay=true)
 
 window      = input.int(20, "Rolling Window")
 z_threshold = input.float(2.0, "Z Entry Threshold")

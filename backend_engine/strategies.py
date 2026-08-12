@@ -5,11 +5,11 @@ import importlib
 strategy_243a_module = importlib.import_module("243A.strategy_243a")
 Strategy243A = strategy_243a_module.Strategy243A
 
-from longpine.strategy_longpine import StrategyLongpineZFTF
+from longpine.strategy_longpine import StrategyLongpineLONGPING
 
 STRATEGIES = {
     "243A": Strategy243A(),
-    "LONGPINE_ZFTF": StrategyLongpineZFTF()
+    "LONGPING": StrategyLongpineLONGPING()
 }
 
 def get_strategy(name: str):

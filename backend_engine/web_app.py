@@ -72,7 +72,7 @@ CANDLE_DATA_PATH = "backend_engine/old data.csv"
 HISTORICAL_CANDLES = []
 HISTORICAL_MARKERS = {
     "243A": [],
-    "LONGPINE_ZFTF": []
+    "LONGPING": []
 }
 
 def download_local_assets():
@@ -150,8 +150,8 @@ def init_historical_caches():
     
     print("[CACHE INITIALIZER] Pre-calculating historical strategy signal markers...")
     HISTORICAL_MARKERS["243A"] = get_strategy_signals_for_chart(df_old, "243A")
-    HISTORICAL_MARKERS["LONGPINE_ZFTF"] = get_strategy_signals_for_chart(df_old, "LONGPINE_ZFTF")
-    print(f"[CACHE INITIALIZER] Pre-calculation complete! (243A Markers: {len(HISTORICAL_MARKERS['243A'])}, ZFTF Markers: {len(HISTORICAL_MARKERS['LONGPINE_ZFTF'])})")
+    HISTORICAL_MARKERS["LONGPING"] = get_strategy_signals_for_chart(df_old, "LONGPING")
+    print(f"[CACHE INITIALIZER] Pre-calculation complete! (243A Markers: {len(HISTORICAL_MARKERS['243A'])}, LONGPING Markers: {len(HISTORICAL_MARKERS['LONGPING'])})")
 
 starting_sessions = set()
 
@@ -372,7 +372,7 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
         }
         
     # Update active strategy name dynamically
-    if strategy in ["243A", "LONGPINE_ZFTF"]:
+    if strategy in ["243A", "LONGPING"]:
         session.strategy_name = strategy
 
     ltp = session.index_ltp

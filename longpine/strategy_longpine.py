@@ -2,9 +2,9 @@
 import numpy as np
 import pandas as pd
 
-class StrategyLongpineZFTF:
+class StrategyLongpineLONGPING:
     def __init__(self):
-        self.name = "Longpine ZFTF Strategy"
+        self.name = "Longpine LONGPING Strategy"
         self.description = "Z-Score Trend Following Strategy (20-period). Enters LONG on zscore > 2.0 & slope > 0.001."
         self.window = 20
         self.z_threshold = 2.0

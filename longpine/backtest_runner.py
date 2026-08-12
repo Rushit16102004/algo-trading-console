@@ -8,7 +8,7 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
     """
     Computes signals across the entire combined dataset.
     Returns Lightweight Charts markers: [{time, position, color, shape, text}]
-    Uses vector acceleration for ZFTF to process 100k+ rows instantly.
+    Uses vector acceleration for LONGPING to process 100k+ rows instantly.
     For 243A, it only evaluates ML models on candles where volume > 0 and only for the last 30 days.
     """
     markers = []
@@ -27,14 +27,14 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
         return int(dt.astimezone(ist_tz).timestamp())
 
     # Try to load precalculated backtest signals from CSV files (instant!)
-    last_zftf_backtest_time = None
-    if strategy_name == "LONGPINE_ZFTF":
+    last_longping_backtest_time = None
+    if strategy_name == "LONGPING":
         csv_sig_path = "longpine/backtest_signals.csv"
         if os.path.exists(csv_sig_path):
             try:
                 df_sig = pd.read_csv(csv_sig_path)
                 df_sig['timestamp'] = pd.to_datetime(df_sig['timestamp'])
-                last_zftf_backtest_time = df_sig['timestamp'].max()
+                last_longping_backtest_time = df_sig['timestamp'].max()
                 try:
                     df_sig['time'] = df_sig['timestamp'].dt.tz_convert('Asia/Kolkata').astype('int64') // 10**9
                 except TypeError:
@@ -49,7 +49,7 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
                     else:
                         markers.append({"time": t, "position": "aboveBar", "color": "#ef4444", "shape": "arrowDown", "text": "SELL"})
             except Exception as e:
-                print(f"Error loading ZFTF backtest signals: {e}")
+                print(f"Error loading LONGPING backtest signals: {e}")
     elif strategy_name == "243A":
         csv_sig_path = "243A/backtest_signals.csv"
         csv_results_path = "243A/backtest_results.csv"
@@ -103,8 +103,8 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
     except TypeError:
         df['time_epoch'] = df['timestamp'].dt.tz_localize('Asia/Kolkata').astype('int64') // 10**9
     
-    # 1. Fallback for Longpine ZFTF Strategy Markers
-    if strategy_name == "LONGPINE_ZFTF":
+    # 1. Fallback for Longpine LONGPING Strategy Markers
+    if strategy_name == "LONGPING":
         df['mean_20'] = df['close'].rolling(20).mean()
         df['std_20'] = df['close'].rolling(20).std()
         df['zscore'] = (df['close'] - df['mean_20']) / df['std_20']
@@ -132,14 +132,14 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
         
         for idx in range(20, len(df)):
             timestamp = df['timestamp'].iloc[idx]
-            if last_zftf_backtest_time is not None and pd.to_datetime(timestamp) <= pd.to_datetime(last_zftf_backtest_time):
+            if last_longping_backtest_time is not None and pd.to_datetime(timestamp) <= pd.to_datetime(last_longping_backtest_time):
                 continue
                 
             t = int(epochs[idx])
             close = float(close_prices[idx])
             
             # Check cache first
-            pred = get_cached_prediction(cache_df, timestamp, "LONGPINE_ZFTF")
+            pred = get_cached_prediction(cache_df, timestamp, "LONGPING")
             if pred is not None:
                 sig = pred.get("signal", 0)
                 if sig == 1:
@@ -280,7 +280,7 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
 def run_strategy_backtest(data_df: pd.DataFrame, strategy_name: str, out_csv_path: str) -> dict:
     """
     Simulates a strategy over a historical Nifty dataset.
-    Optimized via vectorized pandas execution for ZFTF strategy.
+    Optimized via vectorized pandas execution for LONGPING strategy.
     Only simulates the last 3 months of the dataset to make it extremely fast,
     using preceding rows as a natural technical indicator warmup buffer.
     """
@@ -298,8 +298,8 @@ def run_strategy_backtest(data_df: pd.DataFrame, strategy_name: str, out_csv_pat
     starting_capital = capital
     trades_log = []
     
-    # ZFTF Backtest (with 20-period window, rolling mean/std/linreg, LONG entry/exit only)
-    if strategy_name == "LONGPINE_ZFTF":
+    # LONGPING Backtest (with 20-period window, rolling mean/std/linreg, LONG entry/exit only)
+    if strategy_name == "LONGPING":
         start_idx = max(20, matching_indices[0]) if len(matching_indices) > 0 else 20
         
         df['mean_20'] = df['close'].rolling(20).mean()
@@ -329,7 +329,7 @@ def run_strategy_backtest(data_df: pd.DataFrame, strategy_name: str, out_csv_pat
             slope = float(slopes[idx]) if not np.isnan(slopes[idx]) else 0.0
             curr_time = pd.Timestamp(timestamps[idx])
             
-            # ZFTF EOD exit at 15:00
+            # LONGPING EOD exit at 15:00
             is_eod = (curr_time.hour == 15 and curr_time.minute >= 0) or curr_time.hour > 15
             
             exited_this_bar = False

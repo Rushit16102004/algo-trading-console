@@ -8,10 +8,10 @@ An advanced algorithmic trading console and execution engine supporting multi-us
 
 * **Dual-Strategy Engine**:
   * **243A Consensus Strategy**: Multi-model machine learning architecture combining **Temporal Convolutional Networks (TCN)**, **LightGBM**, and **Hidden Markov Models (HMM)** with unified risk management rules (SL, TP, and trailing exits).
-  * **ZFTF Strategy (Longpine)**: High-frequency trend-following model ported directly from TradingView Pine Script.
+  * **LONGPING Strategy (Longpine)**: High-frequency trend-following model ported directly from TradingView Pine Script.
 * **Auto-Recovery Historical Candle Sync**: On server startup, the system automatically detects database gaps since the last entry in `old data.csv` and queries the missing 5-minute candles using authenticated connection keys (or fallback developer credentials) to keep the records contiguous.
 * **5-Minute Free Trial**: A built-in user trial allows new users to view live feeds instantly by auto-authenticating with developer credentials. After 5 minutes, an interface blocker requests sign-in or signup to release developer bandwidth.
-* **Ultra-Fast RAM Caching**: Precalculates and loads 1,128 markers for 243A and 192 markers for ZFTF directly into memory on boot for instant chart navigation and switching (under 2ms).
+* **Ultra-Fast RAM Caching**: Precalculates and loads 1,128 markers for 243A and 192 markers for LONGPING directly into memory on boot for instant chart navigation and switching (under 2ms).
 * **Live WebSocket Integration**: Aggregates tick-by-tick market data and volume from Nifty Future tokens to compile real-time 5-minute candles.
 
 ---
@@ -25,9 +25,9 @@ An advanced algorithmic trading console and execution engine supporting multi-us
 │   ├── strategy_243a.py        # 243A Entry/Exit Decision Rulebook
 │   └── backtest_results.csv    # 6-Month simulation trades log
 │
-├── longpine/                   # ZFTF Trend-Following Strategy Folder
-│   ├── zftf_original.pinescript# Original Pinescript source
-│   ├── backtest_runner.py      # ZFTF 6-Month Backtest Runner
+├── longpine/                   # LONGPING Trend-Following Strategy Folder
+│   ├── longping_original.pinescript# Original Pinescript source
+│   ├── backtest_runner.py      # LONGPING 6-Month Backtest Runner
 │   └── backtest_results.csv    # 6-Month simulation trades log
 │
 ├── backend_engine/             # Core Backend Services

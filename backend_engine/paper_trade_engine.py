@@ -113,7 +113,7 @@ class PaperTradeEngine:
                 db = SessionLocal()
                 db_pos = PaperTrade(
                     user_id=self.user_id,
-                    strategy="243A" if "consensus" in entry_reason.lower() else "LONGPINE_ZFTF",
+                    strategy="243A" if "consensus" in entry_reason.lower() else "LONGPING",
                     symbol="NIFTY",
                     side=pos_type,
                     quantity=int(lots),

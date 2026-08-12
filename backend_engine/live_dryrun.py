@@ -402,7 +402,7 @@ class UserSession:
             
         # Sync strategy signals for both models!
         sync_model_signals(self.candles_df, "243A", self.trade_logger)
-        sync_model_signals(self.candles_df, "LONGPINE_ZFTF", self.trade_logger)
+        sync_model_signals(self.candles_df, "LONGPING", self.trade_logger)
 
     async def start(self):
         if self.system_running:
@@ -542,7 +542,7 @@ class UserSession:
         exited_this_bar = False
         
         # 3a. Check candle exits (EOD force exit, or strategy reversions)
-        eod_minute = 0 if self.strategy_name == "LONGPINE_ZFTF" else 10
+        eod_minute = 0 if self.strategy_name == "LONGPING" else 10
         for pos in active_positions_snapshot:
             is_eod = False
             if (entry_time.hour == 15 and entry_time.minute >= eod_minute) or entry_time.hour > 15:
@@ -551,7 +551,7 @@ class UserSession:
             exit_reason = None
             if is_eod:
                 exit_reason = "EOD"
-            elif self.strategy_name == "LONGPINE_ZFTF":
+            elif self.strategy_name == "LONGPING":
                 # Check linear regression slope at completed candle close
                 if len(self.candles_df) >= 20:
                     import numpy as np
@@ -597,7 +597,7 @@ class UserSession:
                     if should_reverse and not (entry_time.hour == 15 and entry_time.minute >= 10):
                         rev_type = "SHORT" if pos["position_type"] == "LONG" else "LONG"
                 
-                if rev_type and self.strategy_name != "LONGPINE_ZFTF":
+                if rev_type and self.strategy_name != "LONGPING":
                     reverse_pos_type = rev_type
 
         # 3b. Check Entry
@@ -618,7 +618,7 @@ class UserSession:
                 if allow_entry:
                     if signal == 1:
                         pos_type = "LONG"
-                    elif signal == -1 and self.strategy_name != "LONGPINE_ZFTF":
+                    elif signal == -1 and self.strategy_name != "LONGPING":
                         pos_type = "SHORT"
                         
             if pos_type:
@@ -637,11 +637,11 @@ class UserSession:
                 
         # Write the executed signals to the new row
         last_idx = len(self.candles_df) - 1
-        if self.strategy_name == "LONGPINE_ZFTF":
+        if self.strategy_name == "LONGPING":
             if exited_this_bar:
-                self.candles_df.at[last_idx, 'signal_zftf'] = "SELL"
+                self.candles_df.at[last_idx, 'signal_longping'] = "SELL"
             elif pos_type == "LONG":
-                self.candles_df.at[last_idx, 'signal_zftf'] = "BUY"
+                self.candles_df.at[last_idx, 'signal_longping'] = "BUY"
         elif self.strategy_name == "243A":
             if exited_this_bar:
                 self.candles_df.at[last_idx, 'signal_243a'] = "EXIT"
