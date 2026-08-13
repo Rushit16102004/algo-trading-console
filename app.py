@@ -1,7 +1,15 @@
 # PASSKEY: rushit2712
+import spaces
+import torch
+
+@spaces.GPU
+def dummy_gpu_fn():
+    return torch.cuda.is_available()
+
 import os
 import sys
 import subprocess
+
 
 # 1. Configure local user-space compilation paths for TA-Lib
 home_dir = os.path.expanduser("~")
@@ -54,15 +62,6 @@ except ImportError:
 # 4. Now import Gradio and the main FastAPI trading console
 import gradio as gr
 from backend_engine.web_app import app as fastapi_app
-
-# Define a dummy GPU function to satisfy Hugging Face ZeroGPU environment checks
-import spaces
-import torch
-
-@spaces.GPU
-def dummy_gpu_fn():
-    return torch.cuda.is_available()
-
 
 
 # Set up a minimal Gradio block interface for Hugging Face compliance
