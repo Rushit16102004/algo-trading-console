@@ -37,7 +37,8 @@ WORKDIR /app
 
 # Install Python packages
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir TA-Lib==0.6.8
+
 
 # Copy all source files
 COPY . .
