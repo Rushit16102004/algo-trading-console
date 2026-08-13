@@ -37,7 +37,9 @@ WORKDIR /app
 
 # Install Python packages
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir TA-Lib==0.6.8
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir TA-Lib==0.6.8 && \
+    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
 
 # Copy all source files
