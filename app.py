@@ -56,14 +56,13 @@ import gradio as gr
 from backend_engine.web_app import app as fastapi_app
 
 # Define a dummy GPU function to satisfy Hugging Face ZeroGPU environment checks
-try:
-    import spaces
-    import torch
-    @spaces.GPU
-    def dummy_gpu_fn():
-        return torch.cuda.is_available()
-except Exception:
-    pass
+import spaces
+import torch
+
+@spaces.GPU
+def dummy_gpu_fn():
+    return torch.cuda.is_available()
+
 
 
 # Set up a minimal Gradio block interface for Hugging Face compliance
