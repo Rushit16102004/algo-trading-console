@@ -1,3 +1,14 @@
+---
+title: Algo Trading Console
+emoji: 📈
+colorFrom: blue
+colorTo: indigo
+sdk: gradio
+sdk_version: 4.36.1
+app_file: app.py
+pinned: false
+---
+
 # Algo Trading Console
 
 An advanced algorithmic trading console and execution engine supporting multi-user registration, historical backtesting, real-time paper trading (dryrun), and live tick-by-tick charting using the Angel One SmartAPI.
