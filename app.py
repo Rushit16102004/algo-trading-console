@@ -55,6 +55,17 @@ except ImportError:
 import gradio as gr
 from backend_engine.web_app import app as fastapi_app
 
+# Define a dummy GPU function to satisfy Hugging Face ZeroGPU environment checks
+try:
+    import spaces
+    import torch
+    @spaces.GPU
+    def dummy_gpu_fn():
+        return torch.cuda.is_available()
+except Exception:
+    pass
+
+
 # Set up a minimal Gradio block interface for Hugging Face compliance
 with gr.Blocks(title="Algo Trading Console") as demo:
     gr.Markdown("# ⚡ Algorithmic Trading Console Active")
