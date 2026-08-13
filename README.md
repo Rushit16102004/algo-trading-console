@@ -68,6 +68,19 @@ An advanced algorithmic trading console and execution engine supporting multi-us
    Navigate to [http://127.0.0.1:8050](http://127.0.0.1:8050).
 
 
+## 📊 Backtest Performance & Notes
+
+> [!IMPORTANT]
+> **Nifty Index Points PnL**: The profit/loss (PnL) values shown in the backtests and logs represent **Nifty Index points**, not option premium PnL.
+
+### 1. 243A Consensus Strategy (Intraday)
+* **Design**: Intraday execution only. Positions are forcefully closed out at End of Day (EOD) by 15:10 to avoid overnight gap risk.
+* **Best Fit**: This model is optimized and **best suited for option shorting (selling CE and PE)** to capture theta decay when signals align.
+
+### 2. LONGPING Strategy (Overnight / Multiday)
+* **Design**: **Not for intraday**. EOD exits are disabled, allowing positions to ride trend momentum across multiple trading days (positional holding).
+
+
 ## 🛡️ Security & Gitignore Guidelines
 To protect user credentials and sandbox data, the following local components are strictly excluded from git tracking:
 * `users.db` (Local SQLite database storing user configurations)
