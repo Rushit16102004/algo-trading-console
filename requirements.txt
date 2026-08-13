@@ -14,5 +14,7 @@ hmmlearn==0.3.2
 python-multipart==0.0.9
 gradio>=4.36.1
 huggingface_hub<0.26
+logzero
+
 
 
