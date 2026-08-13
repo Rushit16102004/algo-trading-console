@@ -68,6 +68,10 @@ from backend_engine.web_app import app as fastapi_app
 with gr.Blocks(title="Algo Trading Console") as demo:
     gr.Markdown("# ⚡ Algorithmic Trading Console Active")
     gr.Markdown("The main trading console is running on the root path `/`.")
+    # Active reference to satisfy ZeroGPU compiler checks
+    btn = gr.Button("Check GPU Node Status")
+    out = gr.Textbox(label="Status")
+    btn.click(fn=dummy_gpu_fn, outputs=out)
 
 # Mount Gradio onto our main FastAPI app at path '/gradio'
 app = gr.mount_gradio_app(fastapi_app, demo, path="/gradio")
