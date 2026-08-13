@@ -1,4 +1,4 @@
-# AI-Based Algorithmic Trading System
+# Algo Trading Console
 
 An advanced algorithmic trading console and execution engine supporting multi-user registration, historical backtesting, real-time paper trading (dryrun), and live tick-by-tick charting using the Angel One SmartAPI.
 
@@ -47,10 +47,11 @@ An advanced algorithmic trading console and execution engine supporting multi-us
 
 ## 🛠️ Installation & Setup
 
+### Local Run:
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/Rushit16102004/AI-Based-Algorithmic-Trading-System.git
-   cd AI-Based-Algorithmic-Trading-System
+   git clone https://github.com/Rushit16102004/algo-trading-console.git
+   cd algo-trading-console
    ```
 
 2. **Install Dependencies**:
@@ -65,6 +66,18 @@ An advanced algorithmic trading console and execution engine supporting multi-us
 
 4. **Open in Browser**:
    Navigate to [http://127.0.0.1:8050](http://127.0.0.1:8050).
+
+---
+
+### ☁️ Hugging Face Spaces Deployment (100% Free, 24/7 Online)
+To deploy this system online for free without it ever going to sleep:
+1. Create a free account at [huggingface.co](https://huggingface.co/).
+2. Create a **New Space** and configure these settings:
+   * **Space SDK**: Select **Gradio** (which is 100% free for custom Python apps).
+   * **Hardware**: Select **CPU basic (Free)**.
+   * **Visibility**: Select **Private** (so only you can access your trading console).
+3. Under the Space's **Settings** tab, add your environmental keys (`ENCRYPTION_KEY`, etc.) as **Secrets**.
+4. Push or upload this repository to your Space. Hugging Face will run `app.py` and compile TA-Lib dynamically!
 
 ---
 
