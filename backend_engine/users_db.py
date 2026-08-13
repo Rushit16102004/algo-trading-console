@@ -37,6 +37,14 @@ def init_db():
                 
     # Create all schemas
     try:
+        from sqlalchemy import text
+        if "postgresql" in str(engine.url):
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text("DROP INDEX IF EXISTS ix_users_email CASCADE;"))
+                    conn.commit()
+            except Exception as drop_ex:
+                print(f"[Database Initialization] Warning dropping index: {drop_ex}")
         Base.metadata.create_all(bind=engine)
     except Exception as e:
         print(f"[Database Initialization] Warning: {e}")
