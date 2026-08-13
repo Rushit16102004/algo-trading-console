@@ -1,0 +1,33 @@
+==================================================
+        HISTORICAL BACKTEST RESULTS (2024 - 2026)
+==================================================
+Date Run: 2026-08-13 15:21:07
+Dataset Date Range: 2024-01-01 to 2026-08-13 (Nifty Spot)
+
+--------------------------------------------------
+1. STRATEGY: LONGPING (Trend-Following)
+--------------------------------------------------
+Total Trades Taken:  650
+Wins / Losses:        273 W / 377 L
+Win Rate (WR):        42.0%
+Total PnL (Points):  -508.15 pts
+Total PnL (INR):     -33029.75 INR
+Max Drawdown (DD):   161726.50 INR
+Starting Capital:    100000.00 INR
+Ending Capital:      66970.25 INR
+
+--------------------------------------------------
+2. STRATEGY: 243A (TCN + LGBM + HMM Consensus)
+--------------------------------------------------
+Total Trades Taken:  1292
+Wins / Losses:        535 W / 757 L
+Win Rate (WR):        41.41%
+Total PnL (Points):  4397.55 pts
+Total PnL (INR):     285840.75 INR
+Max Drawdown (DD):   139857.25 INR
+Starting Capital:    100000.00 INR
+Ending Capital:      385840.75 INR
+
+==================================================
+Total Backtest Elapsed Time: 6601.24 seconds
+==================================================
