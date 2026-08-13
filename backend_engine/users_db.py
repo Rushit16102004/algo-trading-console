@@ -36,7 +36,10 @@ def init_db():
                 print(f"[Migration] Error checking legacy SQLite: {e}")
                 
     # Create all schemas
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"[Database Initialization] Warning: {e}")
 
 def register_user(email: str, pin: str, api_key: str, client_id: str, password: str, totp_secret: str) -> bool:
     init_db()
