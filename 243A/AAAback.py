@@ -407,6 +407,7 @@ def main():
     # parser.add_argument("--data_path", type=str, default="data/12_25_to_4_26.csv", help="Path to input unseen CSV data.")
     parser.add_argument("--data_path", type=str, default="data/final.csv", help="Path to input unseen CSV data.")
     parser.add_argument("--tick_dir", type=str, default="data/finaltik", help="Path to tick data directory.")
+    parser.add_argument("--start_date", type=str, default=None, help="Start date for taking new trades (YYYY-MM-DD).")
 
     args = parser.parse_args()
     
@@ -622,6 +623,8 @@ def main():
     active_trades = []
     closed_trades = []
     pending_entry = 0
+    
+    start_date_ts = pd.Timestamp(args.start_date) if getattr(args, 'start_date', None) else None
     
     # Initialize Risk Management Sizer (Option A: Circuit Breaker enabled)
     sizer = ThermalDissipationSizer(base_qty=65)
@@ -946,9 +949,11 @@ def main():
         
         signal = signals[idx]
         if ENABLE_REVERSE_ENTRY and rev_exit_occurred != 0:
-            pending_entry = rev_exit_occurred
+            if start_date_ts is None or pd.Timestamp(current_time) >= start_date_ts:
+                pending_entry = rev_exit_occurred
         elif signal != 0 and not is_eod:
-            pending_entry = signal
+            if start_date_ts is None or pd.Timestamp(current_time) >= start_date_ts:
+                pending_entry = signal
             
     out_dir = '243A'
     os.makedirs(out_dir, exist_ok=True)

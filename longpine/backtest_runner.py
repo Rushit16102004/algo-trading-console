@@ -329,8 +329,8 @@ def run_strategy_backtest(data_df: pd.DataFrame, strategy_name: str, out_csv_pat
             slope = float(slopes[idx]) if not np.isnan(slopes[idx]) else 0.0
             curr_time = pd.Timestamp(timestamps[idx])
             
-            # LONGPING EOD exit at 15:00
-            is_eod = (curr_time.hour == 15 and curr_time.minute >= 0) or curr_time.hour > 15
+            # LONGPING EOD exit disabled (no force exits)
+            is_eod = False
             
             exited_this_bar = False
             if active_pos:

@@ -542,11 +542,12 @@ class UserSession:
         exited_this_bar = False
         
         # 3a. Check candle exits (EOD force exit, or strategy reversions)
-        eod_minute = 0 if self.strategy_name == "LONGPING" else 10
+        eod_minute = 10 # Default for 243A
         for pos in active_positions_snapshot:
             is_eod = False
-            if (entry_time.hour == 15 and entry_time.minute >= eod_minute) or entry_time.hour > 15:
-                is_eod = True
+            if self.strategy_name != "LONGPING":
+                if (entry_time.hour == 15 and entry_time.minute >= eod_minute) or entry_time.hour > 15:
+                    is_eod = True
                 
             exit_reason = None
             if is_eod:
@@ -612,8 +613,9 @@ class UserSession:
                 allow_entry = True
                 if entry_time.hour == 9 and entry_time.minute == 15:
                     allow_entry = False
-                if (entry_time.hour == 15 and entry_time.minute >= eod_minute) or entry_time.hour > 15:
-                    allow_entry = False
+                if self.strategy_name != "LONGPING":
+                    if (entry_time.hour == 15 and entry_time.minute >= eod_minute) or entry_time.hour > 15:
+                        allow_entry = False
                     
                 if allow_entry:
                     if signal == 1:
