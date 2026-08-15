@@ -179,6 +179,7 @@ class UserSession:
         
         self.index_ltp = 0.0
         self.last_index_time = None
+        self.last_prediction = {}
         
         self.sync_in_progress = False
         self.warmup_in_progress = False
@@ -423,6 +424,15 @@ class UserSession:
         # Use asyncio.to_thread to run heavy synchronous loading operations off the main event loop
         await asyncio.to_thread(self.bootstrap_candles)
         
+        # Warm up the initial last_prediction state from existing candles
+        if self.candles_df is not None and len(self.candles_df) >= 150:
+            try:
+                strategy = get_strategy(self.strategy_name)
+                self.last_prediction = await asyncio.to_thread(strategy.predict, self.candles_df, False)
+                print(f"[Session Init] Initialized last_prediction state successfully for strategy {self.strategy_name}.")
+            except Exception as e:
+                print(f"[Session Init] Error warm-running strategy prediction: {e}")
+                
         if self.is_demo:
             self.trade_logger.log_activity("[DEMO] Starting in Demo Mode. Displaying static cached candles & signals.")
             return
@@ -514,6 +524,7 @@ class UserSession:
         in_pos = len(self.paper_trade_engine.active_positions) > 0
         try:
             result = strategy.predict(self.candles_df, in_position=in_pos)
+            self.last_prediction = result
             signal = result.get('signal', 0)
             metrics = result.get('metrics', {})
             # Save this live completed candle prediction to our persistent cache

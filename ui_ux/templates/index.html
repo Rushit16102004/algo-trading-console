@@ -144,7 +144,7 @@
         .main-container {
             flex: 1;
             display: grid;
-            grid-template-columns: 1fr 360px;
+            grid-template-columns: 1fr;
             gap: 1.25rem;
             padding: 1.25rem;
             height: calc(100vh - 70px);
@@ -160,7 +160,7 @@
         }
 
         .right-content {
-            display: flex;
+            display: none;
             flex-direction: column;
             gap: 1.25rem;
             overflow-y: auto;
@@ -841,6 +841,110 @@
                 </div>
             </div>
 
+            <!-- Model Decision Explainer Panel -->
+            <div class="glass-panel" id="model-explainer-panel" style="margin-top: 1rem; padding: 1rem;">
+                <div class="panel-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="panel-title" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        Model Decision Explainer
+                    </div>
+                    <div id="explainer-decision-badge" style="font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: rgba(255,255,255,0.05); color: #9ca3af; display: flex; align-items: center; gap: 6px;">
+                        Decision: <span style="color: #9ca3af;">Neutral (No Feed)</span>
+                    </div>
+                </div>
+                
+                <div class="explainer-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+                    <!-- RSI -->
+                    <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
+                            <span style="color: #9ca3af; font-weight: 500;">Relative Strength Index (RSI)</span>
+                            <span style="color: white; font-weight: 600;" id="val-RSI">-</span>
+                        </div>
+                        <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
+                            <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div id="bar-RSI" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
+                        </div>
+                    </div>
+                    <!-- ATR -->
+                    <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
+                            <span style="color: #9ca3af; font-weight: 500;">Average True Range (ATR)</span>
+                            <span style="color: white; font-weight: 600;" id="val-ATR">-</span>
+                        </div>
+                        <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
+                            <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div id="bar-ATR" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
+                        </div>
+                    </div>
+                    <!-- VWAP -->
+                    <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
+                            <span style="color: #9ca3af; font-weight: 500;">VWAP Distance</span>
+                            <span style="color: white; font-weight: 600;" id="val-VWAP">-</span>
+                        </div>
+                        <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
+                            <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div id="bar-VWAP" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
+                        </div>
+                    </div>
+                    <!-- Volume -->
+                    <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
+                            <span style="color: #9ca3af; font-weight: 500;">Volume Expansion</span>
+                            <span style="color: white; font-weight: 600;" id="val-Volume">-</span>
+                        </div>
+                        <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
+                            <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div id="bar-Volume" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
+                        </div>
+                    </div>
+                    <!-- MACD -->
+                    <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
+                            <span style="color: #9ca3af; font-weight: 500;">MACD Hist (Norm)</span>
+                            <span style="color: white; font-weight: 600;" id="val-MACD">-</span>
+                        </div>
+                        <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
+                            <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div id="bar-MACD" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
+                        </div>
+                    </div>
+                    <!-- Momentum -->
+                    <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
+                            <span style="color: #9ca3af; font-weight: 500;">Price Momentum (10d)</span>
+                            <span style="color: white; font-weight: 600;" id="val-Momentum">-</span>
+                        </div>
+                        <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
+                            <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div id="bar-Momentum" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
+                        </div>
+                    </div>
+                    <!-- Stochastic -->
+                    <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
+                            <span style="color: #9ca3af; font-weight: 500;">Stochastic Oscillator (%K)</span>
+                            <span style="color: white; font-weight: 600;" id="val-Stochastic">-</span>
+                        </div>
+                        <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
+                            <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div id="bar-Stochastic" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
+                        </div>
+                    </div>
+                    <!-- Bollinger -->
+                    <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
+                            <span style="color: #9ca3af; font-weight: 500;">Bollinger Band Width</span>
+                            <span style="color: white; font-weight: 600;" id="val-Bollinger">-</span>
+                        </div>
+                        <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
+                            <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div id="bar-Bollinger" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Active Positions Table Panel -->
             <div class="glass-panel" style="min-height: auto; margin-top: 1rem; display: none !important;">
                 <div class="panel-header" onclick="togglePositionsPanel()" style="cursor: pointer; user-select: none; margin-bottom: 0;">
@@ -1422,9 +1526,26 @@
                     
                     lastTimestamp = historicalCandlesData[historicalCandlesData.length - 1].time;
                     
-                    // Render markers calculated by backend
-                    if (isSignalsPanelVisible && data.markers) {
-                        candleSeries.setMarkers(data.markers);
+                    // Render markers calculated by backend with spacing (avoid touching wicks)
+                    if (isSignalsPanelVisible && data.markers && data.markers.length > 0 && historicalCandlesData.length > 0) {
+                        const candleMap = {};
+                        for (const c of historicalCandlesData) {
+                            candleMap[c.time] = c;
+                        }
+                        const spacedMarkers = data.markers.map(m => {
+                            const candle = candleMap[m.time];
+                            if (candle) {
+                                const newM = { ...m };
+                                if (m.position === "belowBar" || m.shape === "arrowUp") {
+                                    newM.price = candle.low - 25; // 25 points offset below wick
+                                } else if (m.position === "aboveBar" || m.shape === "arrowDown" || m.shape === "circle") {
+                                    newM.price = candle.high + 25; // 25 points offset above wick
+                                }
+                                return newM;
+                            }
+                            return m;
+                        });
+                        candleSeries.setMarkers(spacedMarkers);
                     } else {
                         candleSeries.setMarkers([]);
                     }
@@ -1797,6 +1918,68 @@
                     } else {
                         btnStop.style.display = 'block';
                         btnResume.style.display = 'none';
+                    }
+                }
+
+                // Update Model Decision Explainer Panel
+                const explainerPanel = document.getElementById('model-explainer-panel');
+                const explainerBadge = document.getElementById('explainer-decision-badge');
+                if (explainerPanel) {
+                    if (strategy === '243A' && data.last_prediction && data.last_prediction.feature_contributions) {
+                        explainerPanel.style.display = 'block';
+                        
+                        // Update decision badge
+                        const pred = data.last_prediction;
+                        const consensus = pred.consensus || 'NEUTRAL';
+                        const confidence = Math.round(pred.gbm_prob_buy * 100);
+                        
+                        if (consensus === 'BUY') {
+                            explainerBadge.innerHTML = `Decision: <span style="color: #10b981;">BUY (${confidence}% Confidence)</span>`;
+                        } else if (consensus === 'SELL') {
+                            explainerBadge.innerHTML = `Decision: <span style="color: #ef4444;">SELL (${100 - confidence}% Confidence)</span>`;
+                        } else {
+                            explainerBadge.innerHTML = `Decision: <span style="color: #9ca3af;">HOLD / NEUTRAL</span>`;
+                        }
+                        
+                        // Update the 8 indicator bars
+                        const fc = pred.feature_contributions;
+                        const indicators = ["RSI", "ATR", "VWAP", "Volume", "MACD", "Momentum", "Stochastic", "Bollinger"];
+                        
+                        indicators.forEach(ind => {
+                            if (fc[ind]) {
+                                const valEl = document.getElementById(`val-${ind}`);
+                                const barEl = document.getElementById(`bar-${ind}`);
+                                if (valEl && barEl) {
+                                    valEl.innerText = fc[ind].value;
+                                    
+                                    const contrib = Math.max(-100, Math.min(100, fc[ind].contribution));
+                                    if (contrib >= 0) {
+                                        barEl.style.left = "50%";
+                                        barEl.style.width = `${contrib / 2}%`;
+                                        barEl.style.background = "linear-gradient(90deg, #059669, #10b981)";
+                                    } else {
+                                        const absVal = Math.abs(contrib);
+                                        barEl.style.left = `${50 - (absVal / 2)}%`;
+                                        barEl.style.width = `${absVal / 2}%`;
+                                        barEl.style.background = "linear-gradient(90deg, #ef4444, #dc2626)";
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        // Display inactive state for other strategies
+                        explainerPanel.style.display = 'block';
+                        explainerBadge.innerHTML = `Decision: <span style="color: #9ca3af;">N/A (Inactive for ${strategy})</span>`;
+                        const indicators = ["RSI", "ATR", "VWAP", "Volume", "MACD", "Momentum", "Stochastic", "Bollinger"];
+                        indicators.forEach(ind => {
+                            const valEl = document.getElementById(`val-${ind}`);
+                            const barEl = document.getElementById(`bar-${ind}`);
+                            if (valEl && barEl) {
+                                valEl.innerText = "-";
+                                barEl.style.width = "0%";
+                                barEl.style.left = "50%";
+                            }
+                        });
                     }
                 }
             } catch (err) {

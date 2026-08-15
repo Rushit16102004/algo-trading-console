@@ -462,7 +462,8 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
         "sync_in_progress": is_syncing_in_progress or getattr(session, 'sync_in_progress', False) or getattr(session, 'warmup_in_progress', False),
         "warmup_in_progress": getattr(session, 'warmup_in_progress', False),
         "warmup_progress": getattr(session, 'warmup_progress', "0/0"),
-        "warmup_time_remaining": getattr(session, 'warmup_time_remaining', 0)
+        "warmup_time_remaining": getattr(session, 'warmup_time_remaining', 0),
+        "last_prediction": getattr(session, 'last_prediction', {})
     }
 
 @app.get("/api/signals")

@@ -518,6 +518,45 @@ class LivePredictionEngine:
         }
         hmm_regime_name = regime_names.get(y_hmm_latest, 'compression')
 
+        # Extract raw and scaled latest features for UI explainability
+        latest_raw = df_gbm_feats.iloc[-1]
+        latest_scaled = X_gbm_scaled.iloc[-1]
+        
+        feature_contributions = {
+            "RSI": {
+                "value": f"{latest_raw.get('rsi_14', 50.0):.1f}",
+                "contribution": float(latest_scaled.get('rsi_14', 0.0) * 20.0)
+            },
+            "ATR": {
+                "value": f"{latest_raw.get('atr_ratio', 1.0):.2f}",
+                "contribution": float(-latest_scaled.get('atr_ratio', 0.0) * 15.0)
+            },
+            "VWAP": {
+                "value": "Above" if latest_raw.get('displacement', 0.0) >= 0 else "Below",
+                "contribution": float(latest_scaled.get('displacement', 0.0) * 18.0)
+            },
+            "Volume": {
+                "value": f"{latest_raw.get('volume_expansion', 1.0):.1f}x",
+                "contribution": float(latest_scaled.get('volume_expansion', 0.0) * 15.0)
+            },
+            "MACD": {
+                "value": f"{latest_raw.get('macdhist_norm', 0.0):.2f}",
+                "contribution": float(latest_scaled.get('macdhist_norm', 0.0) * 22.0)
+            },
+            "Momentum": {
+                "value": f"{latest_raw.get('roc_10', 0.0):.1f}",
+                "contribution": float(latest_scaled.get('roc_10', 0.0) * 16.0)
+            },
+            "Stochastic": {
+                "value": f"{latest_raw.get('stoch_k', 50.0):.1f}",
+                "contribution": float(latest_scaled.get('stoch_k', 0.0) * 14.0)
+            },
+            "Bollinger": {
+                "value": f"{latest_raw.get('bb_width', 0.0):.3f}",
+                "contribution": float(-latest_scaled.get('bb_width', 0.0) * 15.0)
+            }
+        }
+
         # ----------------------------------------------------
         # 4. Return combined results
         # ----------------------------------------------------
@@ -528,7 +567,8 @@ class LivePredictionEngine:
             'tcn_predicted': tcn_predicted,
             'tcn_prob_buy': float(tcn_prob_buy),
             'tcn_prob_sell': float(tcn_prob_sell),
-            'hmm_regime_name': hmm_regime_name
+            'hmm_regime_name': hmm_regime_name,
+            'feature_contributions': feature_contributions
         }
         
         return predictions

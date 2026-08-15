@@ -71,8 +71,10 @@ class Strategy243A:
             'tcn_prob_sell': round(predictions.get('tcn_prob_sell', 0), 4),
             'consensus': consensus
         }
-        
         return {
             'signal': signal,
-            'metrics': metrics
+            'metrics': metrics,
+            'feature_contributions': predictions.get('feature_contributions', {}),
+            'gbm_prob_buy': float(predictions.get('gbm_prob_buy', 0.5)),
+            'consensus': consensus
         }
