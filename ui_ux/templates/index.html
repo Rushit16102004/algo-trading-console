@@ -821,6 +821,7 @@
                             </select>
                             <button onclick="downloadFilteredOldData()" class="btn" style="font-size: 0.7rem; padding: 6px 10px;" id="btn-download-old"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download Data</button>
                             <button onclick="sync72Candles()" class="btn" style="font-size: 0.7rem; padding: 6px 10px; background: rgba(59, 130, 246, 0.2); border-color: var(--accent-blue);" id="btn-sync-72"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Sync 72 Candles</button>
+                            <button onclick="loadMoreHistory()" class="btn" style="font-size: 0.7rem; padding: 6px 10px; background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.15);" id="btn-load-more">⏳ Load More History</button>
                         </div>
                     </div>
                 </div>
@@ -1008,6 +1009,8 @@
         let selectedBacktestFile = null;
         let isSignalsPanelVisible = false;
         let lastTimestamp = 0;
+        let currentCandleLimit = 3000;
+        let loadMoreClickCount = 0;
         
         // Strategy description map
         const strategyDescriptions = {
@@ -1389,6 +1392,9 @@
 
         function changeActiveStrategy(strategy) {
             updateStrategyInfoText(strategy);
+            // Reset pagination limits
+            currentCandleLimit = 3000;
+            loadMoreClickCount = 0;
             // Reload unified candles & strategy signals markers
             fetchCandles();
         }
@@ -1401,7 +1407,7 @@
             const strategy = document.getElementById("active-strategy-select").value;
             
             try {
-                const response = await fetch(`/api/candles?email=${encodeURIComponent(email)}&strategy=${strategy}`);
+                const response = await fetch(`/api/candles?email=${encodeURIComponent(email)}&strategy=${strategy}&limit=${currentCandleLimit}`);
                 const data = await response.json();
                 if (data && data.candles && data.candles.length > 0) {
                     historicalCandlesData = data.candles;
@@ -1430,6 +1436,28 @@
             } catch (err) {
                 console.error("Error loading candles:", err);
             }
+        }
+
+        async function loadMoreHistory() {
+            loadMoreClickCount++;
+            // Click 1: +3000 (total 6000)
+            // Click 2: +4000 (total 10000)
+            // Click 3: +5000 (total 15000)
+            // ...
+            const increment = 2000 + (loadMoreClickCount * 1000);
+            currentCandleLimit += increment;
+            
+            const btn = document.getElementById("btn-load-more");
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `⏳ Loading +${increment}...`;
+            btn.style.pointerEvents = "none";
+            btn.style.opacity = "0.7";
+            
+            await fetchCandles();
+            
+            btn.innerHTML = originalText;
+            btn.style.pointerEvents = "auto";
+            btn.style.opacity = "1";
         }
 
         function updateLegend(candle) {

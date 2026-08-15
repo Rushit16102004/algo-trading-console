@@ -534,7 +534,7 @@ async def api_sync_72(email: str = Query(None)):
     return {"status": "error", "message": "Failed to sync candles. Please check credentials or try again later."}
 
 @app.get("/api/candles")
-async def get_candles(email: str = Query(None), strategy: str = Query("243A")):
+async def get_candles(email: str = Query(None), strategy: str = Query("243A"), limit: int = Query(3000)):
     """
     Returns a unified, continuous dataset of Nifty candles.
     Uses RAM-cached historical candles (2008-2025) to achieve sub-5ms response times.
@@ -594,8 +594,8 @@ async def get_candles(email: str = Query(None), strategy: str = Query("243A")):
             
         markers = [combined_markers_map[t] for t in sorted(combined_markers_map.keys())]
         
-        # Limit to the most recent 3,000 candles to achieve instant page loads (< 300KB payload)
-        limit = 3000
+        # Limit the candles dataset dynamically based on client request (default: 3000)
+        limit = max(100, min(100000, limit))
         if len(candles) > limit:
             min_allowed_time = candles[-limit]["time"]
             candles = candles[-limit:]
