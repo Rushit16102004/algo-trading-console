@@ -854,94 +854,81 @@
                 </div>
                 
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <!-- Left: Indicators Grid (65% width) -->
-                    <div style="flex: 2; min-width: 320px;">
-                        <div class="explainer-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                    <!-- Left: Aligned Indicators List (65% width) -->
+                    <div style="flex: 2; min-width: 320px; background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="font-size: 0.72rem; font-weight: 700; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px;">
+                            📊 Live Indicator Contribution
+                        </div>
+                        <div class="explainer-list" style="display: flex; flex-direction: column; gap: 8px;">
                             <!-- RSI -->
-                            <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
-                                    <span style="color: #9ca3af; font-weight: 500;">Relative Strength Index (RSI)</span>
-                                    <span style="color: white; font-weight: 600;" id="val-RSI">-</span>
-                                </div>
-                                <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
-                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div class="explainer-row" style="display: flex; align-items: center; gap: 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace;">
+                                <span style="width: 140px; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">RSI (14)</span>
+                                <span style="width: 45px; color: white; font-weight: bold; text-align: right;" id="val-RSI">-</span>
+                                <div style="flex: 1; position: relative; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; display: flex; align-items: center; overflow: hidden;">
+                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.3); z-index: 2;"></div>
                                     <div id="bar-RSI" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
                                 </div>
                             </div>
                             <!-- ATR -->
-                            <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
-                                    <span style="color: #9ca3af; font-weight: 500;">Average True Range (ATR)</span>
-                                    <span style="color: white; font-weight: 600;" id="val-ATR">-</span>
-                                </div>
-                                <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
-                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div class="explainer-row" style="display: flex; align-items: center; gap: 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace;">
+                                <span style="width: 140px; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">ATR (Ratio)</span>
+                                <span style="width: 45px; color: white; font-weight: bold; text-align: right;" id="val-ATR">-</span>
+                                <div style="flex: 1; position: relative; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; display: flex; align-items: center; overflow: hidden;">
+                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.3); z-index: 2;"></div>
                                     <div id="bar-ATR" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
                                 </div>
                             </div>
                             <!-- VWAP -->
-                            <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
-                                    <span style="color: #9ca3af; font-weight: 500;">VWAP Distance</span>
-                                    <span style="color: white; font-weight: 600;" id="val-VWAP">-</span>
-                                </div>
-                                <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
-                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div class="explainer-row" style="display: flex; align-items: center; gap: 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace;">
+                                <span style="width: 140px; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">VWAP Distance</span>
+                                <span style="width: 45px; color: white; font-weight: bold; text-align: right;" id="val-VWAP">-</span>
+                                <div style="flex: 1; position: relative; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; display: flex; align-items: center; overflow: hidden;">
+                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.3); z-index: 2;"></div>
                                     <div id="bar-VWAP" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
                                 </div>
                             </div>
                             <!-- Volume -->
-                            <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
-                                    <span style="color: #9ca3af; font-weight: 500;">Volume Expansion</span>
-                                    <span style="color: white; font-weight: 600;" id="val-Volume">-</span>
-                                </div>
-                                <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
-                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div class="explainer-row" style="display: flex; align-items: center; gap: 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace;">
+                                <span style="width: 140px; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">Volume Expansion</span>
+                                <span style="width: 45px; color: white; font-weight: bold; text-align: right;" id="val-Volume">-</span>
+                                <div style="flex: 1; position: relative; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; display: flex; align-items: center; overflow: hidden;">
+                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.3); z-index: 2;"></div>
                                     <div id="bar-Volume" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
                                 </div>
                             </div>
                             <!-- MACD -->
-                            <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
-                                    <span style="color: #9ca3af; font-weight: 500;">MACD Hist (Norm)</span>
-                                    <span style="color: white; font-weight: 600;" id="val-MACD">-</span>
-                                </div>
-                                <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
-                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div class="explainer-row" style="display: flex; align-items: center; gap: 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace;">
+                                <span style="width: 140px; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">MACD Hist (Norm)</span>
+                                <span style="width: 45px; color: white; font-weight: bold; text-align: right;" id="val-MACD">-</span>
+                                <div style="flex: 1; position: relative; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; display: flex; align-items: center; overflow: hidden;">
+                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.3); z-index: 2;"></div>
                                     <div id="bar-MACD" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
                                 </div>
                             </div>
                             <!-- Momentum -->
-                            <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
-                                    <span style="color: #9ca3af; font-weight: 500;">Price Momentum (10d)</span>
-                                    <span style="color: white; font-weight: 600;" id="val-Momentum">-</span>
-                                </div>
-                                <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
-                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div class="explainer-row" style="display: flex; align-items: center; gap: 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace;">
+                                <span style="width: 140px; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">Price Momentum</span>
+                                <span style="width: 45px; color: white; font-weight: bold; text-align: right;" id="val-Momentum">-</span>
+                                <div style="flex: 1; position: relative; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; display: flex; align-items: center; overflow: hidden;">
+                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.3); z-index: 2;"></div>
                                     <div id="bar-Momentum" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
                                 </div>
                             </div>
                             <!-- Stochastic -->
-                            <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
-                                    <span style="color: #9ca3af; font-weight: 500;">Stochastic Oscillator (%K)</span>
-                                    <span style="color: white; font-weight: 600;" id="val-Stochastic">-</span>
-                                </div>
-                                <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
-                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div class="explainer-row" style="display: flex; align-items: center; gap: 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace;">
+                                <span style="width: 140px; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">Stochastic (%K)</span>
+                                <span style="width: 45px; color: white; font-weight: bold; text-align: right;" id="val-Stochastic">-</span>
+                                <div style="flex: 1; position: relative; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; display: flex; align-items: center; overflow: hidden;">
+                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.3); z-index: 2;"></div>
                                     <div id="bar-Stochastic" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
                                 </div>
                             </div>
                             <!-- Bollinger -->
-                            <div class="explainer-item" style="display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 6px 10px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
-                                    <span style="color: #9ca3af; font-weight: 500;">Bollinger Band Width</span>
-                                    <span style="color: white; font-weight: 600;" id="val-Bollinger">-</span>
-                                </div>
-                                <div style="position: relative; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; display: flex; align-items: center;">
-                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.25); z-index: 2;"></div>
+                            <div class="explainer-row" style="display: flex; align-items: center; gap: 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace;">
+                                <span style="width: 140px; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">Bollinger Width</span>
+                                <span style="width: 45px; color: white; font-weight: bold; text-align: right;" id="val-Bollinger">-</span>
+                                <div style="flex: 1; position: relative; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; display: flex; align-items: center; overflow: hidden;">
+                                    <div style="position: absolute; left: 50%; height: 100%; width: 1px; background: rgba(255,255,255,0.3); z-index: 2;"></div>
                                     <div id="bar-Bollinger" style="position: absolute; height: 100%; border-radius: 2px; transition: all 0.3s ease-in-out; left: 50%; width: 0%;"></div>
                                 </div>
                             </div>
