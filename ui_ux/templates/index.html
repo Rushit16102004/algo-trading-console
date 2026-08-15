@@ -888,7 +888,7 @@
                         <div style="margin-bottom: 0.75rem;">
                             <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 6px; letter-spacing: 0.5px;">Active Strategy</label>
                             <select id="active-strategy-select" onchange="changeActiveStrategy(this.value)" style="width: 100%; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 10px; color: white; outline: none; font-size: 0.85rem; cursor: pointer; font-weight:500;">
-                                <option value="243A">243A Strategy (LGBM+TCN+HMM)</option>
+                                <option value="243A">243A Strategy</option>
                                 <option value="LONGPING">Longping Strategy</option>
                             </select>
                         </div>
@@ -1011,7 +1011,7 @@
         
         // Strategy description map
         const strategyDescriptions = {
-            "243A": "<strong>243A Consensus Strategy:</strong> Combines predictions from both LightGBM gradient boosting classifier (threshold: 70%) and a PyTorch Temporal Convolutional Network (TCN) deep learning model (threshold: 50%). All consensus entries are filtered by a Hidden Markov Model (HMM) regime blocker to prevent entering trades in unfavorable market regimes.",
+            "243A": "<strong>243A Consensus Strategy:</strong> An advanced quantitative consensus model. Combines multiple machine learning classifiers and neural network architectures to identify high-probability trend entries, filtered dynamically by a statistical regime detector to avoid unfavorable market periods.",
             "EMA_8_20": "<strong>8-20 EMA Crossover Strategy:</strong> Standard trend following system. It enters LONG when the fast 8-period Exponential Moving Average crosses above the slow 20-period EMA. Conversely, it enters SHORT when the 8-period EMA crosses below the 20-period EMA.",
             "LONGPING": "<strong>Longping Strategy:</strong> Long-only momentum breakout strategy. Uses rolling window 20 mean and standard deviation to calculate Z-Score and Linear Regression Slope. Enters LONG on breakout (Z-Score > 2.0 & Slope > 0.001), exits when slope rolls over (< -0.001) or hits 6% target / 3% stop loss. Enforces a strict EOD exit at 15:10 IST."
         };
