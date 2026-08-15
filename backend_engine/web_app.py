@@ -161,21 +161,33 @@ def get_user_session(email: str, strategy_name: str = "243A"):
         
     admin_user_id = 1
     if admin_user_id not in live_dryrun.active_sessions:
-        admin_api_key = os.getenv("ANGEL_API_KEY")
-        admin_client_id = os.getenv("ANGEL_CLIENT_ID")
-        admin_password = os.getenv("ANGEL_PASSWORD")
-        admin_totp_secret = os.getenv("ANGEL_TOTP_SECRET")
+        # Enforce that the central feed only auto-starts during active trading days/hours (IST)
+        import pytz
+        ist_tz = pytz.timezone("Asia/Kolkata")
+        now = datetime.datetime.now(ist_tz)
+        today_str = now.strftime("%Y-%m-%d")
+        is_trading_day = now.weekday() < 5 and today_str not in HOLIDAYS
+        is_market_hours = is_trading_day and (datetime.time(9, 0) <= now.time() <= datetime.time(16, 0))
         
-        credentials = {
-            "email": "admin@algo-trading.console",
-            "api_key": admin_api_key,
-            "client_id": admin_client_id,
-            "password": admin_password,
-            "totp_secret": admin_totp_secret
-        }
-        print(f"[Session Manager] Starting central admin session for user {email}")
-        live_dryrun.start_user_system(admin_user_id, credentials, strategy_name=strategy_name)
-        
+        if is_market_hours:
+            admin_api_key = os.getenv("ANGEL_API_KEY")
+            admin_client_id = os.getenv("ANGEL_CLIENT_ID")
+            admin_password = os.getenv("ANGEL_PASSWORD")
+            admin_totp_secret = os.getenv("ANGEL_TOTP_SECRET")
+            
+            credentials = {
+                "email": "admin@algo-trading.console",
+                "api_key": admin_api_key,
+                "client_id": admin_client_id,
+                "password": admin_password,
+                "totp_secret": admin_totp_secret
+            }
+            print(f"[Session Manager] Market is open ({now.strftime('%H:%M:%S')}). Starting central admin session for user {email}")
+            live_dryrun.start_user_system(admin_user_id, credentials, strategy_name=strategy_name)
+        else:
+            # Market is closed, do not auto-start central feed
+            return None
+            
     return live_dryrun.active_sessions.get(admin_user_id)
 
 def get_recent_logs(system_log_path: str, num_lines=150):
