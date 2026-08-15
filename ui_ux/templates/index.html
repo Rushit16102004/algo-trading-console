@@ -911,11 +911,13 @@
                             </div>
                             <div id="strategy-info-body" style="display: none; margin-top: 8px; color: #cbd5e1; line-height: 1.4; border-top:1px solid rgba(255,255,255,0.03); padding-top:6px; font-size:0.75rem;">
                             </div>
+                        </div>
+
                         <!-- SYSTEM STATUS AREA -->
-                        <div class="glass-panel" style="padding: 10px; margin-bottom: 0.75rem; border-color: rgba(239, 68, 68, 0.15); background: rgba(17, 24, 39, 0.4);">
+                        <div class="glass-panel" style="padding: 10px; margin-bottom: 0.75rem; border-color: rgba(255, 255, 255, 0.08); background: rgba(17, 24, 39, 0.4);">
                             <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">System Security & Risk Status</div>
                             
-                            <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; margin-bottom: 10px;">
+                            <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">
                                 <div style="display: flex; justify-content: space-between;">
                                     <span>Database:</span>
                                     <span id="status-db" style="color: #10b981;">Connected</span>
@@ -933,10 +935,6 @@
                                     <span id="status-trades">0</span>
                                 </div>
                             </div>
-
-                            <!-- EMERGENCY STOP BUTTON -->
-                            <button id="btn-emergency-stop" class="btn btn-danger" onclick="toggleEmergencyStop(true)" style="width: 100%; padding: 8px; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.5px;">🚨 EMERGENCY STOP</button>
-                            <button id="btn-emergency-resume" class="btn" style="width: 100%; padding: 8px; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.5px; display: none; background: #10b981; border-color: #10b981; color: white;" onclick="toggleEmergencyStop(false)">🟢 RESUME TRADING</button>
                         </div>
 
                         <div class="flex-row-center">
