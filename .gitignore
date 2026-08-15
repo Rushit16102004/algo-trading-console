@@ -24,6 +24,7 @@ env/
 .env.*
 .flaskenv
 backend_engine/settings.json
+backend_engine/signals_cache.csv
 *.key
 *.pem
 secrets/

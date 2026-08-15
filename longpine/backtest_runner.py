@@ -51,10 +51,9 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
             except Exception as e:
                 print(f"Error loading LONGPING backtest signals: {e}")
     elif strategy_name == "243A":
-        csv_sig_path = "243A/backtest_signals.csv"
-        csv_results_path = "243A/backtest_results.csv"
+        csv_results_path = "backend_engine/model signal.csv"
         last_backtest_time = None
-        if os.path.exists(csv_sig_path) and os.path.exists(csv_results_path):
+        if os.path.exists(csv_results_path):
             try:
                 df_results = pd.read_csv(csv_results_path)
                 df_results['Entry Time'] = pd.to_datetime(df_results['Entry Time'])

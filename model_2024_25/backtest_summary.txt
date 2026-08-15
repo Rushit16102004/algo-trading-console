@@ -1,35 +1,35 @@
 ==================================================
         HISTORICAL BACKTEST RESULTS (2024 - 2026)
 ==================================================
-Dataset Date Range: 2024-01-01 to 2026-06-30 (Nifty)
+Dataset Date Range: 2024-01-01 to Present (Nifty)
 Note: All calculations below EXCLUDE 0 lot / 0 quantity trades.
 
 --------------------------------------------------
 1. STRATEGY: LONGPING (Trend-Following)
 --------------------------------------------------
-Total Trades Taken:  610
-Wins / Losses:        236 W / 374 L
-Win Rate (WR):        38.69%
-Total PnL (Points):  1207.60 pts
-Total PnL (INR):     78494.00 INR
+Total Trades Taken:  611
+Wins / Losses:        237 W / 374 L
+Win Rate (WR):        38.79%
+Total PnL (Points):  1220.60 pts
+Total PnL (INR):     79339.00 INR
 Max Drawdown (DD):   161245.50 INR
 Starting Capital:    100000.00 INR
-Ending Capital:      178494.00 INR
+Ending Capital:      179339.00 INR
 Recovery Factor:      0.49
 Note: EOD exits are disabled. Holds positions overnight.
 
 --------------------------------------------------
 2. STRATEGY: 243A Consensus (TCN + LGBM + HMM)
 --------------------------------------------------
-Total Trades Taken:  1995
-Wins / Losses:        1106 W / 889 L
-Win Rate (WR):        55.44%
-Total PnL (Points):  23590.25 pts
-Total PnL (INR):     801170.50 INR
-Max Drawdown (DD):   80047.50 INR
+Total Trades Taken:  2083
+Wins / Losses:        1047 W / 1036 L
+Win Rate (WR):        50.26%
+Total PnL (Points):  23681.10 pts
+Total PnL (INR):     2052540.75 INR
+Max Drawdown (DD):   110051.50 INR
 Starting Capital:    100000.00 INR
-Ending Capital:      901170.50 INR
-Recovery Factor:      10.01
+Ending Capital:      2152540.75 INR
+Recovery Factor:      18.65
 Note: Intraday strategy. Force closes at 15:10. Best for option shorting (CE & PE).
 
 ==================================================
