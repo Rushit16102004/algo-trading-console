@@ -594,6 +594,13 @@ async def get_candles(email: str = Query(None), strategy: str = Query("243A")):
             
         markers = [combined_markers_map[t] for t in sorted(combined_markers_map.keys())]
         
+        # Limit to the most recent 3,000 candles to achieve instant page loads (< 300KB payload)
+        limit = 3000
+        if len(candles) > limit:
+            min_allowed_time = candles[-limit]["time"]
+            candles = candles[-limit:]
+            markers = [m for m in markers if m["time"] >= min_allowed_time]
+        
         return {
             "candles": candles,
             "markers": markers
