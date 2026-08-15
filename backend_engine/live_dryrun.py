@@ -858,11 +858,14 @@ def start_user_system(user_id, credentials, strategy_name="243A"):
         
     # Always run the central feed using the primary admin account credentials
     import os
-    admin_api_key = os.getenv("ANGEL_API_KEY", "7cRESEFK")
-    admin_client_id = os.getenv("ANGEL_CLIENT_ID", "AAAE696417")
-    admin_password = os.getenv("ANGEL_PASSWORD", "2712")
-    admin_totp_secret = os.getenv("ANGEL_TOTP_SECRET", "75RYCYW4P72HU6D2E6QV3APOUA")
+    admin_api_key = os.getenv("ANGEL_API_KEY")
+    admin_client_id = os.getenv("ANGEL_CLIENT_ID")
+    admin_password = os.getenv("ANGEL_PASSWORD")
+    admin_totp_secret = os.getenv("ANGEL_TOTP_SECRET")
     
+    if not all([admin_api_key, admin_client_id, admin_password, admin_totp_secret]):
+        print("[CRITICAL] Central feed credentials not found in environment variables! Please check your .env file.")
+        
     credentials = {
         "email": "admin@algo-trading.console",
         "api_key": admin_api_key,

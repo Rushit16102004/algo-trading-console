@@ -161,10 +161,10 @@ def get_user_session(email: str, strategy_name: str = "243A"):
         
     admin_user_id = 1
     if admin_user_id not in live_dryrun.active_sessions:
-        admin_api_key = os.getenv("ANGEL_API_KEY", "7cRESEFK")
-        admin_client_id = os.getenv("ANGEL_CLIENT_ID", "AAAE696417")
-        admin_password = os.getenv("ANGEL_PASSWORD", "2712")
-        admin_totp_secret = os.getenv("ANGEL_TOTP_SECRET", "75RYCYW4P72HU6D2E6QV3APOUA")
+        admin_api_key = os.getenv("ANGEL_API_KEY")
+        admin_client_id = os.getenv("ANGEL_CLIENT_ID")
+        admin_password = os.getenv("ANGEL_PASSWORD")
+        admin_totp_secret = os.getenv("ANGEL_TOTP_SECRET")
         
         credentials = {
             "email": "admin@algo-trading.console",
