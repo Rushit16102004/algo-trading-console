@@ -856,6 +856,29 @@ def start_user_system(user_id, credentials, strategy_name="243A"):
         active_sessions[user_id] = session
         return session
         
+    # Rotate WebSocket feed API usage randomly among registered custom users to be fair
+    import random
+    from backend_engine.users_db import get_all_users
+    try:
+        all_users = get_all_users()
+        valid_users = [
+            u for u in all_users 
+            if u.get('client_id') and u.get('api_key') 
+            and u.get('email') not in ('demo@gmail.com', 'developer@gmail.com')
+        ]
+        if valid_users:
+            selected = random.choice(valid_users)
+            print(f"[Session Rotation] Automatically selected random user {selected['email']} to host the active WebSocket feed.")
+            credentials = {
+                "email": selected["email"],
+                "api_key": selected["api_key"],
+                "client_id": selected["client_id"],
+                "password": selected["password"],
+                "totp_secret": selected["totp_secret"]
+            }
+    except Exception as e:
+        print(f"[Session Rotation] Error rotating credentials: {e}")
+        
     session = UserSession(user_id, credentials, strategy_name)
     active_sessions[user_id] = session
     asyncio.create_task(session.start())
