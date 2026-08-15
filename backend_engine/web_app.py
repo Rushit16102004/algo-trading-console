@@ -594,22 +594,90 @@ async def get_candles(email: str = Query(None), strategy: str = Query("243A")):
 @app.get("/api/download/candles")
 async def download_candles(email: str = Query(None)):
     session = get_user_session(email)
-    if session and os.path.exists(session.candle_builder.candle_data_path):
-        return FileResponse(session.candle_builder.candle_data_path, filename="live_nifty50_candles.csv", media_type="text/csv")
+    path = session.candle_builder.candle_data_path if session else "backend_engine/old data.csv"
+    if os.path.exists(path):
+        try:
+            import io
+            from fastapi.responses import StreamingResponse
+            df = pd.read_csv(path)
+            df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed')
+            today = datetime.date.today()
+            df_today = df[df['timestamp'].dt.date == today]
+            
+            # Fallback to the latest available day if today has no candles (e.g. weekend/holidays)
+            if df_today.empty and not df.empty:
+                latest_date = df['timestamp'].dt.date.max()
+                df_today = df[df['timestamp'].dt.date == latest_date]
+                
+            stream = io.StringIO()
+            df_today.to_csv(stream, index=False)
+            response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+            response.headers["Content-Disposition"] = f"attachment; filename=live_nifty50_candles_today.csv"
+            return response
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error filtering candles: {e}")
     raise HTTPException(status_code=404, detail="Candle data file not found.")
 
 @app.get("/api/download/signals")
 async def download_signals(email: str = Query(None)):
     session = get_user_session(email)
     if session and os.path.exists(session.trade_logger.signal_log_path):
-        return FileResponse(session.trade_logger.signal_log_path, filename="live_signals_log.csv", media_type="text/csv")
+        try:
+            import io
+            from fastapi.responses import StreamingResponse
+            df_sig = pd.read_csv(session.trade_logger.signal_log_path)
+            
+            # Rename columns to match requested format
+            df_sig = df_sig.rename(columns={
+                "datetime": "timestamp",
+                "open": "open",
+                "gbm_signal": "LIGHTGBM",
+                "tcn_signal": "TCN",
+                "hmm_regime": "HMM",
+                "final_entry_signal": "final signal"
+            })
+            
+            # Keep only the requested columns
+            cols_to_keep = ["timestamp", "open", "LIGHTGBM", "TCN", "HMM", "final signal"]
+            df_sig = df_sig[[c for c in cols_to_keep if c in df_sig.columns]]
+            
+            # Filter for today's signals only
+            today_str = datetime.date.today().strftime('%Y-%m-%d')
+            df_sig = df_sig[df_sig['timestamp'].astype(str).str.startswith(today_str)]
+            
+            stream = io.StringIO()
+            df_sig.to_csv(stream, index=False)
+            response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+            response.headers["Content-Disposition"] = "attachment; filename=live_signals_log_today.csv"
+            return response
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error filtering signals: {e}")
     raise HTTPException(status_code=404, detail="Signal log file not found.")
 
 @app.get("/api/download/trades")
 async def download_trades(email: str = Query(None)):
     session = get_user_session(email)
     if session and os.path.exists(session.trade_logger.trade_log_path):
-        return FileResponse(session.trade_logger.trade_log_path, filename="live_trades_ledger_nifty.csv", media_type="text/csv")
+        try:
+            import io
+            from fastapi.responses import StreamingResponse
+            df = pd.read_csv(session.trade_logger.trade_log_path)
+            if not df.empty and 'entry_time' in df.columns:
+                df['entry_time_dt'] = pd.to_datetime(df['entry_time'], format='mixed')
+                latest = df['entry_time_dt'].max()
+                cutoff = latest - pd.Timedelta(days=5)
+                df_filtered = df[df['entry_time_dt'] >= cutoff].copy()
+                df_filtered = df_filtered.drop(columns=['entry_time_dt'])
+            else:
+                df_filtered = df
+                
+            stream = io.StringIO()
+            df_filtered.to_csv(stream, index=False)
+            response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+            response.headers["Content-Disposition"] = "attachment; filename=live_trades_last_5_days.csv"
+            return response
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error filtering trades: {e}")
     raise HTTPException(status_code=404, detail="Trade log file not found.")
 
 @app.get("/api/download/old_data")

@@ -111,8 +111,26 @@ class TradeLogger:
             final_entry_signal
         ]
         
-        with open(self.signal_log_path, "a", newline="", encoding="utf-8") as f:
-            csv.writer(f).writerow(row)
+        try:
+            today_str = datetime.datetime.now().strftime('%Y-%m-%d')
+            existing_rows = []
+            if os.path.exists(self.signal_log_path):
+                try:
+                    df_ex = pd.read_csv(self.signal_log_path)
+                    if 'datetime' in df_ex.columns:
+                        df_ex = df_ex[df_ex['datetime'].astype(str).str.startswith(today_str)]
+                        existing_rows = df_ex.values.tolist()
+                except Exception:
+                    pass
+            existing_rows.append(row)
+            
+            headers = ["datetime", "open", "close", "gbm_signal", "tcn_signal", "hmm_regime", "final_entry_signal"]
+            with open(self.signal_log_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(headers)
+                writer.writerows(existing_rows)
+        except Exception as e:
+            print(f"[TradeLogger] Error pruning/writing signal log: {e}")
 
     def log_completed_trade(self, trade):
         """
