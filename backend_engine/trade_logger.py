@@ -167,6 +167,53 @@ class TradeLogger:
         with open(self.position_log_path, "a", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow(pos_row)
 
+        # Also append to the global strategy trade tracking CSV files
+        strategy = trade.get("strategy", "243A")
+        if strategy == "243A":
+            try:
+                model_signal_path = "backend_engine/model signal.csv"
+                if os.path.exists(model_signal_path):
+                    df_sig = pd.read_csv(model_signal_path)
+                    new_df = pd.DataFrame([{
+                        'Entry Time': entry_dt_str,
+                        'Exit Time': exit_dt_str,
+                        'Direction': signal,
+                        'Nifty Enter Price': entry_nifty,
+                        'Nifty Exit Price': exit_nifty,
+                        '1 QTY PnL': round(nifty_pnl_points, 2),
+                        '65 QTY PnL': round(nifty_pnl_points * 65.0, 2),
+                        'Exit Reason': trade.get("exit_reason", "Consensus signal"),
+                        'Lot Size': float(lots)
+                    }])
+                    df_sig = pd.concat([df_sig, new_df], ignore_index=True)
+                    df_sig.to_csv(model_signal_path, index=False)
+                    # Sync with model_2024_25
+                    dest_nifty = "model_2024_25/merged_01-01-2024_to_06-30-2026_nifty.csv"
+                    df_sig.to_csv(dest_nifty, index=False)
+            except Exception as e:
+                print(f"[TradeLogger] Error saving to model signal.csv: {e}")
+        elif strategy == "LONGPING":
+            try:
+                lp_path = "model_2024_25/backtest_results_longping.csv"
+                if os.path.exists(lp_path):
+                    df_lp = pd.read_csv(lp_path)
+                    new_df = pd.DataFrame([{
+                        'strategy': 'LONGPING',
+                        'signal': 'BUY',
+                        'entry_time': entry_dt_str,
+                        'exit_time': exit_dt_str,
+                        'entry_nifty': entry_nifty,
+                        'exit_nifty': exit_nifty,
+                        'qty': lots * 65,
+                        'pnl_points': round(nifty_pnl_points, 2),
+                        'pnl_inr': round(nifty_pnl_points * lots * 65, 2),
+                        'exit_reason': trade.get("exit_reason")
+                    }])
+                    df_lp = pd.concat([df_lp, new_df], ignore_index=True)
+                    df_lp.to_csv(lp_path, index=False)
+            except Exception as e:
+                print(f"[TradeLogger] Error saving to backtest_results_longping.csv: {e}")
+
     def update_daily_pnl(self, exit_time, all_trades):
         """
         Calculates and updates daily_pnl.csv.

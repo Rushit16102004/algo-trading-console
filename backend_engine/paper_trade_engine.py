@@ -151,6 +151,7 @@ class PaperTradeEngine:
         self.last_was_sl = (exit_reason in ("SL", "FIXED_SL"))
         
         trade_record = {
+            "strategy": getattr(self, "strategy_name", "243A"),
             "signal": "BUY" if pos_type == "LONG" else "SELL",
             "entry_time": pos["entry_time"],
             "exit_time": str(current_time),

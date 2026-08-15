@@ -170,6 +170,7 @@ class UserSession:
             state_path=self.active_positions_path,
             user_id=self.user_id
         )
+        self.paper_trade_engine.strategy_name = self.strategy_name
         self.candles_df = None
         self.ws_handler = None
         self.candle_builder = None
