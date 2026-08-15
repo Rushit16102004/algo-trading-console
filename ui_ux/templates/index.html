@@ -1324,10 +1324,11 @@
             checkAuthentication();
         }
 
-        let downloadsEnabled = false;
+        let downloadsEnabled = true;
         let downloadCountdown = 300; // 5 minutes in seconds
 
         function initDownloadTimer() {
+            return; // Bypassed for now as requested. Turn on later.
             const btnOld = document.getElementById('btn-download-old');
             const btnCandles = document.getElementById('btn-download-candles');
             const btnSignals = document.getElementById('btn-download-signals');
