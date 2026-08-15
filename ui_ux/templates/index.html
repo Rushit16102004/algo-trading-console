@@ -1616,7 +1616,7 @@
                             <td style="font-family: 'JetBrains Mono';">${pos.entry_nifty.toFixed(2)}</td>
                             <td style="font-family: 'JetBrains Mono'; font-weight: 500;">${data.index_ltp.toFixed(2)}</td>
                             <td style="font-family: 'JetBrains Mono'; color:var(--text-muted); font-size:0.75rem;">SL: ${pos.sl_nifty.toFixed(2)}<br>TP: ${pos.tp_nifty.toFixed(2)}</td>
-                            <td style="font-family: 'JetBrains Mono';">${pos.lots}</td>
+                            <td style="font-family: 'JetBrains Mono';">${pos.lots === 0 ? '<span style="color:var(--text-muted); font-size:0.75rem; font-weight:700;">⚠️ 0 (Skip)</span>' : pos.lots}</td>
                             <td style="font-family: 'JetBrains Mono'; color:${pnlColor};">${(pos.pnl_points >= 0 ? '+' : '')}${pos.pnl_points.toFixed(2)}</td>
                         `;
                         tbody.appendChild(tr);
@@ -1761,7 +1761,7 @@
                                 <td style="font-size:0.75rem;">${entryTimeText}<br><span style="color:var(--text-muted); font-size:0.7rem;">${sig.entry_nifty.toFixed(2)}</span></td>
                                 <td style="font-size:0.75rem;">${exitTimeText}<br><span style="color:var(--text-muted); font-size:0.7rem;">${sig.exit_nifty ? sig.exit_nifty.toFixed(2) : '-'}</span></td>
                                 <td><span class="${sig.signal_type === 'BUY' ? 'badge-buy' : 'badge-sell'}">${sig.signal_type}</span></td>
-                                <td style="font-family: 'JetBrains Mono';">${sig.lot_size}L</td>
+                                <td style="font-family: 'JetBrains Mono';">${sig.lot_size === 0 ? '<span style="color:var(--text-muted); font-size:0.75rem; font-weight:700;">⚠️ 0L (Skip)</span>' : sig.lot_size + 'L'}</td>
                                 <td style="font-family: 'JetBrains Mono'; color:${pnlColor}; font-weight:600;">${(sig.pnl >= 0 ? '+' : '')}${sig.pnl.toFixed(0)}</td>
                             `;
                             tbody.appendChild(tr);
