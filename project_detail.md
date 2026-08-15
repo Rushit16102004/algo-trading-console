@@ -105,14 +105,14 @@ The project is built around a **tri-model consensus architecture (Strategy 243A)
 ---
 
 ## 6. Backtesting Performance Outcome (2024 - Present)
-These metrics represent the performance of the **243A Consensus Model** on Nifty Spot 5-minute candles from **January 1, 2024 to August 13, 2026** (using your exact position sizer, time filters, and risk controls):
+These metrics represent the performance of the **243A Consensus Model** on Nifty Option data from **January 1, 2024 to June 30, 2026** (using the Option backtest database, **excluding all 0 lot trades**):
 
-* **Dataset date range**: 2024-01-01 to 2026-08-13
-* **Total Signals Generated**: 3,501 signals
-* **Active Trades Executed**: 1,891 trades
-* **Win Rate (Active)**: **`49.71%`** (Baseline: `47.10%`)
-* **Total PnL (Nifty Points)**: **`+22,952.85 points`** 
-  *(Note: This is based on Nifty index points, NOT option premium PnL)*
-* **Total PnL (Risk-Managed Capital)**: **`+1,740,004.50 INR`** (on a 100,000 INR starting capital)
-* **Max Drawdown (DD)**: **`110,051.50 INR`**
-* **Recovery Factor**: **`15.81`**
+* **Dataset**: Option Backtest (`merged_01-01-2024_to_06-30-2026_option.csv`)
+* **Total Signals Generated**: 3,665 signals
+* **Active Trades Executed (Lot Size > 0)**: 1,995 trades
+* **Win Rate (Active)**: **`55.44%`** (Option Win Rate)
+* **Total PnL (Option Net PnL)**: **`+801,170.50 INR`** (on a 100,000 INR starting capital)
+* **Max Drawdown (DD)**: **`80,047.50 INR`**
+* **Recovery Factor**: **`10.01`**
+* **Total Nifty Spot Points PnL**: **`+23,590.25 points`** (Spot Win Rate: `50.23%`)
+  *(Note: This is the raw Nifty Spot Index point return, while the Option Net PnL represents the options premium outcome)*
