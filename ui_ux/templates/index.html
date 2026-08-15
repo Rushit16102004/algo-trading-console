@@ -739,7 +739,7 @@
             <!-- SIGN UP PANEL -->
             <div id="signup-container" style="display: none;">
                 <h2 style="margin-bottom: 1rem; background: linear-gradient(135deg, white, var(--text-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight:700;">Account Setup</h2>
-                <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1.25rem;">Enter your email, create a 6-digit PIN, and provide your Angel One details. These will be secured inside your local database sandbox.</p>
+                <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1.25rem;">Enter your email and create a secure 6-digit PIN to register your console account.</p>
                 <form onsubmit="handleSignUp(event)">
                     <div class="form-group">
                         <label for="signup-email">Email Address</label>
@@ -749,23 +749,7 @@
                         <label for="signup-pin">Create 6-Digit PIN</label>
                         <input type="password" id="signup-pin" placeholder="••••••" required maxlength="6" pattern="\d{6}" inputmode="numeric" style="text-align: center; font-size: 1.25rem; letter-spacing: 4px; font-family: 'JetBrains Mono', monospace;">
                     </div>
-                    <div class="form-group">
-                        <label for="signup-api-key">Angel One API Key</label>
-                        <input type="text" id="signup-api-key" placeholder="Developer App API Key" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="signup-client-id">Angel One Client ID</label>
-                        <input type="text" id="signup-client-id" placeholder="Trading Account ID (e.g. AAA96417)" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="signup-password">MPIN Password</label>
-                        <input type="password" id="signup-password" placeholder="Trading MPIN" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="signup-totp-secret">Angel One TOTP Token Secret</label>
-                        <input type="text" id="signup-totp-secret" placeholder="TOTP Secret (Base32 Key)" required style="font-family:'JetBrains Mono';">
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding:12px;">Validate & Create Account</button>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding:12px;">Create Account</button>
                     <button type="button" class="btn btn-secondary" onclick="enterDemoMode()" style="width: 100%; margin-top: 10px; padding:12px; font-weight:600; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: white;">⚡ Try Demo Mode</button>
                 </form>
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1.25rem;">Already have an account? <a href="#" onclick="showSignInForm()" style="color: var(--accent-blue); text-decoration: none; font-weight:600;">Log In</a></p>
@@ -1241,18 +1225,14 @@
             event.preventDefault();
             const email = document.getElementById("signup-email").value;
             const pin = document.getElementById("signup-pin").value;
-            const apiKey = document.getElementById("signup-api-key").value;
-            const clientId = document.getElementById("signup-client-id").value;
-            const password = document.getElementById("signup-password").value;
-            const totpSecret = document.getElementById("signup-totp-secret").value;
             
             const formData = new FormData();
             formData.append("email", email);
             formData.append("pin", pin);
-            formData.append("api_key", apiKey);
-            formData.append("client_id", clientId);
-            formData.append("password", password);
-            formData.append("totp_secret", totpSecret);
+            formData.append("api_key", "");
+            formData.append("client_id", "");
+            formData.append("password", "");
+            formData.append("totp_secret", "");
             
             try {
                 const response = await fetch("/api/auth/register", {

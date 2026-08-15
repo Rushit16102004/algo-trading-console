@@ -856,28 +856,21 @@ def start_user_system(user_id, credentials, strategy_name="243A"):
         active_sessions[user_id] = session
         return session
         
-    # Rotate WebSocket feed API usage randomly among registered custom users to be fair
-    import random
-    from backend_engine.users_db import get_all_users
-    try:
-        all_users = get_all_users()
-        valid_users = [
-            u for u in all_users 
-            if u.get('client_id') and u.get('api_key') 
-            and u.get('email') not in ('demo@gmail.com', 'developer@gmail.com')
-        ]
-        if valid_users:
-            selected = random.choice(valid_users)
-            print(f"[Session Rotation] Automatically selected random user {selected['email']} to host the active WebSocket feed.")
-            credentials = {
-                "email": selected["email"],
-                "api_key": selected["api_key"],
-                "client_id": selected["client_id"],
-                "password": selected["password"],
-                "totp_secret": selected["totp_secret"]
-            }
-    except Exception as e:
-        print(f"[Session Rotation] Error rotating credentials: {e}")
+    # Always run the central feed using the primary admin account credentials
+    import os
+    admin_api_key = os.getenv("ANGEL_API_KEY", "7cRESEFK")
+    admin_client_id = os.getenv("ANGEL_CLIENT_ID", "AAAE696417")
+    admin_password = os.getenv("ANGEL_PASSWORD", "2712")
+    admin_totp_secret = os.getenv("ANGEL_TOTP_SECRET", "75RYCYW4P72HU6D2E6QV3APOUA")
+    
+    credentials = {
+        "email": "admin@algo-trading.console",
+        "api_key": admin_api_key,
+        "client_id": admin_client_id,
+        "password": admin_password,
+        "totp_secret": admin_totp_secret
+    }
+    print(f"[Central Feed] Using central admin account ({admin_client_id}) for live market data feed.")
         
     session = UserSession(user_id, credentials, strategy_name)
     active_sessions[user_id] = session

@@ -158,43 +158,25 @@ starting_sessions = set()
 def get_user_session(email: str, strategy_name: str = "243A"):
     if not email:
         return None
-    user = get_user_by_email(email)
-    if not user:
-        return None
         
-    user_id = user["id"]
-    if user_id in starting_sessions:
-        # Wait a brief moment if another request is currently initializing this session
-        import time
-        for _ in range(30):
-            if user_id in live_dryrun.active_sessions:
-                break
-            time.sleep(0.1)
-            
-    if user_id not in live_dryrun.active_sessions:
-        starting_sessions.add(user_id)
-        try:
-            # Stop developer session if a custom user logs in to release resources
-            dev_user = get_user_by_email("developer@gmail.com")
-            if dev_user and dev_user["id"] != user_id:
-                try:
-                    live_dryrun.stop_user_system(dev_user["id"])
-                    print(f"[Session Manager] Stopped developer default session for custom user {email}")
-                except Exception as e:
-                    print(f"[Session Manager] Error stopping dev session: {e}")
-
-            credentials = {
-                "email": email,
-                "api_key": user["api_key"],
-                "client_id": user["client_id"],
-                "password": user["password"],
-                "totp_secret": user["totp_secret"]
-            }
-            live_dryrun.start_user_system(user_id, credentials, strategy_name=strategy_name)
-        finally:
-            starting_sessions.discard(user_id)
-            
-    return live_dryrun.active_sessions.get(user_id)
+    admin_user_id = 1
+    if admin_user_id not in live_dryrun.active_sessions:
+        admin_api_key = os.getenv("ANGEL_API_KEY", "7cRESEFK")
+        admin_client_id = os.getenv("ANGEL_CLIENT_ID", "AAAE696417")
+        admin_password = os.getenv("ANGEL_PASSWORD", "2712")
+        admin_totp_secret = os.getenv("ANGEL_TOTP_SECRET", "75RYCYW4P72HU6D2E6QV3APOUA")
+        
+        credentials = {
+            "email": "admin@algo-trading.console",
+            "api_key": admin_api_key,
+            "client_id": admin_client_id,
+            "password": admin_password,
+            "totp_secret": admin_totp_secret
+        }
+        print(f"[Session Manager] Starting central admin session for user {email}")
+        live_dryrun.start_user_system(admin_user_id, credentials, strategy_name=strategy_name)
+        
+    return live_dryrun.active_sessions.get(admin_user_id)
 
 def get_recent_logs(system_log_path: str, num_lines=150):
     if not os.path.exists(system_log_path):
@@ -205,6 +187,49 @@ def get_recent_logs(system_log_path: str, num_lines=150):
             return [line.strip() for line in lines[-num_lines:]]
     except Exception as e:
         return [f"Error reading logs: {e}"]
+
+# NSE HOLIDAYS 2026
+HOLIDAYS = {
+    "2026-01-15", "2026-01-26", "2026-03-03", "2026-03-26", "2026-03-31",
+    "2026-04-03", "2026-04-14", "2026-05-01", "2026-05-28", "2026-06-26",
+    "2026-09-14", "2026-10-02", "2026-10-20", "2026-11-10", "2026-11-24",
+    "2026-12-25"
+}
+
+async def market_hours_scheduler_loop():
+    """
+    Background loop that:
+    - Starts the central feed automatically at 9:00 AM IST.
+    - Stops the central feed automatically at 4:00 PM IST (16:00).
+    - Skips weekends and holidays.
+    """
+    import pytz
+    ist_tz = pytz.timezone("Asia/Kolkata")
+    admin_user_id = 1
+    
+    while True:
+        try:
+            now = datetime.datetime.now(ist_tz)
+            today_str = now.strftime("%Y-%m-%d")
+            
+            # Monday-Friday and not an NSE holiday
+            is_trading_day = now.weekday() < 5 and today_str not in HOLIDAYS
+            
+            # Start at 9:00 AM and stop at 4:00 PM (16:00)
+            is_market_hours = is_trading_day and (datetime.time(9, 0) <= now.time() <= datetime.time(16, 0))
+            
+            if is_market_hours:
+                if admin_user_id not in live_dryrun.active_sessions:
+                    print(f"[Scheduler] Market is open ({now.strftime('%H:%M:%S')}). Auto-starting central trading feed...")
+                    # Start the central session (credentials fallback to env inside start_user_system)
+                    live_dryrun.start_user_system(admin_user_id, {}, strategy_name="243A")
+            else:
+                if admin_user_id in live_dryrun.active_sessions:
+                    print(f"[Scheduler] Market is closed ({now.strftime('%H:%M:%S')}). Auto-stopping central trading feed...")
+                    live_dryrun.stop_user_system(admin_user_id)
+        except Exception as e:
+            print(f"[Scheduler Error] {e}")
+        await asyncio.sleep(30)
 
 @app.on_event("startup")
 async def startup_event():
@@ -239,8 +264,8 @@ async def startup_event():
     except Exception as e:
         print(f"[Startup] Error auto-registering default users: {e}")
         
-    # Start the background checker to manage daily resets
-    live_dryrun.start_background_system()
+    # Start the automated market hours scheduler task
+    asyncio.create_task(market_hours_scheduler_loop())
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -273,31 +298,16 @@ async def register(
     request: Request,
     email: str = Form(...),
     pin: str = Form(...),
-    api_key: str = Form(...),
-    client_id: str = Form(...),
-    password: str = Form(...),
-    totp_secret: str = Form(...)
+    api_key: str = Form(""),
+    client_id: str = Form(""),
+    password: str = Form(""),
+    totp_secret: str = Form("")
 ):
-    """Registers a new user and validates their credentials on Angel One if not in Demo Mode."""
+    """Registers a new user inside the local database sandbox."""
     client_ip = request.client.host
     if not check_rate_limit(client_ip, limit=3, window=60):
         raise HTTPException(status_code=429, detail="Too many attempts. Please try again later.")
         
-    from backend_engine.config import DEMO_MODE
-    if not DEMO_MODE:
-        import pyotp
-        from SmartApi import SmartConnect
-        
-        try:
-            smart_connect = SmartConnect(api_key=api_key.strip())
-            totp = pyotp.TOTP(totp_secret.strip()).now()
-            data = smart_connect.generateSession(client_id.strip(), password.strip(), totp)
-            if data.get('status') != True:
-                err_msg = data.get('message', 'Angel One validation failed.')
-                return {"status": "error", "message": f"Credential check failed: {err_msg}"}
-        except Exception as e:
-            return {"status": "error", "message": f"Angel One validation error: {str(e)}"}
-            
     success = register_user(
         email=email.strip().lower(),
         pin=pin.strip(),
