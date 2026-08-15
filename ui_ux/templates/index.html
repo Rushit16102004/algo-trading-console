@@ -1382,8 +1382,9 @@
                 return;
             }
             const email = localStorage.getItem("user_email");
+            const strategy = document.getElementById('active-strategy-select').value;
             if (email) {
-                window.location.href = `${endpoint}?email=${encodeURIComponent(email)}`;
+                window.location.href = `${endpoint}?email=${encodeURIComponent(email)}&strategy=${encodeURIComponent(strategy)}`;
             }
         }
 

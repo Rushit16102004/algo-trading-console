@@ -621,11 +621,12 @@ async def download_candles(email: str = Query(None)):
 @app.get("/api/download/signals")
 async def download_signals(email: str = Query(None)):
     session = get_user_session(email)
-    if session and os.path.exists(session.trade_logger.signal_log_path):
+    path = session.trade_logger.signal_log_path if session else "data/logs_dryrun/signal_log.csv"
+    if os.path.exists(path):
         try:
             import io
             from fastapi.responses import StreamingResponse
-            df_sig = pd.read_csv(session.trade_logger.signal_log_path)
+            df_sig = pd.read_csv(path)
             
             # Rename columns to match requested format
             df_sig = df_sig.rename(columns={
@@ -643,10 +644,20 @@ async def download_signals(email: str = Query(None)):
             
             # Filter for today's signals only
             today_str = datetime.date.today().strftime('%Y-%m-%d')
-            df_sig = df_sig[df_sig['timestamp'].astype(str).str.startswith(today_str)]
+            df_filtered = df_sig[df_sig['timestamp'].astype(str).str.startswith(today_str)]
+            
+            # Fallback to the latest available day if today has no signals
+            if df_filtered.empty and not df_sig.empty:
+                try:
+                    df_sig['date_only'] = pd.to_datetime(df_sig['timestamp'], format='mixed').dt.date
+                    latest_date = df_sig['date_only'].max()
+                    df_filtered = df_sig[df_sig['date_only'] == latest_date].copy()
+                    df_filtered = df_filtered.drop(columns=['date_only'])
+                except Exception:
+                    df_filtered = df_sig
             
             stream = io.StringIO()
-            df_sig.to_csv(stream, index=False)
+            df_filtered.to_csv(stream, index=False)
             response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
             response.headers["Content-Disposition"] = "attachment; filename=live_signals_log_today.csv"
             return response
@@ -655,15 +666,21 @@ async def download_signals(email: str = Query(None)):
     raise HTTPException(status_code=404, detail="Signal log file not found.")
 
 @app.get("/api/download/trades")
-async def download_trades(email: str = Query(None)):
-    session = get_user_session(email)
-    if session and os.path.exists(session.trade_logger.trade_log_path):
+async def download_trades(email: str = Query(None), strategy: str = Query("243A")):
+    # Select path based on strategy to guarantee we always have completed trade history
+    if strategy == "243A":
+        path = "backend_engine/model signal.csv"
+    else:
+        path = "model_2024_25/backtest_results_longping.csv"
+        
+    if os.path.exists(path):
         try:
             import io
             from fastapi.responses import StreamingResponse
-            df = pd.read_csv(session.trade_logger.trade_log_path)
-            if not df.empty and 'entry_time' in df.columns:
-                df['entry_time_dt'] = pd.to_datetime(df['entry_time'], format='mixed')
+            df = pd.read_csv(path)
+            if not df.empty:
+                time_col = 'Entry Time' if 'Entry Time' in df.columns else 'entry_time'
+                df['entry_time_dt'] = pd.to_datetime(df[time_col], format='mixed')
                 latest = df['entry_time_dt'].max()
                 cutoff = latest - pd.Timedelta(days=5)
                 df_filtered = df[df['entry_time_dt'] >= cutoff].copy()
@@ -674,7 +691,7 @@ async def download_trades(email: str = Query(None)):
             stream = io.StringIO()
             df_filtered.to_csv(stream, index=False)
             response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
-            response.headers["Content-Disposition"] = "attachment; filename=live_trades_last_5_days.csv"
+            response.headers["Content-Disposition"] = f"attachment; filename=live_trades_last_5_days_{strategy}.csv"
             return response
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error filtering trades: {e}")
