@@ -29,6 +29,12 @@
             color: #f3f4f6 !important;
         }
 
+        .btn-disabled {
+            pointer-events: none !important;
+            opacity: 0.4 !important;
+            cursor: not-allowed !important;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -988,9 +994,9 @@
                         <div style="border-top: 1px solid rgba(255, 255, 255, 0.05); margin-top: 0.5rem; padding-top: 1rem;">
                             <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing:0.5px;">Download Ledger Logs</div>
                             <div class="quick-actions">
-                                <a href="#" onclick="downloadWithEmail('/api/download/candles')" class="btn" style="text-decoration: none; font-size:0.75rem;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Candles</a>
-                                <a href="#" onclick="downloadWithEmail('/api/download/signals')" class="btn" style="text-decoration: none; font-size:0.75rem;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Signals</a>
-                                <a href="#" onclick="downloadWithEmail('/api/download/trades')" class="btn" style="text-decoration: none; font-size:0.75rem;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Trades</a>
+                                <a href="#" id="btn-download-candles" onclick="downloadWithEmail('/api/download/candles')" class="btn" style="text-decoration: none; font-size:0.75rem;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Candles</a>
+                                <a href="#" id="btn-download-signals" onclick="downloadWithEmail('/api/download/signals')" class="btn" style="text-decoration: none; font-size:0.75rem;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Signals</a>
+                                <a href="#" id="btn-download-trades" onclick="downloadWithEmail('/api/download/trades')" class="btn" style="text-decoration: none; font-size:0.75rem;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Trades</a>
                             </div>
                         </div>
                     </div>
@@ -1029,6 +1035,7 @@
         function startApp() {
             initChart();
             checkAuthentication();
+            initDownloadTimer();
         }
 
         // Initialize App
@@ -1317,7 +1324,62 @@
             checkAuthentication();
         }
 
+        let downloadsEnabled = false;
+        let downloadCountdown = 300; // 5 minutes in seconds
+
+        function initDownloadTimer() {
+            const btnOld = document.getElementById('btn-download-old');
+            const btnCandles = document.getElementById('btn-download-candles');
+            const btnSignals = document.getElementById('btn-download-signals');
+            const btnTrades = document.getElementById('btn-download-trades');
+
+            if (!btnOld || !btnCandles || !btnSignals || !btnTrades) return;
+
+            // Set initial state
+            btnOld.classList.add('btn-disabled');
+            btnOld.disabled = true;
+            btnCandles.classList.add('btn-disabled');
+            btnSignals.classList.add('btn-disabled');
+            btnTrades.classList.add('btn-disabled');
+
+            const interval = setInterval(() => {
+                downloadCountdown--;
+                if (downloadCountdown <= 0) {
+                    clearInterval(interval);
+                    downloadsEnabled = true;
+
+                    btnOld.classList.remove('btn-disabled');
+                    btnOld.disabled = false;
+                    btnOld.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download Data`;
+
+                    btnCandles.classList.remove('btn-disabled');
+                    btnCandles.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Candles`;
+
+                    btnSignals.classList.remove('btn-disabled');
+                    btnSignals.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Signals`;
+
+                    btnTrades.classList.remove('btn-disabled');
+                    btnTrades.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Trades`;
+
+                    showToast("Download features are now unlocked!", "success");
+                } else {
+                    const mins = Math.floor(downloadCountdown / 60);
+                    const secs = downloadCountdown % 60;
+                    const timerText = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+                    btnOld.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Locked (${timerText})`;
+                    btnCandles.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> (${timerText})`;
+                    btnSignals.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> (${timerText})`;
+                    btnTrades.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> (${timerText})`;
+                }
+            }, 1000);
+        }
+
         function downloadWithEmail(endpoint) {
+            if (!downloadsEnabled) {
+                showToast("Download is locked until 5 minutes of page activity have passed.", "warning");
+                return;
+            }
             const email = localStorage.getItem("user_email");
             if (email) {
                 window.location.href = `${endpoint}?email=${encodeURIComponent(email)}`;
@@ -1869,6 +1931,10 @@
 
         // Download Filtered Old Data
         function downloadFilteredOldData() {
+            if (!downloadsEnabled) {
+                showToast("Download is locked until 5 minutes of page activity have passed.", "warning");
+                return;
+            }
             const year = document.getElementById('download-year-select').value;
             showToast(`Downloading historical old data for: ${year}...`);
             window.location.href = `/api/download/old_data?year=${year}`;
