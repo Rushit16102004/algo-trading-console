@@ -156,12 +156,11 @@ class UserSession:
         self.strategy_name = strategy_name
         self.email = credentials.get("email", "")
         self.is_demo = self.email in ("demo@gmail.com", "developer@gmail.com")
-        data_dir = os.getenv("DATA_DIR", "data")
-        self.user_dir = f"{data_dir}/user_{user_id}"
+        self.user_dir = "data"
         os.makedirs(self.user_dir, exist_ok=True)
         
         self.candle_data_path = "backend_engine/old data.csv"
-        self.active_positions_path = f"{self.user_dir}/active_positions.json"
+        self.active_positions_path = "data/active_positions.json"
         
         self.trade_logger = TradeLogger(user_dir=self.user_dir)
         self.risk_manager = RiskManager()
@@ -848,8 +847,13 @@ def sync_model_signals(session, strategy_name):
         session.warmup_in_progress = False
 
 def start_user_system(user_id, credentials, strategy_name="243A"):
-    if user_id in active_sessions:
-        active_sessions[user_id].stop()
+    if active_sessions:
+        # Re-use existing running session to avoid duplicate streams & CPU usage
+        active_uid = list(active_sessions.keys())[0]
+        session = active_sessions[active_uid]
+        print(f"[Session Manager] Active session already running for user {active_uid}. Reusing for user {user_id}.")
+        active_sessions[user_id] = session
+        return session
         
     session = UserSession(user_id, credentials, strategy_name)
     active_sessions[user_id] = session
@@ -858,8 +862,12 @@ def start_user_system(user_id, credentials, strategy_name="243A"):
 
 def stop_user_system(user_id):
     if user_id in active_sessions:
-        active_sessions[user_id].stop()
+        session = active_sessions[user_id]
         del active_sessions[user_id]
+        # Only stop the session if no other active users are using it
+        if not any(s == session for s in active_sessions.values()):
+            session.stop()
+            print(f"[Session Manager] All users logged out. Stopped shared session.")
 
 async def daily_restart_checker_loop():
     """Daily check to restart all user systems cleanly at 9:00 AM IST."""
