@@ -1535,11 +1535,16 @@
                 const syncBadge = document.getElementById('sync-status-badge');
                 if (data.sync_in_progress) {
                     if (!wasSyncing) {
-                        showToast("Auto-syncing missing candles in background...", "info");
+                        showToast("Model warm-up and gap-sync active...", "info");
                     }
                     if (syncBadge) {
                         syncBadge.style.display = 'inline-flex';
-                        syncBadge.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="width: 10px; height: 10px; border-width: 0.125em;"></span> Syncing gap...';
+                        if (data.warmup_in_progress) {
+                            const minutesRemaining = Math.max(1, Math.ceil(data.warmup_time_remaining / 60));
+                            syncBadge.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="width: 10px; height: 10px; border-width: 0.125em;"></span> Warmup (${data.warmup_progress}) ~${minutesRemaining} min left`;
+                        } else {
+                            syncBadge.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="width: 10px; height: 10px; border-width: 0.125em;"></span> Syncing gap...';
+                        }
                     }
                     wasSyncing = true;
                 } else {

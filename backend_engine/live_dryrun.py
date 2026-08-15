@@ -180,6 +180,13 @@ class UserSession:
         self.index_ltp = 0.0
         self.last_index_time = None
         
+        self.sync_in_progress = False
+        self.warmup_in_progress = False
+        self.warmup_total = 0
+        self.warmup_current = 0
+        self.warmup_progress = "0/0"
+        self.warmup_time_remaining = 0
+        
         self.system_running = False
         self.tasks = []
 
@@ -246,163 +253,167 @@ class UserSession:
         if self.candles_df is None or self.candles_df.empty:
             return
             
+        self.sync_in_progress = True
         try:
-            # Parse the last timestamp in our database
-            last_timestamp = pd.to_datetime(self.candles_df.iloc[-1]['timestamp'])
-            if last_timestamp.tzinfo is not None:
-                last_timestamp = last_timestamp.tz_localize(None)
-        except Exception:
-            return
-            
-        now = datetime.datetime.now()
-        
-        # Check if the gap is larger than 10 minutes (to avoid unnecessary fetches)
-        if (now - last_timestamp).total_seconds() < 600:
-            self.trade_logger.log_activity("Database is up to date. No historical gap found.")
-            return
-            
-        self.trade_logger.log_activity(f"Calculating missing candles since {last_timestamp} up to {now}...")
-        
-        from backend_engine.config import DEMO_MODE
-        if DEMO_MODE:
-            self.trade_logger.log_activity("[DEMO] Bypassing historical gap filler sync in Demo Mode.")
-            return
-
-        sc = smart_connect
-        if sc is None:
-            # Only attempt developer credential fallback if DEMO_MODE is False
-            self.trade_logger.log_activity("No active user session found. Logging in with default developer credentials...")
             try:
-                import pyotp
-                from SmartApi import SmartConnect
-                dev_api_key = os.getenv("DEV_API_KEY", "")
-                dev_client_id = os.getenv("DEV_CLIENT_ID", "")
-                dev_password = os.getenv("DEV_PASSWORD", "")
-                dev_totp_secret = os.getenv("DEV_TOTP_SECRET", "")
-                
-                if not (dev_api_key and dev_client_id):
-                    self.trade_logger.log_activity("Developer credentials not configured in environment variables. Cannot sync missing candles.")
-                    return
-                    
-                sc = SmartConnect(api_key=dev_api_key)
-                totp = pyotp.TOTP(dev_totp_secret).now()
-                data = sc.generateSession(dev_client_id, dev_password, totp)
-                if data.get('status') != True:
-                    self.trade_logger.log_activity("Developer credentials authentication failed. Cannot sync missing candles.")
-                    return
-            except Exception as e:
-                self.trade_logger.log_activity(f"Error authenticating with developer credentials: {e}")
+                # Parse the last timestamp in our database
+                last_timestamp = pd.to_datetime(self.candles_df.iloc[-1]['timestamp'])
+                if last_timestamp.tzinfo is not None:
+                    last_timestamp = last_timestamp.tz_localize(None)
+            except Exception:
                 return
                 
-        # Fetch the missing candles from last_timestamp to now
-        gap_candles = []
-        curr_start = last_timestamp
-        
-        from backend_engine.websocket_handler import CONSTITUENT_TOKENS
-        import time
-        
-        while curr_start < now:
-            curr_end = min(curr_start + datetime.timedelta(days=30), now)
-            from_str = curr_start.strftime("%Y-%m-%d %H:%M")
-            to_str = curr_end.strftime("%Y-%m-%d %H:%M")
+            now = datetime.datetime.now()
             
-            historicParam = {
-                "exchange": "NSE",
-                "symboltoken": "99926000",
-                "interval": "FIVE_MINUTE",
-                "fromdate": from_str,
-                "todate": to_str
-            }
-            
-            spot_data = []
-            try:
-                for attempt in range(3):
-                    try:
-                        res = sc.getCandleData(historicParam)
-                        if res and res.get('status') == True and res.get('data'):
-                            spot_data = res['data']
-                            break
-                        else:
-                            time.sleep(2.0)
-                    except Exception:
-                        time.sleep(2.0)
-            except Exception as e:
-                self.trade_logger.log_activity(f"Error fetching Nifty Spot history: {e}")
-                break
+            # Check if the gap is larger than 10 minutes (to avoid unnecessary fetches)
+            if (now - last_timestamp).total_seconds() < 600:
+                self.trade_logger.log_activity("Database is up to date. No historical gap found.")
+                return
                 
-            if not spot_data:
-                curr_start = curr_end + datetime.timedelta(days=1)
-                continue
-                
-            # Fetch constituent volume data for the same period
-            volume_by_time = {}
-            self.trade_logger.log_activity(f"Downloading constituent volumes for {len(spot_data)} gap candles...")
+            self.trade_logger.log_activity(f"Calculating missing candles since {last_timestamp} up to {now}...")
             
-            for idx, token in enumerate(CONSTITUENT_TOKENS):
-                stockParam = {
+            from backend_engine.config import DEMO_MODE
+            if DEMO_MODE:
+                self.trade_logger.log_activity("[DEMO] Bypassing historical gap filler sync in Demo Mode.")
+                return
+    
+            sc = smart_connect
+            if sc is None:
+                # Only attempt developer credential fallback if DEMO_MODE is False
+                self.trade_logger.log_activity("No active user session found. Logging in with default developer credentials...")
+                try:
+                    import pyotp
+                    from SmartApi import SmartConnect
+                    dev_api_key = os.getenv("DEV_API_KEY", "")
+                    dev_client_id = os.getenv("DEV_CLIENT_ID", "")
+                    dev_password = os.getenv("DEV_PASSWORD", "")
+                    dev_totp_secret = os.getenv("DEV_TOTP_SECRET", "")
+                    
+                    if not (dev_api_key and dev_client_id):
+                        self.trade_logger.log_activity("Developer credentials not configured in environment variables. Cannot sync missing candles.")
+                        return
+                        
+                    sc = SmartConnect(api_key=dev_api_key)
+                    totp = pyotp.TOTP(dev_totp_secret).now()
+                    data = sc.generateSession(dev_client_id, dev_password, totp)
+                    if data.get('status') != True:
+                        self.trade_logger.log_activity("Developer credentials authentication failed. Cannot sync missing candles.")
+                        return
+                except Exception as e:
+                    self.trade_logger.log_activity(f"Error authenticating with developer credentials: {e}")
+                    return
+                    
+            # Fetch the missing candles from last_timestamp to now
+            gap_candles = []
+            curr_start = last_timestamp
+            
+            from backend_engine.websocket_handler import CONSTITUENT_TOKENS
+            import time
+            
+            while curr_start < now:
+                curr_end = min(curr_start + datetime.timedelta(days=30), now)
+                from_str = curr_start.strftime("%Y-%m-%d %H:%M")
+                to_str = curr_end.strftime("%Y-%m-%d %H:%M")
+                
+                historicParam = {
                     "exchange": "NSE",
-                    "symboltoken": str(token),
+                    "symboltoken": "99926000",
                     "interval": "FIVE_MINUTE",
                     "fromdate": from_str,
                     "todate": to_str
                 }
+                
+                spot_data = []
                 try:
-                    stock_candles = []
                     for attempt in range(3):
                         try:
-                            res = sc.getCandleData(stockParam)
+                            res = sc.getCandleData(historicParam)
                             if res and res.get('status') == True and res.get('data'):
-                                stock_candles = res['data']
+                                spot_data = res['data']
                                 break
                             else:
                                 time.sleep(2.0)
                         except Exception:
                             time.sleep(2.0)
-                                
-                    for item in stock_candles:
-                        dt_val = pd.to_datetime(item[0])
-                        if dt_val.tzinfo is not None:
-                            dt_val = dt_val.tz_localize(None)
-                        ts_str = dt_val.strftime('%Y-%m-%d %H:%M:%S')
-                        volume_by_time[ts_str] = volume_by_time.get(ts_str, 0) + int(item[5])
-                except Exception:
-                    pass
-                time.sleep(0.35) # keep requests spaced out under the 3 TPS history API rate limit
+                except Exception as e:
+                    self.trade_logger.log_activity(f"Error fetching Nifty Spot history: {e}")
+                    break
+                    
+                if not spot_data:
+                    curr_start = curr_end + datetime.timedelta(days=1)
+                    continue
+                    
+                # Fetch constituent volume data for the same period
+                volume_by_time = {}
+                self.trade_logger.log_activity(f"Downloading constituent volumes for {len(spot_data)} gap candles...")
                 
-            # Merge Spot OHLC with summed stock volumes
-            for item in spot_data:
-                dt_parsed = pd.to_datetime(item[0])
-                if dt_parsed.tzinfo is not None:
-                    dt_parsed = dt_parsed.tz_localize(None)
+                for idx, token in enumerate(CONSTITUENT_TOKENS):
+                    stockParam = {
+                        "exchange": "NSE",
+                        "symboltoken": str(token),
+                        "interval": "FIVE_MINUTE",
+                        "fromdate": from_str,
+                        "todate": to_str
+                    }
+                    try:
+                        stock_candles = []
+                        for attempt in range(3):
+                            try:
+                                res = sc.getCandleData(stockParam)
+                                if res and res.get('status') == True and res.get('data'):
+                                    stock_candles = res['data']
+                                    break
+                                else:
+                                    time.sleep(2.0)
+                            except Exception:
+                                time.sleep(2.0)
+                                    
+                        for item in stock_candles:
+                            dt_val = pd.to_datetime(item[0])
+                            if dt_val.tzinfo is not None:
+                                dt_val = dt_val.tz_localize(None)
+                            ts_str = dt_val.strftime('%Y-%m-%d %H:%M:%S')
+                            volume_by_time[ts_str] = volume_by_time.get(ts_str, 0) + int(item[5])
+                    except Exception:
+                        pass
+                    time.sleep(0.35) # keep requests spaced out under the 3 TPS history API rate limit
                     
-                if dt_parsed > last_timestamp:
-                    ts_str = dt_parsed.strftime('%Y-%m-%d %H:%M:%S')
-                    summed_vol = float(volume_by_time.get(ts_str, 0))
-                    gap_candles.append({
-                        "timestamp": ts_str,
-                        "open": float(item[1]),
-                        "high": float(item[2]),
-                        "low": float(item[3]),
-                        "close": float(item[4]),
-                        "volume": summed_vol
-                    })
-                    
-            curr_start = curr_end + datetime.timedelta(days=1)
-            time.sleep(0.5)
-            
-        if gap_candles:
-            self.trade_logger.log_activity(f"Downloaded {len(gap_candles)} missing candles with constituent volume sums.")
-            df_gap = pd.DataFrame(gap_candles)
-            self.candles_df = pd.concat([self.candles_df, df_gap], ignore_index=True)
-            self.candles_df = self.candles_df.drop_duplicates(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
-            self.candles_df.to_csv(self.candle_data_path, index=False)
-            self.trade_logger.log_activity("Historical database updated with missing candles successfully.")
-        else:
-            self.trade_logger.log_activity("No new missing candles found to sync.")
-            
-        # Sync strategy signals for both models!
-        sync_model_signals(self.candles_df, "243A", self.trade_logger)
-        sync_model_signals(self.candles_df, "LONGPING", self.trade_logger)
+                # Merge Spot OHLC with summed stock volumes
+                for item in spot_data:
+                    dt_parsed = pd.to_datetime(item[0])
+                    if dt_parsed.tzinfo is not None:
+                        dt_parsed = dt_parsed.tz_localize(None)
+                        
+                    if dt_parsed > last_timestamp:
+                        ts_str = dt_parsed.strftime('%Y-%m-%d %H:%M:%S')
+                        summed_vol = float(volume_by_time.get(ts_str, 0))
+                        gap_candles.append({
+                            "timestamp": ts_str,
+                            "open": float(item[1]),
+                            "high": float(item[2]),
+                            "low": float(item[3]),
+                            "close": float(item[4]),
+                            "volume": summed_vol
+                        })
+                        
+                curr_start = curr_end + datetime.timedelta(days=1)
+                time.sleep(0.5)
+                
+            if gap_candles:
+                self.trade_logger.log_activity(f"Downloaded {len(gap_candles)} missing candles with constituent volume sums.")
+                df_gap = pd.DataFrame(gap_candles)
+                self.candles_df = pd.concat([self.candles_df, df_gap], ignore_index=True)
+                self.candles_df = self.candles_df.drop_duplicates(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
+                self.candles_df.to_csv(self.candle_data_path, index=False)
+                self.trade_logger.log_activity("Historical database updated with missing candles successfully.")
+            else:
+                self.trade_logger.log_activity("No new missing candles found to sync.")
+                
+            # Sync strategy signals for both models!
+            sync_model_signals(self, "243A")
+            sync_model_signals(self, "LONGPING")
+        finally:
+            self.sync_in_progress = False
 
     async def start(self):
         if self.system_running:
@@ -759,7 +770,10 @@ class UserSession:
                 pass
         self.tasks = []
 
-def sync_model_signals(candles_df, strategy_name, trade_logger=None):
+def sync_model_signals(session, strategy_name):
+    candles_df = session.candles_df
+    trade_logger = session.trade_logger
+    
     if candles_df is None or candles_df.empty:
         return
         
@@ -776,23 +790,26 @@ def sync_model_signals(candles_df, strategy_name, trade_logger=None):
     else:
         last_signal_ts = pd.to_datetime(strategy_cache['timestamp'].iloc[-1])
         
-    # Calculate calendar day difference
-    days_missing = (last_candle_ts.date() - last_signal_ts.date()).days
-    msg = f"[Model Sync] Strategy: {strategy_name} | Last Signal: {last_signal_ts} | Last Candle: {last_candle_ts} | Days Missing: {days_missing}"
+    missing_indices = candles_df[pd.to_datetime(candles_df['timestamp']) > last_signal_ts].index
+    msg = f"[Model Sync] Strategy: {strategy_name} | Last Signal: {last_signal_ts} | Last Candle: {last_candle_ts} | Missing candles: {len(missing_indices)}"
     if trade_logger:
         trade_logger.log_activity(msg)
     else:
         print(msg)
         
-    if days_missing >= 2:
+    if len(missing_indices) > 0:
         msg = f"[Model Sync] Syncing missing signals for strategy: {strategy_name}..."
         if trade_logger:
             trade_logger.log_activity(msg)
         else:
             print(msg)
             
-        # Parse missing timestamps
-        missing_indices = candles_df[pd.to_datetime(candles_df['timestamp']) > last_signal_ts].index
+        session.warmup_in_progress = True
+        session.warmup_total = len(missing_indices)
+        session.warmup_current = 0
+        session.warmup_progress = f"0/{session.warmup_total}"
+        session.warmup_time_remaining = int(session.warmup_total * 0.15)
+        
         from backend_engine.strategies import get_strategy
         strategy = get_strategy(strategy_name)
         
@@ -815,6 +832,10 @@ def sync_model_signals(candles_df, strategy_name, trade_logger=None):
                     trade_logger.log_activity(err_msg)
                 else:
                     print(err_msg)
+            
+            session.warmup_current += 1
+            session.warmup_progress = f"{session.warmup_current}/{session.warmup_total}"
+            session.warmup_time_remaining = int((session.warmup_total - session.warmup_current) * 0.15)
                     
         if predictions_to_save:
             save_predictions_batch(predictions_to_save)
@@ -823,6 +844,8 @@ def sync_model_signals(candles_df, strategy_name, trade_logger=None):
                 trade_logger.log_activity(msg)
             else:
                 print(msg)
+                
+        session.warmup_in_progress = False
 
 def start_user_system(user_id, credentials, strategy_name="243A"):
     if user_id in active_sessions:
