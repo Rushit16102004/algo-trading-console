@@ -89,6 +89,20 @@ HMM_REGIME_PARAMS = {
     "markdown":         {"drift": -0.00015, "vol": 0.00040},
 }
 
+# -------------------------------------------------------------------
+# Pattern Library: daily LightGBM feature fingerprints (self-growing)
+# -------------------------------------------------------------------
+PATTERN_LIBRARY = {}   # {"YYYY-MM-DD": {"vector": np.array, "eod_change": float, "day_range": float}}
+PATTERN_LIBRARY_LOCK = False   # prevent concurrent rebuild
+
+FEATURE_COLS_PATTERN = [
+    "atr_ratio", "roc_10", "displacement", "momentum_disp",
+    "volume_expansion", "compression", "dist_to_swing_high", "dist_to_swing_low",
+    "rsi_14", "rsi_7", "macdhist_norm", "stoch_k", "stoch_d",
+    "cci_14", "willr_14", "sma_50_diff", "sma_200_diff",
+    "bb_upper_diff", "bb_lower_diff", "bb_width", "realized_vol_20"
+]
+
 def download_local_assets():
     """Downloads the standalone lightweight-charts library to local storage to prevent CDN errors."""
     path = "ui_ux/static/lightweight-charts.js"
@@ -247,15 +261,79 @@ async def market_hours_scheduler_loop():
             if is_market_hours:
                 if admin_user_id not in live_dryrun.active_sessions:
                     print(f"[Scheduler] Market is open ({now.strftime('%H:%M:%S')}). Auto-starting central trading feed...")
-                    # Start the central session (credentials fallback to env inside start_user_system)
                     live_dryrun.start_user_system(admin_user_id, {}, strategy_name="243A")
             else:
                 if admin_user_id in live_dryrun.active_sessions:
                     print(f"[Scheduler] Market is closed ({now.strftime('%H:%M:%S')}). Auto-stopping central trading feed...")
                     live_dryrun.stop_user_system(admin_user_id)
+                # End-of-day: add today to pattern library at 15:32 IST
+                if now.weekday() < 5 and now.hour == 15 and now.minute == 32:
+                    import threading
+                    threading.Thread(target=update_pattern_library_today, daemon=True).start()
         except Exception as e:
             print(f"[Scheduler Error] {e}")
         await asyncio.sleep(30)
+
+def precompute_pattern_library():
+    """Load historical 2024-2026 data and build daily feature fingerprint library."""
+    global PATTERN_LIBRARY, PATTERN_LIBRARY_LOCK
+    if PATTERN_LIBRARY_LOCK:
+        return
+    PATTERN_LIBRARY_LOCK = True
+    try:
+        import importlib
+        extract_gbm_features = importlib.import_module("243A.live_prediction_engine").extract_gbm_features
+        df_all = pd.read_csv(CANDLE_DATA_PATH)
+        df_all["timestamp"] = pd.to_datetime(df_all["timestamp"], format="mixed")
+        # Filter to 2024-2026 only (model training range)
+        df_all = df_all[(df_all["timestamp"].dt.year >= 2024) & (df_all["timestamp"].dt.year <= 2026)]
+        df_all = df_all.set_index("timestamp").sort_index()
+        dates = df_all.index.normalize().unique()
+        built = 0
+        for date in dates:
+            date_str = date.strftime("%Y-%m-%d")
+            if date_str in PATTERN_LIBRARY:
+                continue
+            day_df = df_all[df_all.index.normalize() == date].copy()
+            if len(day_df) < 30:
+                continue
+            try:
+                day_df_reset = day_df.reset_index()
+                day_df_reset = day_df_reset.rename(columns={"timestamp": "timestamp"})
+                feats = extract_gbm_features(day_df_reset)
+                vec_df = feats[FEATURE_COLS_PATTERN].dropna()
+                if len(vec_df) < 10:
+                    continue
+                vec = vec_df.mean().values
+                eod_change = float(day_df["close"].iloc[-1] - day_df["open"].iloc[0])
+                day_range = float(day_df["high"].max() - day_df["low"].min())
+                PATTERN_LIBRARY[date_str] = {
+                    "vector": vec,
+                    "eod_change": round(eod_change, 2),
+                    "day_range": round(day_range, 2)
+                }
+                built += 1
+            except Exception:
+                continue
+        print(f"[PatternLib] Built {built} new fingerprints. Total library: {len(PATTERN_LIBRARY)} days.")
+    except Exception as e:
+        print(f"[PatternLib] Error building library: {e}")
+    finally:
+        PATTERN_LIBRARY_LOCK = False
+
+
+def update_pattern_library_today():
+    """Called at end of trading day to add today's fingerprint to the library."""
+    try:
+        import datetime as _dt
+        import pytz
+        today_str = _dt.datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d")
+        if today_str in PATTERN_LIBRARY:
+            return   # already added
+        precompute_pattern_library()
+    except Exception as e:
+        print(f"[PatternLib] Error updating today: {e}")
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -263,6 +341,9 @@ async def startup_event():
     download_local_assets()
     # Cache historical datasets in-memory
     init_historical_caches()
+    # Build pattern fingerprint library in background thread to avoid blocking startup
+    import threading
+    threading.Thread(target=precompute_pattern_library, daemon=True).start()
     
     # Auto-register default demo and developer users if missing
     try:
@@ -607,6 +688,71 @@ async def get_signals(email: str = Query(None)):
     return {
         "current_regime": regime,
         "signal_history": trade_history
+    }
+
+@app.get("/api/pattern_match")
+async def pattern_match_endpoint(email: str = Query(None)):
+    """
+    Finds the top 3 historical trading days (2024-2026) whose LightGBM
+    feature fingerprint is most similar to today's live session.
+    Uses cosine similarity on 21-feature mean vectors.
+    """
+    import numpy as np
+    if not PATTERN_LIBRARY:
+        return {"matches": [], "status": "building", "library_size": 0}
+
+    # Get today's candles from the historical CSV (live fallback)
+    try:
+        import importlib
+        extract_gbm_features = importlib.import_module("243A.live_prediction_engine").extract_gbm_features
+        df_all = pd.read_csv(CANDLE_DATA_PATH)
+        df_all["timestamp"] = pd.to_datetime(df_all["timestamp"], format="mixed")
+        import pytz, datetime as _dt
+        today = _dt.datetime.now(pytz.timezone("Asia/Kolkata")).date()
+        today_df = df_all[df_all["timestamp"].dt.date == today].copy()
+
+        # Fallback: if today has no candles yet (weekend/before open), use latest available day
+        if today_df.empty:
+            latest = df_all["timestamp"].dt.date.max()
+            today_df = df_all[df_all["timestamp"].dt.date == latest].copy()
+
+        if len(today_df) < 20:
+            return {"matches": [], "status": "insufficient_data", "library_size": len(PATTERN_LIBRARY)}
+
+        feats_today = extract_gbm_features(today_df.reset_index(drop=True))
+        vec_today_df = feats_today[FEATURE_COLS_PATTERN].dropna()
+        if len(vec_today_df) < 5:
+            return {"matches": [], "status": "insufficient_features", "library_size": len(PATTERN_LIBRARY)}
+        vec_today = vec_today_df.mean().values.astype(float)
+
+    except Exception as e:
+        return {"matches": [], "status": f"error: {e}", "library_size": len(PATTERN_LIBRARY)}
+
+    # Cosine similarity against all library entries
+    def cosine_sim(a, b):
+        denom = (np.linalg.norm(a) * np.linalg.norm(b))
+        if denom == 0:
+            return 0.0
+        return float(np.dot(a, b) / denom)
+
+    scores = []
+    for date_str, entry in PATTERN_LIBRARY.items():
+        try:
+            sim = cosine_sim(vec_today, entry["vector"])
+            scores.append({
+                "date": date_str,
+                "similarity": round(sim * 100, 1),
+                "eod_change": entry["eod_change"],
+                "day_range": entry["day_range"]
+            })
+        except Exception:
+            continue
+
+    top3 = sorted(scores, key=lambda x: x["similarity"], reverse=True)[:3]
+    return {
+        "matches": top3,
+        "status": "ok",
+        "library_size": len(PATTERN_LIBRARY)
     }
 
 @app.get("/api/sync_72")
