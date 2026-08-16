@@ -75,6 +75,20 @@ HISTORICAL_MARKERS = {
     "LONGPING": []
 }
 
+# HMM regime cone state: tracks last regime + anchor candle per user session
+HMM_CONE_STATE = {}  # key: email -> {"regime": str, "anchor_time": int, "anchor_price": float}
+
+# Drift and volatility parameters per HMM regime (per 5-minute candle)
+HMM_REGIME_PARAMS = {
+    "markup":           {"drift": +0.00015, "vol": 0.00040},
+    "expansionup":      {"drift": +0.00008, "vol": 0.00025},
+    "distributiondown": {"drift": +0.00002, "vol": 0.00035},
+    "compression":      {"drift":  0.00000, "vol": 0.00015},
+    "distributionup":   {"drift": -0.00002, "vol": 0.00035},
+    "expansiondown":    {"drift": -0.00008, "vol": 0.00025},
+    "markdown":         {"drift": -0.00015, "vol": 0.00040},
+}
+
 def download_local_assets():
     """Downloads the standalone lightweight-charts library to local storage to prevent CDN errors."""
     path = "ui_ux/static/lightweight-charts.js"
@@ -491,6 +505,44 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
             
     from backend_engine.kill_switch import get_kill_switch_state
     from backend_engine.config import DEMO_MODE, TRADING_MODE
+    import math
+    
+    # ----------------------------------------------------------------
+    # HMM Volatility Cone: compute upper/lower bands anchored at the
+    # candle where the regime last changed. Bands stay frozen until
+    # the regime changes again.
+    # ----------------------------------------------------------------
+    last_prediction = getattr(session, 'last_prediction', {})
+    hmm_regime_raw = last_prediction.get('hmm_regime', 'unknown') if last_prediction else 'unknown'
+    hmm_regime_key = str(hmm_regime_raw).lower().replace(' ', '').replace('_', '')
+    
+    cone_state = HMM_CONE_STATE.get(email, {})
+    prev_regime = cone_state.get('regime', None)
+    
+    # Detect regime change and record new anchor point
+    if hmm_regime_key not in ('unknown', '') and hmm_regime_key != prev_regime and current_candle is not None:
+        HMM_CONE_STATE[email] = {
+            'regime': hmm_regime_key,
+            'anchor_time': current_candle['time'],
+            'anchor_price': current_candle['close']
+        }
+        cone_state = HMM_CONE_STATE[email]
+    
+    # Build cone data from the stored anchor (even if regime hasn't changed this tick)
+    hmm_upper = []
+    hmm_lower = []
+    if cone_state and current_candle is not None:
+        regime_params = HMM_REGIME_PARAMS.get(cone_state.get('regime', ''), {"drift": 0.0, "vol": 0.00015})
+        drift = regime_params['drift']
+        vol   = regime_params['vol']
+        anchor_time  = cone_state['anchor_time']
+        anchor_price = cone_state['anchor_price']
+        for k in range(1, 11):  # project 10 candles = 50 minutes
+            t_k = anchor_time + k * 300
+            p_k = anchor_price * (1.0 + drift * k)
+            band_k = anchor_price * vol * math.sqrt(k)
+            hmm_upper.append({"time": t_k, "value": round(p_k + band_k, 2)})
+            hmm_lower.append({"time": t_k, "value": round(p_k - band_k, 2)})
     
     return {
         "index_ltp": ltp,
@@ -508,7 +560,10 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
         "warmup_in_progress": getattr(session, 'warmup_in_progress', False),
         "warmup_progress": getattr(session, 'warmup_progress', "0/0"),
         "warmup_time_remaining": getattr(session, 'warmup_time_remaining', 0),
-        "last_prediction": getattr(session, 'last_prediction', {})
+        "last_prediction": last_prediction,
+        "hmm_upper": hmm_upper,
+        "hmm_lower": hmm_lower,
+        "hmm_regime": hmm_regime_key
     }
 
 @app.get("/api/signals")

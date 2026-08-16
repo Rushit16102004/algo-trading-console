@@ -1086,10 +1086,7 @@
 
                         <!-- Signals Panel (Visible by default) -->
                         <div id="signals-panel" style="margin-top: 1rem;">
-                            <div class="flex-row-center" style="margin-bottom: 12px;">
-                                <span style="font-size: 0.85rem; color: var(--text-muted);">Current Regime</span>
-                                <span class="badge-regime" id="regime-badge">Unknown</span>
-                            </div>
+
 
                             <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform:uppercase; letter-spacing:0.5px;">Live Desk Trades Log</div>
                             <div class="table-wrapper" style="max-height: 160px; overflow-y: auto;">
@@ -1743,6 +1740,25 @@
 
             volumeSeries.applyOptions({ visible: false });
 
+            // HMM Volatility Cone: upper and lower dashed projection bands
+            hmmUpperSeries = chart.addLineSeries({
+                color: 'rgba(96, 165, 250, 0.55)',
+                lineStyle: 2,
+                lineWidth: 1,
+                lastValueVisible: false,
+                priceLineVisible: false,
+                crosshairMarkerVisible: false,
+            });
+            hmmLowerSeries = chart.addLineSeries({
+                color: 'rgba(96, 165, 250, 0.55)',
+                lineStyle: 2,
+                lineWidth: 1,
+                lastValueVisible: false,
+                priceLineVisible: false,
+                crosshairMarkerVisible: false,
+            });
+
+
             chart.subscribeCrosshairMove((param) => {
                 let candle = null;
                 if (param.time) {
@@ -1761,7 +1777,10 @@
             });
         }
 
+        let hmmUpperSeries = null;
+        let hmmLowerSeries = null;
         let wasSyncing = false;
+
 
         async function updateStatus() {
             const email = localStorage.getItem("user_email");
@@ -2015,6 +2034,18 @@
                         });
                     }
                 }
+                
+                // HMM Volatility Cone: update upper/lower bands on chart
+                if (hmmUpperSeries && hmmLowerSeries) {
+                    if (data.hmm_upper && data.hmm_upper.length > 0) {
+                        hmmUpperSeries.setData(data.hmm_upper);
+                        hmmLowerSeries.setData(data.hmm_lower);
+                    } else {
+                        hmmUpperSeries.setData([]);
+                        hmmLowerSeries.setData([]);
+                    }
+                }
+
             } catch (err) {
                 console.error("Error updating status:", err);
             }
@@ -2027,12 +2058,6 @@
             try {
                 const response = await fetch(`/api/signals?email=${encodeURIComponent(email)}`);
                 const data = await response.json();
-
-                // Update regime badge
-                const regimeBadge = document.getElementById('regime-badge');
-                if (regimeBadge) {
-                    regimeBadge.innerText = data.current_regime;
-                }
 
                 // Update executed signals table
                 const tbody = document.getElementById('signals-tbody');
