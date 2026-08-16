@@ -285,8 +285,8 @@ def precompute_pattern_library():
         extract_gbm_features = importlib.import_module("243A.live_prediction_engine").extract_gbm_features
         df_all = pd.read_csv(CANDLE_DATA_PATH)
         df_all["timestamp"] = pd.to_datetime(df_all["timestamp"], format="mixed")
-        # Filter to 2024-2026 only (model training range)
-        df_all = df_all[(df_all["timestamp"].dt.year >= 2024) & (df_all["timestamp"].dt.year <= 2026)]
+        # Filter to 2020-2026 (post-COVID modern market regime)
+        df_all = df_all[(df_all["timestamp"].dt.year >= 2020) & (df_all["timestamp"].dt.year <= 2026)]
         df_all = df_all.set_index("timestamp").sort_index()
         dates = df_all.index.normalize().unique()
         built = 0
