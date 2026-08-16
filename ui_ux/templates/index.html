@@ -2244,7 +2244,26 @@
 
         // Pattern Match Panel toggle + fetch
         let isPatternVisible = false;
-        let patternInterval = null;
+        let patternTimeout = null;
+
+        function getPatternRefreshMs() {
+            // Adaptive refresh interval based on IST hour
+            const istHour = new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata", hour: "numeric", hour12: false});
+            const h = parseInt(istHour);
+            if (h >= 9 && h <= 10)  return 10 * 60 * 1000;  // 10 min during opening session
+            if (h >= 11 && h <= 13) return 15 * 60 * 1000;  // 15 min during mid session
+            if (h >= 14 && h <= 15) return 30 * 60 * 1000;  // 30 min during closing session
+            return 15 * 60 * 1000;  // default 15 min outside market hours
+        }
+
+        function scheduleNextPatternFetch() {
+            if (!isPatternVisible) return;
+            const delay = getPatternRefreshMs();
+            patternTimeout = setTimeout(async () => {
+                await fetchPatternMatch();
+                scheduleNextPatternFetch();
+            }, delay);
+        }
 
         function togglePatternPanel() {
             isPatternVisible = !isPatternVisible;
@@ -2255,11 +2274,11 @@
                 btn.classList.toggle('btn-active', isPatternVisible);
                 if (isPatternVisible) {
                     fetchPatternMatch();
-                    patternInterval = setInterval(fetchPatternMatch, 5 * 60 * 1000); // refresh every 5 min
+                    scheduleNextPatternFetch();
                     showToast("🧬 Pattern library loaded");
                 } else {
-                    clearInterval(patternInterval);
-                    patternInterval = null;
+                    clearTimeout(patternTimeout);
+                    patternTimeout = null;
                 }
             }
         }
