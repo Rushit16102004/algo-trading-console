@@ -66,6 +66,7 @@ An advanced algorithmic trading console and execution engine supporting multi-us
 
 4. **Open in Browser**:
    Navigate to [http://127.0.0.1:8050](http://127.0.0.1:8050).
+   or (http://140.238.161.149:8050)
 
 
 ## 📊 Backtest Performance & Notes
