@@ -378,8 +378,8 @@ async def run_auto_sync_in_background(sc, email, session):
 
 @app.get("/api/status")
 async def get_status(email: str = Query(None), strategy: str = Query("243A")):
-    session = get_user_session(email, strategy_name=strategy)
-    if not session:
+    # First check if the email parameter is provided
+    if not email:
         return {
             "index_ltp": 0.0,
             "connection_status": "offline",
@@ -392,6 +392,39 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
             "logs": ["Please log in to view status."],
             "sync_in_progress": is_syncing_in_progress
         }
+
+    session = get_user_session(email, strategy_name=strategy)
+    if not session:
+        # Check if email is valid (demo or registered in database)
+        email_clean = email.strip().lower()
+        is_valid_user = (email_clean == "demo@gmail.com") or (get_user_by_email(email_clean) is not None)
+        
+        if is_valid_user:
+            return {
+                "index_ltp": 0.0,
+                "connection_status": "offline",
+                "mode": "none",
+                "today_realized_pnl": 0.0,
+                "today_unrealized_pnl": 0.0,
+                "today_total_pnl": 0.0,
+                "active_positions": [],
+                "current_candle": None,
+                "logs": ["Trading system is inactive. Market is closed."],
+                "sync_in_progress": is_syncing_in_progress
+            }
+        else:
+            return {
+                "index_ltp": 0.0,
+                "connection_status": "offline",
+                "mode": "none",
+                "today_realized_pnl": 0.0,
+                "today_unrealized_pnl": 0.0,
+                "today_total_pnl": 0.0,
+                "active_positions": [],
+                "current_candle": None,
+                "logs": ["Please log in to view status."],
+                "sync_in_progress": is_syncing_in_progress
+            }
         
     # Update active strategy name dynamically
     if strategy in ["243A", "LONGPING"]:
