@@ -1329,7 +1329,7 @@
                 if (data.status === "success") {
                     loginSuccessful(email);
                 } else {
-                    alert(data.message);
+                    alert(data.message || data.detail || "Invalid login credentials or request failed.");
                 }
             } catch (err) {
                 alert("Login connection failed: " + err);
@@ -1354,7 +1354,7 @@
                 if (data.status === "success") {
                     loginSuccessful(email);
                 } else {
-                    alert(data.message);
+                    alert(data.message || data.detail || "Invalid email/PIN or request failed.");
                 }
             } catch (err) {
                 alert("Login connection failed: " + err);
@@ -1384,7 +1384,7 @@
                     alert(data.message);
                     showSignInForm();
                 } else {
-                    alert(data.message);
+                    alert(data.message || data.detail || "Registration failed. Please check your details.");
                 }
             } catch (err) {
                 alert("Registration connection failed: " + err);
