@@ -191,32 +191,23 @@ def get_user_session(email: str, strategy_name: str = "243A"):
         
     admin_user_id = 1
     if admin_user_id not in live_dryrun.active_sessions:
-        # Enforce that the central feed only auto-starts during active trading days/hours (IST)
+        # Always start central feed — no time restriction
         import pytz
         ist_tz = pytz.timezone("Asia/Kolkata")
         now = datetime.datetime.now(ist_tz)
-        today_str = now.strftime("%Y-%m-%d")
-        is_trading_day = now.weekday() < 5 and today_str not in HOLIDAYS
-        is_market_hours = is_trading_day and (datetime.time(9, 0) <= now.time() <= datetime.time(19, 0))
-        
-        if is_market_hours:
-            admin_api_key = os.getenv("ANGEL_API_KEY")
-            admin_client_id = os.getenv("ANGEL_CLIENT_ID")
-            admin_password = os.getenv("ANGEL_PASSWORD")
-            admin_totp_secret = os.getenv("ANGEL_TOTP_SECRET")
-            
-            credentials = {
-                "email": "admin@algo-trading.console",
-                "api_key": admin_api_key,
-                "client_id": admin_client_id,
-                "password": admin_password,
-                "totp_secret": admin_totp_secret
-            }
-            print(f"[Session Manager] Market is open ({now.strftime('%H:%M:%S')}). Starting central admin session for user {email}")
-            live_dryrun.start_user_system(admin_user_id, credentials, strategy_name=strategy_name)
-        else:
-            # Market is closed, do not auto-start central feed
-            return None
+        admin_api_key = os.getenv("ANGEL_API_KEY")
+        admin_client_id = os.getenv("ANGEL_CLIENT_ID")
+        admin_password = os.getenv("ANGEL_PASSWORD")
+        admin_totp_secret = os.getenv("ANGEL_TOTP_SECRET")
+        credentials = {
+            "email": "admin@algo-trading.console",
+            "api_key": admin_api_key,
+            "client_id": admin_client_id,
+            "password": admin_password,
+            "totp_secret": admin_totp_secret
+        }
+        print(f"[Session Manager] Starting central admin session for user {email}")
+        live_dryrun.start_user_system(admin_user_id, credentials, strategy_name=strategy_name)
             
     return live_dryrun.active_sessions.get(admin_user_id)
 
@@ -240,10 +231,9 @@ HOLIDAYS = {
 
 async def market_hours_scheduler_loop():
     """
-    Background loop that:
-    - Starts the central feed automatically at 9:00 AM IST.
-    - Stops the central feed automatically at 4:00 PM IST (16:00).
-    - Skips weekends and holidays.
+    Background loop that keeps the central feed always connected.
+    Starts the feed on app startup and restarts it if it ever drops.
+    End-of-day pattern library update still runs at 15:32 IST.
     """
     import pytz
     ist_tz = pytz.timezone("Asia/Kolkata")
@@ -253,25 +243,17 @@ async def market_hours_scheduler_loop():
         try:
             now = datetime.datetime.now(ist_tz)
             today_str = now.strftime("%Y-%m-%d")
-            
-            # Monday-Friday and not an NSE holiday
-            is_trading_day = now.weekday() < 5 and today_str not in HOLIDAYS
-            
-            # Start at 9:00 AM and stop at 4:00 PM (16:00)
-            is_market_hours = is_trading_day and (datetime.time(9, 0) <= now.time() <= datetime.time(19, 0))
-            
-            if is_market_hours:
-                if admin_user_id not in live_dryrun.active_sessions:
-                    print(f"[Scheduler] Market is open ({now.strftime('%H:%M:%S')}). Auto-starting central trading feed...")
-                    live_dryrun.start_user_system(admin_user_id, {}, strategy_name="243A")
-            else:
-                if admin_user_id in live_dryrun.active_sessions:
-                    print(f"[Scheduler] Market is closed ({now.strftime('%H:%M:%S')}). Auto-stopping central trading feed...")
-                    live_dryrun.stop_user_system(admin_user_id)
-                # End-of-day: add today to pattern library at 15:32 IST
-                if now.weekday() < 5 and now.hour == 15 and now.minute == 32:
-                    import threading
-                    threading.Thread(target=update_pattern_library_today, daemon=True).start()
+
+            # Always keep central feed running — restart if it dropped
+            if admin_user_id not in live_dryrun.active_sessions:
+                print(f"[Scheduler] Feed not running. Auto-starting central trading feed...")
+                live_dryrun.start_user_system(admin_user_id, {}, strategy_name="243A")
+
+            # End-of-day: add today to pattern library at 15:32 IST
+            if now.weekday() < 5 and now.hour == 15 and now.minute == 32:
+                import threading
+                threading.Thread(target=update_pattern_library_today, daemon=True).start()
+
         except Exception as e:
             print(f"[Scheduler Error] {e}")
         await asyncio.sleep(30)
