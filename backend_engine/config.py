@@ -10,8 +10,8 @@ WS_URL = os.getenv("WS_URL", "wss://trading.supernalventures.info/feeds/handlere
 USER_ID = os.getenv("USER_ID", "AL01")
 
 # Deployed Application Modes
-DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
-TRADING_MODE = os.getenv("TRADING_MODE", "DEMO").upper() # DEMO, PAPER, LIVE
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+TRADING_MODE = os.getenv("TRADING_MODE", "PAPER").upper() # DEMO, PAPER, LIVE
 
 # PostgreSQL & Security Keys
 DATABASE_URL = os.getenv("DATABASE_URL")
