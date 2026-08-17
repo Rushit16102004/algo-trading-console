@@ -74,6 +74,8 @@ HISTORICAL_MARKERS = {
     "243A": [],
     "LONGPING": []
 }
+# Cached historical dataframe for pattern matching (loaded once, reused forever)
+PATTERN_DF_CACHE = None
 
 # HMM regime cone state: tracks last regime + anchor candle per user session
 HMM_CONE_STATE = {}  # key: email -> {"regime": str, "anchor_time": int, "anchor_price": float}
@@ -276,15 +278,19 @@ async def market_hours_scheduler_loop():
 
 def precompute_pattern_library():
     """Load historical 2024-2026 data and build daily feature fingerprint library."""
-    global PATTERN_LIBRARY, PATTERN_LIBRARY_LOCK
+    global PATTERN_LIBRARY, PATTERN_LIBRARY_LOCK, PATTERN_DF_CACHE
     if PATTERN_LIBRARY_LOCK:
         return
     PATTERN_LIBRARY_LOCK = True
     try:
         import importlib
         extract_gbm_features = importlib.import_module("243A.live_prediction_engine").extract_gbm_features
-        df_all = pd.read_csv(CANDLE_DATA_PATH)
-        df_all["timestamp"] = pd.to_datetime(df_all["timestamp"], format="mixed")
+        # Load CSV only once and cache it
+        if PATTERN_DF_CACHE is None:
+            df_raw = pd.read_csv(CANDLE_DATA_PATH)
+            df_raw["timestamp"] = pd.to_datetime(df_raw["timestamp"], format="mixed")
+            PATTERN_DF_CACHE = df_raw
+        df_all = PATTERN_DF_CACHE.copy()
         # Filter to 2020-2026 (post-COVID modern market regime)
         df_all = df_all[(df_all["timestamp"].dt.year >= 2020) & (df_all["timestamp"].dt.year <= 2026)]
         df_all = df_all.set_index("timestamp").sort_index()
@@ -341,9 +347,12 @@ async def startup_event():
     download_local_assets()
     # Cache historical datasets in-memory
     init_historical_caches()
-    # Build pattern fingerprint library in background thread to avoid blocking startup
-    import threading
-    threading.Thread(target=precompute_pattern_library, daemon=True).start()
+    # Build pattern fingerprint library in background thread — delayed 60s so app starts fast
+    import threading, time as _time
+    def _delayed_precompute():
+        _time.sleep(60)  # Wait 60 seconds after startup before heavy computation
+        precompute_pattern_library()
+    threading.Thread(target=_delayed_precompute, daemon=True).start()
     
     # Auto-register default demo and developer users if missing
     try:
@@ -705,8 +714,10 @@ async def pattern_match_endpoint(email: str = Query(None)):
     try:
         import importlib
         extract_gbm_features = importlib.import_module("243A.live_prediction_engine").extract_gbm_features
-        df_all = pd.read_csv(CANDLE_DATA_PATH)
-        df_all["timestamp"] = pd.to_datetime(df_all["timestamp"], format="mixed")
+        # Use cached dataframe — never re-read the CSV on each request
+        if PATTERN_DF_CACHE is None:
+            return {"matches": [], "status": "building", "library_size": len(PATTERN_LIBRARY)}
+        df_all = PATTERN_DF_CACHE
         import pytz, datetime as _dt
         today = _dt.datetime.now(pytz.timezone("Asia/Kolkata")).date()
         today_df = df_all[df_all["timestamp"].dt.date == today].copy()
