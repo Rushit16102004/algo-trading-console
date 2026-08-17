@@ -197,7 +197,7 @@ def get_user_session(email: str, strategy_name: str = "243A"):
         now = datetime.datetime.now(ist_tz)
         today_str = now.strftime("%Y-%m-%d")
         is_trading_day = now.weekday() < 5 and today_str not in HOLIDAYS
-        is_market_hours = is_trading_day and (datetime.time(9, 0) <= now.time() <= datetime.time(16, 0))
+        is_market_hours = is_trading_day and (datetime.time(9, 0) <= now.time() <= datetime.time(19, 0))
         
         if is_market_hours:
             admin_api_key = os.getenv("ANGEL_API_KEY")
@@ -258,7 +258,7 @@ async def market_hours_scheduler_loop():
             is_trading_day = now.weekday() < 5 and today_str not in HOLIDAYS
             
             # Start at 9:00 AM and stop at 4:00 PM (16:00)
-            is_market_hours = is_trading_day and (datetime.time(9, 0) <= now.time() <= datetime.time(16, 0))
+            is_market_hours = is_trading_day and (datetime.time(9, 0) <= now.time() <= datetime.time(19, 0))
             
             if is_market_hours:
                 if admin_user_id not in live_dryrun.active_sessions:
