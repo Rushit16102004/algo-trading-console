@@ -462,6 +462,7 @@ class UserSession:
                 try:
                     smart_connect = SmartConnect(api_key=api_key)
                     totp = pyotp.TOTP(totp_secret).now()
+                    print(f"[Angel One] Attempting login for client {client_id}...")
                     data = await asyncio.to_thread(smart_connect.generateSession, client_id, password, totp)
                     if data.get('status') == True:
                         self.smart_connect = smart_connect
@@ -475,13 +476,16 @@ class UserSession:
                             tick_queue, api_key, client_id, jwt_token, feed_token, 
                             trade_logger=self.trade_logger, future_token=None
                         )
+                        print(f"[Angel One] ✅ Authentication successful! Live feed started.")
                         self.trade_logger.log_activity("Angel One authentication successful. Live feed started.")
                     else:
                         err_msg = data.get('message', 'Session generation failed')
+                        print(f"[Angel One] ❌ Authentication FAILED: {err_msg}")
                         self.trade_logger.log_activity(f"Angel One authentication failed: {err_msg}. Syncing candles with default credentials and falling back to custom feed.")
                         asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
                         self.ws_handler = WSHandler(tick_queue, trade_logger=self.trade_logger)
                 except Exception as e:
+                    print(f"[Angel One] ❌ Exception during auth: {e}")
                     self.trade_logger.log_activity(f"Error during Angel One auth: {e}. Syncing candles with default credentials and falling back to custom feed.")
                     asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
                     self.ws_handler = WSHandler(tick_queue, trade_logger=self.trade_logger)
