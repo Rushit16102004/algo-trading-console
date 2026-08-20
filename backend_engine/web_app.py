@@ -762,14 +762,15 @@ async def get_candles(email: str = Query(None), strategy: str = Query("243A"), l
             asyncio.create_task(run_auto_sync_in_background(sc, email, session))
         
         if session and session.candles_df is not None and not session.candles_df.empty:
-            df_live = session.candles_df.copy()
-            df_live['timestamp'] = pd.to_datetime(df_live['timestamp'], format='mixed')
+            # Process only recent candles (tail limit) for sub-second response times!
+            df_recent = session.candles_df.tail(max(500, limit)).copy()
+            df_recent['timestamp'] = pd.to_datetime(df_recent['timestamp'], format='mixed')
             import pytz
             ist_tz = pytz.timezone("Asia/Kolkata")
-            df_live['time_epoch'] = df_live['timestamp'].apply(lambda x: int(ist_tz.localize(x).timestamp()) if x.tzinfo is None else int(x.astimezone(ist_tz).timestamp()))
+            df_recent['time_epoch'] = df_recent['timestamp'].apply(lambda x: int(ist_tz.localize(x).timestamp()) if x.tzinfo is None else int(x.astimezone(ist_tz).timestamp()))
             
             seen_epochs = set()
-            for _, row in df_live.iterrows():
+            for _, row in df_recent.iterrows():
                 t = int(row['time_epoch'])
                 if t in seen_epochs:
                     continue
@@ -783,8 +784,8 @@ async def get_candles(email: str = Query(None), strategy: str = Query("243A"), l
                     "volume": float(row['volume']) if not pd.isna(row['volume']) else 0.0
                 })
                 
-            # Precompute strategy signals ONLY on the live portion of the dataset (fast!)
-            live_markers = get_strategy_signals_for_chart(df_live, strategy)
+            # Precompute strategy signals ONLY on the recent tail portion (sub-50ms!)
+            live_markers = get_strategy_signals_for_chart(df_recent, strategy)
             
         # Combine RAM-cached history with live portion and deduplicate/sort strictly
         combined_candles_map = {}
