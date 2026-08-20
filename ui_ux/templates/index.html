@@ -141,6 +141,12 @@
             100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
 
+        .pulse-disconnected {
+            background-color: #6b7280;
+            box-shadow: 0 0 8px #6b7280;
+            animation: pulse-red 2s infinite;
+        }
+
         .main-container {
             flex: 1;
             display: grid;
@@ -1840,22 +1846,24 @@
                 // Update Connection status badge
                 const connDot = document.getElementById('conn-dot');
                 const connText = document.getElementById('conn-text');
-                
-                connDot.className = 'pulse-dot';
-                let sourceLabel = data.mode === 'angel' ? 'Angel One' : 'Custom Feed';
-                
-                if (data.connection_status === 'live') {
-                    connDot.classList.add('pulse-live');
-                    connText.innerText = `${sourceLabel} - Live`;
-                } else if (data.connection_status === 'connecting') {
-                    connDot.classList.add('pulse-connecting');
-                    connText.innerText = `${sourceLabel} - Connecting`;
-                } else if (data.connection_status === 'error') {
-                    connDot.classList.add('pulse-error');
-                    connText.innerText = `${sourceLabel} - Offline/Failed`;
+
+                if (data.connection_status === 'server_down' || data.connection_status === 'error') {
+                    connDot.className = 'pulse-dot pulse-disconnected';
+                    connText.innerText = 'Server Down';
+                    showServerDownModal("⚠️ Server Down / Market Feed Offline. Please try again later.");
                 } else {
-                    connDot.classList.add('pulse-connecting');
-                    connText.innerText = `${sourceLabel} - Idle`;
+                    connDot.className = 'pulse-dot';
+                    let sourceLabel = data.mode === 'angel' ? 'Angel One' : 'Custom Feed';
+                    if (data.connection_status === 'live') {
+                        connDot.classList.add('pulse-live');
+                        connText.innerText = `${sourceLabel} - Live`;
+                    } else if (data.connection_status === 'connecting') {
+                        connDot.classList.add('pulse-connecting');
+                        connText.innerText = `${sourceLabel} - Connecting`;
+                    } else {
+                        connDot.classList.add('pulse-connecting');
+                        connText.innerText = `${sourceLabel} - Idle`;
+                    }
                 }
 
                 // Active Positions Count

@@ -455,40 +455,28 @@ class UserSession:
             totp_secret = self.credentials.get("totp_secret", "")
             
             if api_key and client_id:
-                self.trade_logger.log_activity("Starting in Angel One Mode. Authenticating...")
-                import pyotp
-                from SmartApi import SmartConnect
-                
                 try:
+                    import pyotp
+                    from SmartApi import SmartConnect
                     smart_connect = SmartConnect(api_key=api_key)
                     totp = pyotp.TOTP(totp_secret).now()
-                    print(f"[Angel One] Attempting login for client {client_id}...")
                     data = await asyncio.to_thread(smart_connect.generateSession, client_id, password, totp)
+                    
                     if data.get('status') == True:
-                        self.smart_connect = smart_connect
                         jwt_token = data['data']['jwtToken']
                         feed_token = await asyncio.to_thread(smart_connect.getfeedToken)
-                        
-                        self.trade_logger.log_activity("Launching historical gap sync task in background thread...")
-                        asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, smart_connect))
-                            
                         self.ws_handler = AngelOneWSHandler(
                             tick_queue, api_key, client_id, jwt_token, feed_token, 
-                            trade_logger=self.trade_logger, future_token=None
+                            trade_logger=self.trade_logger
                         )
-                        print(f"[Angel One] ✅ Authentication successful! Live feed started.")
-                        self.trade_logger.log_activity("Angel One authentication successful. Live feed started.")
+                        self.feed_status = "connected"
                     else:
-                        err_msg = data.get('message', 'Session generation failed')
-                        print(f"[Angel One] ❌ Authentication FAILED: {err_msg}")
-                        self.trade_logger.log_activity(f"Angel One authentication failed: {err_msg}. Syncing candles with default credentials and falling back to custom feed.")
-                        asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
-                        self.ws_handler = WSHandler(tick_queue, trade_logger=self.trade_logger)
+                        # NO FALLBACK TO DEMO OR CUSTOM FEED!
+                        self.feed_status = "server_down"
+                        self.ws_handler = None
                 except Exception as e:
-                    print(f"[Angel One] ❌ Exception during auth: {e}")
-                    self.trade_logger.log_activity(f"Error during Angel One auth: {e}. Syncing candles with default credentials and falling back to custom feed.")
-                    asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
-                    self.ws_handler = WSHandler(tick_queue, trade_logger=self.trade_logger)
+                    self.feed_status = "server_down"
+                    self.ws_handler = None
             else:
                 self.trade_logger.log_activity("Starting in Custom Feed Mode. Syncing candles with default credentials.")
                 asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
