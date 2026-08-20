@@ -152,35 +152,38 @@ def load_mixed_csv(path):
     return df
 
 def init_historical_caches():
-    """Reads 108,000 candles and calculates their signals once on boot to serve them from RAM instantly."""
+    """Reads recent historical candles and precalculates markers instantly on boot."""
     global HISTORICAL_CANDLES
     old_data_path = "backend_engine/old data.csv"
     if not os.path.exists(old_data_path):
         print("[CACHE WARNING] backend_engine/old data.csv not found. RAM caching bypassed.")
         return
         
-    print("[CACHE INITIALIZER] Parsing and caching 108,000 candles from backend_engine/old data.csv...")
-    df_old = load_mixed_csv(old_data_path)
+    print("[CACHE INITIALIZER] Fast parsing and caching candles from backend_engine/old data.csv...")
+    df_old = pd.read_csv(old_data_path)
+    df_old['open'] = pd.to_numeric(df_old['open'], errors='coerce')
+    df_old['high'] = pd.to_numeric(df_old['high'], errors='coerce')
+    df_old['low'] = pd.to_numeric(df_old['low'], errors='coerce')
+    df_old['close'] = pd.to_numeric(df_old['close'], errors='coerce')
+    if 'volume' in df_old.columns:
+        df_old['volume'] = pd.to_numeric(df_old['volume'], errors='coerce').fillna(0.0)
+    else:
+        df_old['volume'] = 0.0
+
     df_old['timestamp'] = pd.to_datetime(df_old['timestamp'], format='mixed')
     
+    df_tail = df_old.tail(20000).copy()
     try:
-        # If timezone-aware:
-        epochs = (df_old['timestamp'].dt.tz_convert('Asia/Kolkata').astype('int64') // 10**9).tolist()
+        epochs = (df_tail['timestamp'].dt.tz_convert('Asia/Kolkata').astype('int64') // 10**9).tolist()
     except TypeError:
-        # If naive (default):
-        epochs = (df_old['timestamp'].dt.tz_localize('Asia/Kolkata').astype('int64') // 10**9).tolist()
+        epochs = (df_tail['timestamp'].dt.tz_localize('Asia/Kolkata').astype('int64') // 10**9).tolist()
         
-    df_old['time_epoch'] = epochs
-    
-    # Deduplicate epochs
-    df_unique = df_old.drop_duplicates(subset=['time_epoch']).copy()
-    df_unique = df_unique.rename(columns={'time_epoch': 'time'})
-    
-    # Fast convert to records dictionary list
+    df_tail['time_epoch'] = epochs
+    df_unique = df_tail.drop_duplicates(subset=['time_epoch']).rename(columns={'time_epoch': 'time'})
     HISTORICAL_CANDLES = df_unique[['time', 'open', 'high', 'low', 'close', 'volume']].to_dict(orient='records')
     
     print("[CACHE INITIALIZER] Pre-calculating historical strategy signal markers...")
-    df_recent = df_old.tail(15000).copy()
+    df_recent = df_old.tail(10000).copy()
     HISTORICAL_MARKERS["243A"] = get_strategy_signals_for_chart(df_recent, "243A")
     HISTORICAL_MARKERS["LONGPING"] = get_strategy_signals_for_chart(df_recent, "LONGPING")
     print(f"[CACHE INITIALIZER] Pre-calculation complete! (243A Markers: {len(HISTORICAL_MARKERS['243A'])}, LONGPING Markers: {len(HISTORICAL_MARKERS['LONGPING'])})")
