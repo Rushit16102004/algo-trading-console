@@ -18,7 +18,6 @@ from backend_engine.strategies import get_strategy
 from backend_engine.candle_builder import CandleBuilder, INDEX_TOKEN
 from backend_engine.trade_logger import TradeLogger
 from backend_engine.paper_trade_engine import PaperTradeEngine
-from backend_engine.websocket_handler import WSHandler
 from backend_engine.angel_ws_handler import AngelOneWSHandler
 from backend_engine.risk_manager import RiskManager
 from backend_engine.config import FIXED_SL, PYRAMIDING_LIMIT
@@ -83,79 +82,12 @@ def get_cached_future_token():
         print(f"[ScripMaster] Error fetching future token: {e}")
     return None
 
-class DemoMarketSimulator:
-    def __init__(self, tick_queue, trade_logger=None):
-        self.tick_queue = tick_queue
-        self.trade_logger = trade_logger
-        self.is_running = False
-        self.conn_status = {INDEX_TOKEN: "live"}
-        
-    def log(self, msg):
-        if self.trade_logger:
-            self.trade_logger.log_activity(msg)
-            
-    async def connect_and_stream(self):
-        self.is_running = True
-        self.log("[DEMO] Starting Demo Market Simulator (data replay/random walk)...")
-        
-        base_price = 24600.0
-        try:
-            import pandas as pd
-            if os.path.exists("backend_engine/old data.csv"):
-                df = pd.read_csv("backend_engine/old data.csv")
-                if not df.empty:
-                    base_price = float(df.iloc[-1]['close'])
-        except Exception:
-            pass
-            
-        import random
-        from backend_engine.angel_ws_handler import CONSTITUENT_TOKENS
-        
-        while self.is_running:
-            try:
-                # Random walk simulation
-                change = random.normalvariate(0, 1.5)
-                base_price += change
-                base_price = round(base_price, 2)
-                
-                # Nifty Spot tick (Token 26000 or INDEX_TOKEN)
-                tick = {
-                    "ScripCode": INDEX_TOKEN,
-                    "LTP": base_price,
-                    "Volume64": 0,
-                    "Time": datetime.datetime.now(),
-                    "RecType": "A"
-                }
-                await self.tick_queue.put(tick)
-                
-                # Constituent stock volume simulation
-                fake_vol = random.randint(1000, 5000)
-                vol_tick = {
-                    "ScripCode": random.choice(CONSTITUENT_TOKENS),
-                    "LTP": base_price / 100,
-                    "Volume64": fake_vol,
-                    "Time": datetime.datetime.now(),
-                    "RecType": "d"
-                }
-                await self.tick_queue.put(vol_tick)
-                
-                await asyncio.sleep(2)
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                self.log(f"[DEMO] Error in simulator loop: {e}")
-                await asyncio.sleep(5)
-                
-    def stop(self):
-        self.is_running = False
-
 class UserSession:
     def __init__(self, user_id, credentials, strategy_name="243A"):
         self.user_id = user_id
         self.credentials = credentials
         self.strategy_name = strategy_name
         self.email = credentials.get("email", "")
-        self.is_demo = self.email in ("demo@gmail.com", "developer@gmail.com")
         self.user_dir = "data"
         os.makedirs(self.user_dir, exist_ok=True)
         
@@ -180,6 +112,7 @@ class UserSession:
         self.server_down = False
         self.index_ltp = 0.0
         self.last_index_time = None
+        self.latest_tick = None
         self.last_prediction = {}
         
         self.sync_in_progress = False
@@ -274,36 +207,10 @@ class UserSession:
                 
             self.trade_logger.log_activity(f"Calculating missing candles since {last_timestamp} up to {now}...")
             
-            from backend_engine.config import DEMO_MODE
-            if DEMO_MODE:
-                self.trade_logger.log_activity("[DEMO] Bypassing historical gap filler sync in Demo Mode.")
-                return
-    
             sc = smart_connect
             if sc is None:
-                # Only attempt developer credential fallback if DEMO_MODE is False
-                self.trade_logger.log_activity("No active user session found. Logging in with default developer credentials...")
-                try:
-                    import pyotp
-                    from SmartApi import SmartConnect
-                    dev_api_key = os.getenv("DEV_API_KEY", "")
-                    dev_client_id = os.getenv("DEV_CLIENT_ID", "")
-                    dev_password = os.getenv("DEV_PASSWORD", "")
-                    dev_totp_secret = os.getenv("DEV_TOTP_SECRET", "")
-                    
-                    if not (dev_api_key and dev_client_id):
-                        self.trade_logger.log_activity("Developer credentials not configured in environment variables. Cannot sync missing candles.")
-                        return
-                        
-                    sc = SmartConnect(api_key=dev_api_key)
-                    totp = pyotp.TOTP(dev_totp_secret).now()
-                    data = sc.generateSession(dev_client_id, dev_password, totp)
-                    if data.get('status') != True:
-                        self.trade_logger.log_activity("Developer credentials authentication failed. Cannot sync missing candles.")
-                        return
-                except Exception as e:
-                    self.trade_logger.log_activity(f"Error authenticating with developer credentials: {e}")
-                    return
+                self.trade_logger.log_activity("Central Angel One session is unavailable. Cannot sync missing candles.")
+                return
                     
             # Fetch the missing candles from last_timestamp to now
             gap_candles = []
@@ -434,65 +341,47 @@ class UserSession:
             except Exception as e:
                 print(f"[Session Init] Error warm-running strategy prediction: {e}")
                 
-        if self.is_demo:
-            self.trade_logger.log_activity("[DEMO] Starting in Demo Mode. Displaying static cached candles & signals.")
-            return
-            
         self.future_token = await asyncio.to_thread(get_cached_future_token)
         
         # 2. Init websocket queue
         tick_queue = asyncio.Queue()
         
-        from backend_engine.config import DEMO_MODE, TRADING_MODE
-        
-        if DEMO_MODE or TRADING_MODE == "DEMO":
-            self.trade_logger.log_activity("[DEMO] Starting in Demo Mode. Replaying historical data...")
-            self.ws_handler = DemoMarketSimulator(tick_queue, trade_logger=self.trade_logger)
-            asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
-        else:
-            api_key = self.credentials.get("api_key", "")
-            client_id = self.credentials.get("client_id", "")
-            password = self.credentials.get("password", "")
-            totp_secret = self.credentials.get("totp_secret", "")
-            
-            if api_key and client_id:
-                try:
-                    import pyotp
-                    from SmartApi import SmartConnect
-                    smart_connect = SmartConnect(api_key=api_key)
-                    totp = pyotp.TOTP(totp_secret).now()
-                    data = await asyncio.to_thread(smart_connect.generateSession, client_id, password, totp)
-                    
-                    if data.get('status') == True:
-                        jwt_token = data['data']['jwtToken']
-                        feed_token = await asyncio.to_thread(smart_connect.getfeedToken)
-                        self.ws_handler = AngelOneWSHandler(
-                            tick_queue, api_key, client_id, jwt_token, feed_token, 
-                            trade_logger=self.trade_logger
-                        )
-                        self.feed_status = "connected"
-                    else:
-                        err_msg = data.get('message', 'Session generation failed')
-                        print(f"[Angel One] ❌ Authentication FAILED: {err_msg}")
-                        self.trade_logger.log_activity(f"Angel One authentication failed: {err_msg}.")
-                        self.server_down = True
-                        self.ws_handler = None
-                except Exception as e:
-                    print(f"[Angel One] ❌ Exception during auth: {e}")
-                    self.trade_logger.log_activity(f"Error during Angel One auth: {e}.")
-                    self.server_down = True
-                    self.ws_handler = None
-            else:
-                self.trade_logger.log_activity("Starting in Custom Feed Mode. Syncing candles with default credentials.")
-                asyncio.create_task(asyncio.to_thread(self.fill_historical_gap, None))
-                self.ws_handler = WSHandler(tick_queue, trade_logger=self.trade_logger)
+        api_key = self.credentials.get("api_key", "")
+        client_id = self.credentials.get("client_id", "")
+        password = self.credentials.get("password", "")
+        totp_secret = self.credentials.get("totp_secret", "")
+        if not all((api_key, client_id, password, totp_secret)):
+            self.server_down = True
+            self.trade_logger.log_activity("Central Angel One credentials are not configured.")
+            return
+
+        try:
+            import pyotp
+            from SmartApi import SmartConnect
+            smart_connect = SmartConnect(api_key=api_key)
+            totp = pyotp.TOTP(totp_secret).now()
+            data = await asyncio.to_thread(smart_connect.generateSession, client_id, password, totp)
+            if data.get("status") is not True:
+                raise RuntimeError(data.get("message", "Session generation failed"))
+
+            jwt_token = data["data"]["jwtToken"]
+            feed_token = await asyncio.to_thread(smart_connect.getfeedToken)
+            self.smart_connect = smart_connect
+            self.ws_handler = AngelOneWSHandler(
+                tick_queue, api_key, client_id, jwt_token, feed_token,
+                trade_logger=self.trade_logger, future_token=self.future_token
+            )
+        except Exception as exc:
+            self.server_down = True
+            self.trade_logger.log_activity(f"Central Angel One authentication failed: {exc}")
+            return
             
         self.paper_trade_engine.ws_handler = self.ws_handler
         self.candle_builder = CandleBuilder(
             on_candle_completed_cb=self.on_candle_completed,
             trade_logger=self.trade_logger,
             candle_data_path=self.candle_data_path,
-            future_token=None
+            future_token=self.future_token
         )
         
         # Start worker tasks
@@ -687,6 +576,11 @@ class UserSession:
                 health_monitor.record_tick()
                 scrip = int(tick["ScripCode"])
                 rec_type = tick["RecType"]
+                if scrip == INDEX_TOKEN and rec_type in ("A", "H") and tick["LTP"] is not None:
+                    self.latest_tick = {
+                        "ltp": float(tick["LTP"]),
+                        "timestamp": tick["Time"].isoformat()
+                    }
                 
                 # 1. Update Spot Price LTP
                 if scrip == INDEX_TOKEN and rec_type in ("A", "H") and tick["LTP"] is not None:
@@ -986,31 +880,8 @@ def sync_last_72_candles(sc, candle_data_path, email=None):
     from_str = from_dt.strftime("%Y-%m-%d %H:%M")
     to_str = to_dt.strftime("%Y-%m-%d %H:%M")
     
-    from backend_engine.config import DEMO_MODE
-    if DEMO_MODE:
-        print("[DEMO] Manual 72-candle sync bypassed in Demo Mode.")
-        return True
-
-    # Authenticate with default developer key if no active user session
     if sc is None:
-        try:
-            import pyotp
-            from SmartApi import SmartConnect
-            dev_api_key = os.getenv("DEV_API_KEY", "")
-            dev_client_id = os.getenv("DEV_CLIENT_ID", "")
-            dev_password = os.getenv("DEV_PASSWORD", "")
-            dev_totp_secret = os.getenv("DEV_TOTP_SECRET", "")
-            
-            if not (dev_api_key and dev_client_id):
-                return False
-                
-            sc = SmartConnect(api_key=dev_api_key)
-            totp = pyotp.TOTP(dev_totp_secret).now()
-            data = sc.generateSession(dev_client_id, dev_password, totp)
-            if data.get('status') != True:
-                return False
-        except Exception:
-            return False
+        return False
             
     # 1. Fetch Nifty Spot candles
     params = {

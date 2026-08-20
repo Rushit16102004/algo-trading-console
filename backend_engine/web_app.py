@@ -1,6 +1,6 @@
 # PASSKEY: rushit2712
 import asyncio
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Request
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Request, Depends
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -17,6 +17,7 @@ from collections import defaultdict
 import backend_engine.live_dryrun as live_dryrun
 from longpine.backtest_runner import run_strategy_backtest, get_strategy_signals_for_chart
 from backend_engine.users_db import register_user, verify_user, get_user_by_email
+from backend_engine.auth import get_current_user
 from backend_engine.config import ALLOWED_ORIGINS
 
 app = FastAPI(title="243A Multi-User Strategy Console")
@@ -336,32 +337,6 @@ async def startup_event():
         precompute_pattern_library()
     threading.Thread(target=_delayed_precompute, daemon=True).start()
     
-    # Auto-register default demo and developer users if missing
-    try:
-        from backend_engine.users_db import get_user_by_email, register_user
-        if not get_user_by_email("demo@gmail.com"):
-            register_user(
-                email="demo@gmail.com",
-                pin="111111",
-                api_key="",
-                client_id="",
-                password="",
-                totp_secret=""
-            )
-            print("[Startup] Auto-registered default demo user: demo@gmail.com / PIN: 111111")
-        if not get_user_by_email("developer@gmail.com"):
-            register_user(
-                email="developer@gmail.com",
-                pin="111111",
-                api_key="",
-                client_id="",
-                password="",
-                totp_secret=""
-            )
-            print("[Startup] Auto-registered developer user: developer@gmail.com / PIN: 111111")
-    except Exception as e:
-        print(f"[Startup] Error auto-registering default users: {e}")
-        
     # Start the automated market hours scheduler task
     asyncio.create_task(market_hours_scheduler_loop())
 
@@ -396,12 +371,8 @@ async def register(
     request: Request,
     email: str = Form(...),
     pin: str = Form(...),
-    api_key: str = Form(""),
-    client_id: str = Form(""),
-    password: str = Form(""),
-    totp_secret: str = Form("")
 ):
-    """Registers a new user inside the local database sandbox."""
+    """Registers a user without accepting broker credentials."""
     client_ip = request.client.host
     if not check_rate_limit(client_ip, limit=3, window=60):
         raise HTTPException(status_code=429, detail="Too many attempts. Please try again later.")
@@ -409,10 +380,10 @@ async def register(
     success = register_user(
         email=email.strip().lower(),
         pin=pin.strip(),
-        api_key=api_key.strip(),
-        client_id=client_id.strip(),
-        password=password.strip(),
-        totp_secret=totp_secret.strip()
+        api_key="",
+        client_id="",
+        password="",
+        totp_secret=""
     )
     if success:
         return {"status": "success", "message": "Account created successfully! You can now log in using your PIN."}
@@ -463,7 +434,9 @@ async def run_auto_sync_in_background(sc, email, session):
         is_syncing_in_progress = False
 
 @app.get("/api/status")
-async def get_status(email: str = Query(None), strategy: str = Query("243A")):
+async def get_status(email: str = Query(None), strategy: str = Query("243A"), current_user=Depends(get_current_user)):
+    if not current_user or current_user.email != (email or "").strip().lower():
+        raise HTTPException(status_code=401, detail="Authentication required")
     # First check if the email parameter is provided
     if not email:
         return {
@@ -482,9 +455,8 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
 
     session = get_user_session(email, strategy_name=strategy)
     if not session:
-        # Check if email is valid (demo or registered in database)
         email_clean = email.strip().lower()
-        is_valid_user = (email_clean == "demo@gmail.com") or (get_user_by_email(email_clean) is not None)
+        is_valid_user = get_user_by_email(email_clean) is not None
         
         if is_valid_user:
             return {
@@ -579,7 +551,8 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
             }
             
     from backend_engine.kill_switch import get_kill_switch_state
-    from backend_engine.config import DEMO_MODE, TRADING_MODE
+    from backend_engine.config import TRADING_MODE
+    from backend_engine.health_monitor import monitor as health_monitor
     import math
     
     # ----------------------------------------------------------------
@@ -619,11 +592,14 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
             hmm_upper.append({"time": t_k, "value": round(p_k + band_k, 2)})
             hmm_lower.append({"time": t_k, "value": round(p_k - band_k, 2)})
     
+    feed_age = (time.time() - health_monitor.last_tick_time) if health_monitor.last_tick_time else float("inf")
+    feed_live = conn_status == "live" and bool(session.latest_tick) and feed_age <= 30
     return {
         "index_ltp": ltp,
-        "connection_status": "live" if (session and session.ws_handler and conn_status == "live") else "offline",
-        "server_down": getattr(session, 'server_down', False) if session else True,
-        "mode": "DEMO" if DEMO_MODE else TRADING_MODE,
+        "connection_status": "live" if feed_live else ("connecting" if conn_status == "connecting" else "offline"),
+        "server_down": not feed_live,
+        "mode": "LIVE",
+        "last_tick_at": session.latest_tick.get("timestamp") if session.latest_tick else None,
         "kill_switch_active": get_kill_switch_state(),
         "trades_count": len([t for t in session.paper_trade_engine.trades if t.get("exit_time", "").startswith(today_str)]),
         "today_realized_pnl": round(realized_pnl_inr, 2),
@@ -643,7 +619,9 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
     }
 
 @app.get("/api/signals")
-async def get_signals(email: str = Query(None)):
+async def get_signals(email: str = Query(None), current_user=Depends(get_current_user)):
+    if not current_user or current_user.email != (email or "").strip().lower():
+        raise HTTPException(status_code=401, detail="Authentication required")
     session = get_user_session(email)
     if not session:
         return {"current_regime": "Unknown", "signal_history": []}
@@ -778,7 +756,9 @@ async def api_sync_72(email: str = Query(None)):
     return {"status": "error", "message": "Failed to sync candles. Please check credentials or try again later."}
 
 @app.get("/api/candles")
-async def get_candles(email: str = Query(None), strategy: str = Query("243A"), limit: int = Query(3000)):
+async def get_candles(email: str = Query(None), strategy: str = Query("243A"), limit: int = Query(3000), current_user=Depends(get_current_user)):
+    if not current_user or current_user.email != (email or "").strip().lower():
+        raise HTTPException(status_code=401, detail="Authentication required")
     """
     Returns a unified, continuous dataset of Nifty candles.
     Uses RAM-cached historical candles (2008-2025) to achieve sub-5ms response times.
@@ -988,7 +968,7 @@ async def health_check():
     from backend_engine.database import SessionLocal
     from backend_engine.health_monitor import monitor as health_monitor
     from backend_engine.kill_switch import get_kill_switch_state
-    from backend_engine.config import DEMO_MODE, TRADING_MODE
+    from backend_engine.config import TRADING_MODE
     import sqlalchemy
     
     db_ok = False
@@ -1005,7 +985,7 @@ async def health_check():
     ks_active = get_kill_switch_state()
     
     status = "healthy"
-    if not db_ok or (not DEMO_MODE and ws_status.get("stale", True)):
+    if not db_ok or ws_status.get("stale", True):
         status = "unhealthy"
         
     return {
@@ -1014,7 +994,7 @@ async def health_check():
         "market_feed": "connected" if ws_status.get("connected") else "disconnected",
         "feed_stale": ws_status.get("stale"),
         "kill_switch_active": ks_active,
-        "trading_mode": "DEMO" if DEMO_MODE else TRADING_MODE,
+        "trading_mode": TRADING_MODE,
         "timestamp": datetime.datetime.now().isoformat()
     }
 

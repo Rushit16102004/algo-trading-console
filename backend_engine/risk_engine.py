@@ -7,7 +7,7 @@ from backend_engine.market_session import is_market_open, is_exit_only_zone
 from backend_engine.health_monitor import monitor as health_monitor
 from backend_engine.position_manager import position_manager
 from backend_engine.config import (
-    DEMO_MODE, TRADING_MODE, MAX_DAILY_LOSS, 
+    TRADING_MODE, MAX_DAILY_LOSS,
     MAX_TRADES_PER_DAY, MAX_CONCURRENT_POSITIONS
 )
 

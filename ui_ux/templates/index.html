@@ -724,7 +724,6 @@
                         <input type="password" id="lock-pin" placeholder="••••••" required style="text-align: center; font-size: 2rem; letter-spacing: 8px; font-family: 'JetBrains Mono', monospace;" maxlength="6" pattern="\d{6}" inputmode="numeric">
                     </div>
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding:12px;">Unlock Console</button>
-                    <button type="button" class="btn btn-secondary" onclick="enterDemoMode()" style="width: 100%; margin-top: 10px; padding:12px; font-weight:600; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: white;">⚡ Try Demo Mode</button>
                 </form>
                 <a href="#" onclick="showSignInForm()" style="color: var(--accent-blue); display: inline-block; margin-top: 1.25rem; font-size: 0.85rem; text-decoration: none;">Switch Account / Log In</a>
             </div>
@@ -743,7 +742,6 @@
                         <input type="password" id="signin-pin" placeholder="••••••" required maxlength="6" pattern="\d{6}" inputmode="numeric" style="text-align: center; font-size: 1.5rem; letter-spacing: 6px; font-family: 'JetBrains Mono', monospace;">
                     </div>
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding:12px;">Log In</button>
-                    <button type="button" class="btn btn-secondary" onclick="enterDemoMode()" style="width: 100%; margin-top: 10px; padding:12px; font-weight:600; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: white;">⚡ Try Demo Mode</button>
                 </form>
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1.5rem;">New user? <a href="#" onclick="showSignUpForm()" style="color: var(--accent-blue); text-decoration: none; font-weight:600;">Create a secure account</a></p>
             </div>
@@ -762,7 +760,6 @@
                         <input type="password" id="signup-pin" placeholder="••••••" required maxlength="6" pattern="\d{6}" inputmode="numeric" style="text-align: center; font-size: 1.25rem; letter-spacing: 4px; font-family: 'JetBrains Mono', monospace;">
                     </div>
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding:12px;">Create Account</button>
-                    <button type="button" class="btn btn-secondary" onclick="enterDemoMode()" style="width: 100%; margin-top: 10px; padding:12px; font-weight:600; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: white;">⚡ Try Demo Mode</button>
                 </form>
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1.25rem;">Already have an account? <a href="#" onclick="showSignInForm()" style="color: var(--accent-blue); text-decoration: none; font-weight:600;">Log In</a></p>
             </div>
@@ -1192,41 +1189,9 @@
         }
 
         // AUTHENTICATION LOGIC
-        let trialTimer = null;
-        let isTrialActive = false;
-
         async function checkAuthentication() {
             let email = localStorage.getItem("user_email");
             const authOverlay = document.getElementById("auth-overlay");
-            
-            // Check if Demo session is active
-            if (localStorage.getItem("is_trial") === "true") {
-                let trialStart = parseInt(localStorage.getItem("trial_start") || Date.now());
-                const elapsed = Date.now() - trialStart;
-                if (elapsed >= 300000) {
-                    // Demo mode expired! Clear and redirect
-                    localStorage.removeItem("user_email");
-                    localStorage.setItem("is_trial", "false");
-                    localStorage.removeItem("trial_start");
-                    email = null;
-                    isTrialActive = false;
-                } else {
-                    isTrialActive = true;
-                    email = "demo@gmail.com";
-                    localStorage.setItem("user_email", email);
-                    const remaining = 300000 - elapsed;
-                    if (trialTimer) clearTimeout(trialTimer);
-                    trialTimer = setTimeout(triggerTrialExpiration, remaining);
-                    
-                    document.getElementById("pin-lock-container").style.display = "none";
-                    document.getElementById("signup-container").style.display = "none";
-                    document.getElementById("signin-container").style.display = "none";
-                    authOverlay.classList.remove("active");
-                    authOverlay.style.pointerEvents = "none";
-                    loginSuccessful(email);
-                    return;
-                }
-            }
             
             // If they signed out explicitly
             if (localStorage.getItem("signed_out") === "true") {
@@ -1239,7 +1204,7 @@
             }
             
             // If locked custom user session exists
-            if (email && !isTrialActive) {
+            if (email) {
                 document.getElementById("signin-container").style.display = "none";
                 document.getElementById("signup-container").style.display = "none";
                 document.getElementById("pin-lock-container").style.display = "block";
@@ -1271,56 +1236,6 @@
             }
         }
 
-        function triggerTrialExpiration() {
-            localStorage.removeItem("user_email");
-            localStorage.setItem("is_trial", "false");
-            localStorage.removeItem("trial_start");
-            isTrialActive = false;
-            if (trialTimer) {
-                clearTimeout(trialTimer);
-                trialTimer = null;
-            }
-            document.getElementById("btn-signout").style.display = "none";
-            document.getElementById("header-user-email").innerText = "";
-            
-            // Show alert box on signin modal
-            const signinContainer = document.getElementById("signin-container");
-            let alertBox = document.getElementById("trial-expired-alert");
-            if (!alertBox) {
-                alertBox = document.createElement("div");
-                alertBox.id = "trial-expired-alert";
-                alertBox.style.color = "#ef4444";
-                alertBox.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
-                alertBox.style.border = "1px solid rgba(239, 68, 68, 0.2)";
-                alertBox.style.padding = "12px";
-                alertBox.style.borderRadius = "8px";
-                alertBox.style.marginBottom = "16px";
-                alertBox.style.fontSize = "0.9rem";
-                alertBox.style.fontWeight = "500";
-                alertBox.style.textAlign = "center";
-                signinContainer.insertBefore(alertBox, signinContainer.firstChild);
-            }
-            alertBox.innerHTML = "⚠️ Demo Mode Expired!<br>The 5-minute preview has finished. Please create an account or log in with your credentials to continue.";
-            
-            if (socket) {
-                socket.close();
-            }
-            checkAuthentication();
-        }
-
-        function enterDemoMode() {
-            localStorage.setItem("user_email", "demo@gmail.com");
-            localStorage.setItem("is_trial", "true");
-            localStorage.setItem("trial_start", Date.now().toString());
-            localStorage.removeItem("signed_out");
-            
-            const alertBox = document.getElementById("trial-expired-alert");
-            if (alertBox) {
-                alertBox.remove();
-            }
-            checkAuthentication();
-        }
-
         function showSignUpForm() {
             document.getElementById("signin-container").style.display = "none";
             document.getElementById("pin-lock-container").style.display = "none";
@@ -1349,6 +1264,7 @@
                 });
                 const data = await response.json();
                 if (data.status === "success") {
+                    localStorage.setItem("access_token", data.token);
                     loginSuccessful(email);
                 } else {
                     alert(data.message || data.detail || "Invalid login credentials or request failed.");
@@ -1374,6 +1290,7 @@
                 });
                 const data = await response.json();
                 if (data.status === "success") {
+                    localStorage.setItem("access_token", data.token);
                     loginSuccessful(email);
                 } else {
                     alert(data.message || data.detail || "Invalid email/PIN or request failed.");
@@ -1419,16 +1336,6 @@
         function loginSuccessful(email) {
             localStorage.setItem("user_email", email);
             localStorage.removeItem("signed_out");
-            if (email !== "developer@gmail.com") {
-                localStorage.setItem("is_trial", "false");
-                localStorage.removeItem("trial_start");
-                isTrialActive = false;
-                if (trialTimer) {
-                    clearTimeout(trialTimer);
-                    trialTimer = null;
-                }
-            }
-            
             document.getElementById("auth-overlay").classList.remove("active");
             document.getElementById("auth-overlay").style.pointerEvents = "none";
             document.getElementById("header-user-email").innerText = email;
@@ -1451,14 +1358,8 @@
 
         function handleSignOut() {
             localStorage.removeItem("user_email");
-            localStorage.removeItem("is_trial");
-            localStorage.removeItem("trial_start");
+            localStorage.removeItem("access_token");
             localStorage.setItem("signed_out", "true");
-            isTrialActive = false;
-            if (trialTimer) {
-                clearTimeout(trialTimer);
-                trialTimer = null;
-            }
             document.getElementById("btn-signout").style.display = "none";
             document.getElementById("header-user-email").innerText = "";
             document.getElementById("auth-overlay").classList.add("active");
@@ -1566,7 +1467,9 @@
             const strategy = document.getElementById("active-strategy-select").value;
             
             try {
-                const response = await fetch(`/api/candles?email=${encodeURIComponent(email)}&strategy=${strategy}&limit=${currentCandleLimit}`);
+                const response = await fetch(`/api/candles?email=${encodeURIComponent(email)}&strategy=${strategy}&limit=${currentCandleLimit}`, {
+                    headers: { "Authorization": `Bearer ${localStorage.getItem("access_token") || ""}` }
+                });
                 const data = await response.json();
                 if (data && data.candles && data.candles.length > 0) {
                     historicalCandlesData = data.candles;
@@ -1814,7 +1717,13 @@
             const strategy = document.getElementById("active-strategy-select").value;
             
             try {
-                const response = await fetch(`/api/status?email=${encodeURIComponent(email)}&strategy=${strategy}`);
+                const response = await fetch(`/api/status?email=${encodeURIComponent(email)}&strategy=${strategy}`, {
+                    headers: { "Authorization": `Bearer ${localStorage.getItem("access_token") || ""}` }
+                });
+                if (response.status === 401) {
+                    handleSignOut();
+                    return;
+                }
                 const data = await response.json();
                 
                 // Sync status monitoring
@@ -1852,34 +1761,13 @@
                 // Update Connection status badge
                 const connText = document.getElementById('conn-text');
                 const connDot = document.getElementById('conn-dot');
-                const connText = document.getElementById('conn-text');
-
-                if (data.connection_status === 'server_down' || data.connection_status === 'error') {
-                    connDot.className = 'pulse-dot pulse-disconnected';
-                    connText.innerText = 'Server Down';
-                    showServerDownModal("⚠️ Server Down / Market Feed Offline. Please try again later.");
-                
                 if (data.connection_status === 'live') {
                     if (connText) connText.innerText = 'Live Feed - Connected';
                     if (connDot) connDot.className = 'pulse-dot pulse-connected';
                 } else {
-                    connDot.className = 'pulse-dot';
-                    let sourceLabel = data.mode === 'angel' ? 'Angel One' : 'Custom Feed';
-                    if (data.connection_status === 'live') {
-                        connDot.classList.add('pulse-live');
-                        connText.innerText = `${sourceLabel} - Live`;
-                    } else if (data.connection_status === 'connecting') {
-                        connDot.classList.add('pulse-connecting');
-                        connText.innerText = `${sourceLabel} - Connecting`;
-                    } else {
-                        connDot.classList.add('pulse-connecting');
-                        connText.innerText = `${sourceLabel} - Idle`;
                     if (connText) connText.innerText = 'Server Down / Offline';
                     if (connDot) connDot.className = 'pulse-dot pulse-disconnected';
-                    
-                    if (data.server_down) {
-                        showToast("⚠️ Server Down / Market Feed Offline. Please try again later.", "danger");
-                    }
+                    showServerDownModal("Server is down. Please try again later.");
                 }
 
                 // Active Positions Count
@@ -1962,7 +1850,7 @@
                 const btnResume = document.getElementById('btn-emergency-resume');
                 
                 if (statusMode) {
-                    statusMode.innerText = data.mode ? data.mode.toUpperCase() : 'DEMO';
+                    statusMode.innerText = 'LIVE';
                     if (data.mode === 'LIVE') {
                         statusMode.style.color = '#ef4444';
                         statusMode.style.textShadow = '0 0 8px rgba(239, 68, 68, 0.4)';
@@ -2093,7 +1981,9 @@
             if (!email) return;
             
             try {
-                const response = await fetch(`/api/signals?email=${encodeURIComponent(email)}`);
+                const response = await fetch(`/api/signals?email=${encodeURIComponent(email)}`, {
+                    headers: { "Authorization": `Bearer ${localStorage.getItem("access_token") || ""}` }
+                });
                 const data = await response.json();
 
                 // Update executed signals table

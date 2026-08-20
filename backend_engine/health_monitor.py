@@ -26,11 +26,6 @@ class HealthMonitor:
         
     def is_feed_stale(self, timeout_seconds: int = 30) -> bool:
         """Returns True if WebSocket feed has not received any ticks for timeout_seconds."""
-        # For DEMO mode or simulator, the feed is generated locally so it is never stale
-        from backend_engine.config import DEMO_MODE
-        if DEMO_MODE:
-            return False
-            
         if not self.ws_connected:
             return True
         if self.last_tick_time == 0.0:

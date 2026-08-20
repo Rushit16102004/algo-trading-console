@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from backend_engine.database import SessionLocal
 from backend_engine.models import PaperTrade, AuditLog
 from backend_engine.risk_engine import risk_engine
-from backend_engine.config import DEMO_MODE, TRADING_MODE
+from backend_engine.config import TRADING_MODE
 
 class ExecutionEngine:
     def __init__(self):
@@ -59,7 +59,7 @@ class ExecutionEngine:
         finally:
             db.close()
             
-        if DEMO_MODE or TRADING_MODE in ("DEMO", "PAPER"):
+        if TRADING_MODE == "PAPER":
             # Route to Paper Simulator
             if side in ("BUY", "LONG", "SELL", "SHORT"):
                 # Determine if we exit matching

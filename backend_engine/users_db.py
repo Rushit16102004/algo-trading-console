@@ -204,8 +204,7 @@ def check_any_custom_user_exists() -> bool:
     db = SessionLocal()
     try:
         count = db.query(User).filter(
-            User.email != "developer@gmail.com",
-            User.email != "demo@gmail.com"
+            User.email != "developer@gmail.com"
         ).count()
         return count > 0
     finally:

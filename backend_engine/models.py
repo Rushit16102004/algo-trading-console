@@ -60,7 +60,7 @@ class StrategyRun(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     strategy = Column(String, nullable=False, index=True)
-    mode = Column(String, nullable=False) # DEMO, PAPER, LIVE
+    mode = Column(String, nullable=False) # PAPER, LIVE
     started_at = Column(DateTime, default=datetime.datetime.utcnow)
     stopped_at = Column(DateTime, nullable=True)
     status = Column(String, default="RUNNING") # RUNNING, STOPPED

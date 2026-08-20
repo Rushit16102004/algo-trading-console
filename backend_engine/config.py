@@ -9,8 +9,7 @@ load_dotenv()
 WS_URL = os.getenv("WS_URL", "wss://trading.supernalventures.info/feeds/handlerequest")
 USER_ID = os.getenv("USER_ID", "AL01")
 
-# Deployed Application Modes    
-DEMO_MODE = False
+# The only market-data source is the centralized Angel One feed.
 TRADING_MODE = "PAPER"
 
 # PostgreSQL & Security Keys

@@ -143,19 +143,30 @@ class AngelOneWSHandler:
         self.log(f"WebSocket connection closed. Code: {close_status_code}, Message: {close_msg}")
 
     async def connect_and_stream(self):
-        """Starts the background streaming connection in a separate thread executor."""
+        """Maintain the single centralized Angel One stream with reconnects."""
         self.is_running = True
-        self.conn_status["status"] = "connecting"
         self.loop = asyncio.get_running_loop()
-        
-        self.ws = SmartWebSocketV2(self.jwt_token, self.api_key, self.client_id, self.feed_token)
-        self.ws.on_open = self.on_open
-        self.ws.on_data = self.on_data
-        self.ws.on_error = self.on_error
-        self.ws.on_close = self.on_close
-        
-        self.log("Connecting to Angel One feed stream in background executor...")
-        await self.loop.run_in_executor(None, self.ws.connect)
+
+        while self.is_running:
+            try:
+                self.conn_status["status"] = "connecting"
+                self.ws = SmartWebSocketV2(self.jwt_token, self.api_key, self.client_id, self.feed_token)
+                self.ws.on_open = self.on_open
+                self.ws.on_data = self.on_data
+                self.ws.on_error = self.on_error
+                self.ws.on_close = self.on_close
+
+                self.log("Connecting to Angel One feed stream in background executor...")
+                await self.loop.run_in_executor(None, self.ws.connect)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                self.conn_status["status"] = "error"
+                self.log(f"Angel One feed connection failed: {exc}")
+
+            if self.is_running:
+                self.conn_status["status"] = "connecting"
+                await asyncio.sleep(5)
 
     def stop(self):
         self.is_running = False
