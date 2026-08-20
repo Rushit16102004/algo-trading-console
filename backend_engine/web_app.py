@@ -160,7 +160,16 @@ def init_historical_caches():
         return
         
     print("[CACHE INITIALIZER] Fast parsing and caching candles from backend_engine/old data.csv...")
-    df_old = pd.read_csv(old_data_path)
+    try:
+        from collections import deque
+        import io
+        with open(old_data_path, "r", encoding="utf-8") as f:
+            header = f.readline()
+            last_lines = deque(f, maxlen=5000)
+        df_old = pd.read_csv(io.StringIO(header + "".join(last_lines)))
+    except Exception as e:
+        df_old = pd.read_csv(old_data_path).tail(5000)
+
     df_old['open'] = pd.to_numeric(df_old['open'], errors='coerce')
     df_old['high'] = pd.to_numeric(df_old['high'], errors='coerce')
     df_old['low'] = pd.to_numeric(df_old['low'], errors='coerce')
@@ -172,7 +181,7 @@ def init_historical_caches():
 
     df_old['timestamp'] = pd.to_datetime(df_old['timestamp'], format='mixed')
     
-    df_tail = df_old.tail(5000).copy()
+    df_tail = df_old.tail(2000).copy()
     try:
         epochs = (df_tail['timestamp'].dt.tz_convert('Asia/Kolkata').astype('int64') // 10**9).tolist()
     except TypeError:
@@ -183,7 +192,7 @@ def init_historical_caches():
     HISTORICAL_CANDLES = df_unique[['time', 'open', 'high', 'low', 'close', 'volume']].to_dict(orient='records')
     
     print("[CACHE INITIALIZER] Pre-calculating historical strategy signal markers...")
-    df_recent = df_old.tail(2000).copy()
+    df_recent = df_old.tail(1000).copy()
     HISTORICAL_MARKERS["243A"] = get_strategy_signals_for_chart(df_recent, "243A")
     HISTORICAL_MARKERS["LONGPING"] = get_strategy_signals_for_chart(df_recent, "LONGPING")
     print(f"[CACHE INITIALIZER] Pre-calculation complete! (243A Markers: {len(HISTORICAL_MARKERS['243A'])}, LONGPING Markers: {len(HISTORICAL_MARKERS['LONGPING'])})")
