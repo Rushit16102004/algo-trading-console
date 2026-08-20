@@ -581,12 +581,11 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A"), cu
             hmm_upper.append({"time": t_k, "value": round(p_k + band_k, 2)})
             hmm_lower.append({"time": t_k, "value": round(p_k - band_k, 2)})
     
-    feed_age = (time.time() - health_monitor.last_tick_time) if health_monitor.last_tick_time else float("inf")
-    feed_live = conn_status == "live" and bool(session.latest_tick) and feed_age <= 30
+    is_connected = conn_status == "live"
     return {
         "index_ltp": ltp,
-        "connection_status": "live" if feed_live else ("connecting" if conn_status == "connecting" else "offline"),
-        "server_down": not feed_live,
+        "connection_status": "live" if is_connected else ("connecting" if conn_status == "connecting" else "offline"),
+        "server_down": not is_connected and conn_status != "connecting",
         "mode": "LIVE",
         "last_tick_at": session.latest_tick.get("timestamp") if session.latest_tick else None,
         "kill_switch_active": get_kill_switch_state(),
