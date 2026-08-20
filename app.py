@@ -1,10 +1,19 @@
 # PASSKEY: rushit2712
-import spaces
+try:
+    import spaces
+    has_spaces = True
+except ImportError:
+    has_spaces = False
+
 import torch
 
-@spaces.GPU
-def dummy_gpu_fn():
-    return torch.cuda.is_available()
+if has_spaces:
+    @spaces.GPU
+    def dummy_gpu_fn():
+        return torch.cuda.is_available()
+else:
+    def dummy_gpu_fn():
+        return torch.cuda.is_available()
 
 import os
 import sys
