@@ -126,34 +126,26 @@ class UserSession:
         self.tasks = []
 
     def load_mixed_csv(self, file_path: str) -> pd.DataFrame:
-        rows = []
-        with open(file_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        if not lines:
-            return pd.DataFrame(columns=["timestamp", "open", "high", "low", "close", "volume"])
-            
-        headers = [h.strip().lower() for h in lines[0].split(",")]
-        has_volume = "volume" in headers
-        
-        for idx in range(1, len(lines)):
-            line = lines[idx].strip()
-            if not line:
-                continue
-            parts = line.split(",")
-            if len(parts) >= 5:
-                try:
-                    row_dict = {
-                        "timestamp": parts[0].strip(),
-                        "open": float(parts[1].strip()),
-                        "high": float(parts[2].strip()),
-                        "low": float(parts[3].strip()),
-                        "close": float(parts[4].strip()),
-                        "volume": float(parts[5].strip()) if (has_volume and len(parts) >= 6) else 0.0
-                    }
-                    rows.append(row_dict)
-                except ValueError:
-                    continue
-        return pd.DataFrame(rows)
+        try:
+            from collections import deque
+            import io
+            with open(file_path, "r", encoding="utf-8") as f:
+                header = f.readline()
+                last_lines = deque(f, maxlen=5000)
+            df = pd.read_csv(io.StringIO(header + "".join(last_lines)))
+        except Exception:
+            df = pd.read_csv(file_path).tail(5000)
+
+        df.columns = [c.strip().lower() for c in df.columns]
+        df['open'] = pd.to_numeric(df['open'], errors='coerce')
+        df['high'] = pd.to_numeric(df['high'], errors='coerce')
+        df['low'] = pd.to_numeric(df['low'], errors='coerce')
+        df['close'] = pd.to_numeric(df['close'], errors='coerce')
+        if 'volume' in df.columns:
+            df['volume'] = pd.to_numeric(df['volume'], errors='coerce').fillna(0.0)
+        else:
+            df['volume'] = 0.0
+        return df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
 
     def bootstrap_candles(self):
         """Warms up the user's candle database."""
@@ -332,11 +324,12 @@ class UserSession:
         # Use asyncio.to_thread to run heavy synchronous loading operations off the main event loop
         await asyncio.to_thread(self.bootstrap_candles)
         
-        # Warm up the initial last_prediction state from existing candles
+        # Warm up the initial last_prediction state from recent candles (fast!)
         if self.candles_df is not None and len(self.candles_df) >= 150:
             try:
                 strategy = get_strategy(self.strategy_name)
-                self.last_prediction = await asyncio.to_thread(strategy.predict, self.candles_df, False)
+                df_recent = self.candles_df.tail(1000).copy()
+                self.last_prediction = await asyncio.to_thread(strategy.predict, df_recent, False)
                 print(f"[Session Init] Initialized last_prediction state successfully for strategy {self.strategy_name}.")
             except Exception as e:
                 print(f"[Session Init] Error warm-running strategy prediction: {e}")
