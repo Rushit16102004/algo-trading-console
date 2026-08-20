@@ -177,6 +177,7 @@ class UserSession:
         self.future_token = None
         self.smart_connect = None
         
+        self.server_down = False
         self.index_ltp = 0.0
         self.last_index_time = None
         self.last_prediction = {}
@@ -471,11 +472,15 @@ class UserSession:
                         )
                         self.feed_status = "connected"
                     else:
-                        # NO FALLBACK TO DEMO OR CUSTOM FEED!
-                        self.feed_status = "server_down"
+                        err_msg = data.get('message', 'Session generation failed')
+                        print(f"[Angel One] ❌ Authentication FAILED: {err_msg}")
+                        self.trade_logger.log_activity(f"Angel One authentication failed: {err_msg}.")
+                        self.server_down = True
                         self.ws_handler = None
                 except Exception as e:
-                    self.feed_status = "server_down"
+                    print(f"[Angel One] ❌ Exception during auth: {e}")
+                    self.trade_logger.log_activity(f"Error during Angel One auth: {e}.")
+                    self.server_down = True
                     self.ws_handler = None
             else:
                 self.trade_logger.log_activity("Starting in Custom Feed Mode. Syncing candles with default credentials.")

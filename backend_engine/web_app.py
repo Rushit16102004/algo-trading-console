@@ -476,6 +476,7 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
             "active_positions": [],
             "current_candle": None,
             "logs": ["Please log in to view status."],
+            "server_down": True,
             "sync_in_progress": is_syncing_in_progress
         }
 
@@ -496,6 +497,7 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
                 "active_positions": [],
                 "current_candle": None,
                 "logs": ["Trading system is inactive. Market is closed."],
+                "server_down": True,
                 "sync_in_progress": is_syncing_in_progress
             }
         else:
@@ -509,6 +511,7 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
                 "active_positions": [],
                 "current_candle": None,
                 "logs": ["Please log in to view status."],
+                "server_down": True,
                 "sync_in_progress": is_syncing_in_progress
             }
         
@@ -518,7 +521,7 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
 
     ltp = session.index_ltp
     conn_status = "offline"
-    if session.ws_handler:
+    if session and session.ws_handler:
         conn_status = session.ws_handler.conn_status.get("status", "offline")
         
     active_positions = []
@@ -618,7 +621,8 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
     
     return {
         "index_ltp": ltp,
-        "connection_status": conn_status,
+        "connection_status": "live" if (session and session.ws_handler and conn_status == "live") else "offline",
+        "server_down": getattr(session, 'server_down', False) if session else True,
         "mode": "DEMO" if DEMO_MODE else TRADING_MODE,
         "kill_switch_active": get_kill_switch_state(),
         "trades_count": len([t for t in session.paper_trade_engine.trades if t.get("exit_time", "").startswith(today_str)]),

@@ -113,6 +113,12 @@
             animation: pulse-green 2s infinite;
         }
 
+        .pulse-connected {
+            background-color: var(--success);
+            box-shadow: 0 0 8px var(--success);
+            animation: pulse-green 2s infinite;
+        }
+
         .pulse-connecting {
             background-color: var(--warning);
             box-shadow: 0 0 8px var(--warning);
@@ -1844,6 +1850,7 @@
                 }
 
                 // Update Connection status badge
+                const connText = document.getElementById('conn-text');
                 const connDot = document.getElementById('conn-dot');
                 const connText = document.getElementById('conn-text');
 
@@ -1851,6 +1858,10 @@
                     connDot.className = 'pulse-dot pulse-disconnected';
                     connText.innerText = 'Server Down';
                     showServerDownModal("⚠️ Server Down / Market Feed Offline. Please try again later.");
+                
+                if (data.connection_status === 'live') {
+                    if (connText) connText.innerText = 'Live Feed - Connected';
+                    if (connDot) connDot.className = 'pulse-dot pulse-connected';
                 } else {
                     connDot.className = 'pulse-dot';
                     let sourceLabel = data.mode === 'angel' ? 'Angel One' : 'Custom Feed';
@@ -1863,6 +1874,11 @@
                     } else {
                         connDot.classList.add('pulse-connecting');
                         connText.innerText = `${sourceLabel} - Idle`;
+                    if (connText) connText.innerText = 'Server Down / Offline';
+                    if (connDot) connDot.className = 'pulse-dot pulse-disconnected';
+                    
+                    if (data.server_down) {
+                        showToast("⚠️ Server Down / Market Feed Offline. Please try again later.", "danger");
                     }
                 }
 
