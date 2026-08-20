@@ -68,24 +68,21 @@ except ImportError:
     except Exception as e:
         print(f"[TA-Lib Wrapper] Failed to install Python library wrapper: {e}")
 
-# 4. Now import Gradio and the main FastAPI trading console
-import gradio as gr
-from backend_engine.web_app import app as fastapi_app
-
-
-# Set up a minimal Gradio block interface for Hugging Face compliance
-with gr.Blocks(title="Algo Trading Console") as demo:
-    gr.Markdown("# ⚡ Algorithmic Trading Console Active")
-    gr.Markdown("The main trading console is running on the root path `/`.")
-    # Active reference to satisfy ZeroGPU compiler checks
-    btn = gr.Button("Check GPU Node Status")
-    out = gr.Textbox(label="Status")
-    btn.click(fn=dummy_gpu_fn, outputs=out)
-
-# Mount Gradio onto our main FastAPI app at path '/gradio'
-app = gr.mount_gradio_app(fastapi_app, demo, path="/gradio")
+# 4. Now import the main FastAPI trading console (with optional Gradio wrapper for ZeroGPU)
+try:
+    import gradio as gr
+    from backend_engine.web_app import app as fastapi_app
+    with gr.Blocks(title="Algo Trading Console") as demo:
+        gr.Markdown("# ⚡ Algorithmic Trading Console Active")
+        gr.Markdown("The main trading console is running on the root path `/`.")
+        btn = gr.Button("Check GPU Node Status")
+        out = gr.Textbox(label="Status")
+        btn.click(fn=dummy_gpu_fn, outputs=out)
+    app = gr.mount_gradio_app(fastapi_app, demo, path="/gradio")
+except ImportError:
+    from backend_engine.web_app import app as fastapi_app
+    app = fastapi_app
 
 if __name__ == "__main__":
     import uvicorn
-    # Hugging Face serves Gradio spaces on port 7860
     uvicorn.run(app, host="0.0.0.0", port=7860)
