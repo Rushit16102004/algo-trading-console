@@ -33,6 +33,8 @@ class AngelOneWSHandler:
 
     def on_open(self, wsapp):
         self.conn_status["status"] = "live"
+        from backend_engine.health_monitor import monitor as health_monitor
+        health_monitor.set_connected(True)
         self.log("[LIVE] Connected to Angel One Market Feed WebSocket.")
         
         # 1. Subscribe to Nifty 50 Spot Index (Token 99926000 on exchangeType 1)
@@ -75,6 +77,9 @@ class AngelOneWSHandler:
         if not token:
             return
             
+        from backend_engine.health_monitor import monitor as health_monitor
+        health_monitor.record_tick()
+
         mapped_tick = self.map_tick(message)
         if mapped_tick and self.loop:
             try:
@@ -99,16 +104,16 @@ class AngelOneWSHandler:
         vol_val = None
         rec_type = "A" # Default to LTP tick
         
-        if "last_traded_price" in message:
+        if "last_traded_price" in message and message["last_traded_price"] is not None:
             ltp_val = float(message["last_traded_price"]) / 100.0
             
-        if "volume_trade_for_the_day" in message:
+        if "volume_trade_for_the_day" in message and message["volume_trade_for_the_day"] is not None:
             vol_val = int(message["volume_trade_for_the_day"])
             if is_constituent:
                 rec_type = "d" # Volume tick
                 
         # Guard clauses:
-        if is_constituent and vol_val is None:
+        if is_constituent and vol_val is None and ltp_val is None:
             return None
         if (is_index or not is_constituent) and ltp_val is None:
             return None
@@ -136,10 +141,14 @@ class AngelOneWSHandler:
 
     def on_error(self, wsapp, error):
         self.conn_status["status"] = "error"
+        from backend_engine.health_monitor import monitor as health_monitor
+        health_monitor.set_connected(False)
         self.log(f"WebSocket Error: {error}")
 
     def on_close(self, wsapp, close_status_code, close_msg):
         self.conn_status["status"] = "offline"
+        from backend_engine.health_monitor import monitor as health_monitor
+        health_monitor.set_connected(False)
         self.log(f"WebSocket connection closed. Code: {close_status_code}, Message: {close_msg}")
 
     async def connect_and_stream(self):
@@ -162,6 +171,8 @@ class AngelOneWSHandler:
                 raise
             except Exception as exc:
                 self.conn_status["status"] = "error"
+                from backend_engine.health_monitor import monitor as health_monitor
+                health_monitor.set_connected(False)
                 self.log(f"Angel One feed connection failed: {exc}")
 
             if self.is_running:
@@ -171,6 +182,8 @@ class AngelOneWSHandler:
     def stop(self):
         self.is_running = False
         self.conn_status["status"] = "offline"
+        from backend_engine.health_monitor import monitor as health_monitor
+        health_monitor.set_connected(False)
         if self.ws:
             self.log("Stopping Angel One feed WebSocket client...")
             try:

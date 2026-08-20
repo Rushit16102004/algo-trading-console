@@ -766,6 +766,16 @@
         </div>
     </div>
 
+    <!-- MANDATORY SERVER DOWN POPUP -->
+    <div id="server-down-modal" class="modal-overlay" style="z-index: 2000; display: none;">
+        <div class="modal-content" style="max-width: 420px; text-align: center; border: 1px solid var(--danger); box-shadow: 0 0 30px rgba(239, 68, 68, 0.3); background: rgba(15, 23, 42, 0.95);">
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">⚠️</div>
+            <h2 style="color: #f87171; font-weight: 700; margin-bottom: 0.75rem; font-size: 1.3rem;">Server Down</h2>
+            <p id="server-down-msg" style="color: #d1d5db; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.4;">Server is down. Please try again later.</p>
+            <button class="btn btn-danger" onclick="location.reload()" style="width: 100%; padding: 10px; font-weight: 600;">Retry Connection</button>
+        </div>
+    </div>
+
     <!-- MAIN APP HEADER -->
     <header>
         <div class="logo-section">
@@ -1758,12 +1768,25 @@
                     return;
                 }
 
+                function showServerDownModal(msg) {
+                    const modal = document.getElementById("server-down-modal");
+                    const msgEl = document.getElementById("server-down-msg");
+                    if (msgEl) msgEl.innerText = msg || "Server is down. Please try again later.";
+                    if (modal) modal.style.display = "flex";
+                }
+
+                function hideServerDownModal() {
+                    const modal = document.getElementById("server-down-modal");
+                    if (modal) modal.style.display = "none";
+                }
+
                 // Update Connection status badge
                 const connText = document.getElementById('conn-text');
                 const connDot = document.getElementById('conn-dot');
-                if (data.connection_status === 'live') {
+                if (data.connection_status === 'live' && !data.server_down) {
                     if (connText) connText.innerText = 'Live Feed - Connected';
                     if (connDot) connDot.className = 'pulse-dot pulse-connected';
+                    hideServerDownModal();
                 } else {
                     if (connText) connText.innerText = 'Server Down / Offline';
                     if (connDot) connDot.className = 'pulse-dot pulse-disconnected';

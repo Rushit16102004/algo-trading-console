@@ -192,23 +192,8 @@ def get_user_session(email: str, strategy_name: str = "243A"):
         
     admin_user_id = 1
     if admin_user_id not in live_dryrun.active_sessions:
-        # Always start central feed — no time restriction
-        import pytz
-        ist_tz = pytz.timezone("Asia/Kolkata")
-        now = datetime.datetime.now(ist_tz)
-        admin_api_key = os.getenv("ANGEL_API_KEY")
-        admin_client_id = os.getenv("ANGEL_CLIENT_ID")
-        admin_password = os.getenv("ANGEL_PASSWORD")
-        admin_totp_secret = os.getenv("ANGEL_TOTP_SECRET")
-        credentials = {
-            "email": "admin@algo-trading.console",
-            "api_key": admin_api_key,
-            "client_id": admin_client_id,
-            "password": admin_password,
-            "totp_secret": admin_totp_secret
-        }
-        print(f"[Session Manager] Starting central admin session for user {email}")
-        live_dryrun.start_user_system(admin_user_id, credentials, strategy_name=strategy_name)
+        print(f"[Session Manager] Starting 24/7 central Angel One feed session for user {email}")
+        live_dryrun.start_user_system(admin_user_id, strategy_name=strategy_name)
             
     return live_dryrun.active_sessions.get(admin_user_id)
 
@@ -247,8 +232,8 @@ async def market_hours_scheduler_loop():
 
             # Always keep central feed running — restart if it dropped
             if admin_user_id not in live_dryrun.active_sessions:
-                print(f"[Scheduler] Feed not running. Auto-starting central trading feed...")
-                live_dryrun.start_user_system(admin_user_id, {}, strategy_name="243A")
+                print(f"[Scheduler] Central feed not running. Auto-starting 24/7 central trading feed...")
+                live_dryrun.start_user_system(admin_user_id, strategy_name="243A")
 
             # End-of-day: add today to pattern library at 15:32 IST
             if now.weekday() < 5 and now.hour == 15 and now.minute == 32:

@@ -371,6 +371,7 @@ class UserSession:
                 tick_queue, api_key, client_id, jwt_token, feed_token,
                 trade_logger=self.trade_logger, future_token=self.future_token
             )
+            self.server_down = False
         except Exception as exc:
             self.server_down = True
             self.trade_logger.log_activity(f"Central Angel One authentication failed: {exc}")
@@ -749,12 +750,9 @@ def sync_model_signals(session, strategy_name):
                 
         session.warmup_in_progress = False
 
-def start_user_system(user_id, credentials, strategy_name="243A"):
-    if active_sessions:
-        # Re-use existing running session to avoid duplicate streams & CPU usage
-        active_uid = list(active_sessions.keys())[0]
-        session = active_sessions[active_uid]
-        print(f"[Session Manager] Active session already running for user {active_uid}. Reusing for user {user_id}.")
+def start_user_system(user_id=1, credentials=None, strategy_name="243A"):
+    if 1 in active_sessions:
+        session = active_sessions[1]
         active_sessions[user_id] = session
         return session
         
@@ -768,28 +766,24 @@ def start_user_system(user_id, credentials, strategy_name="243A"):
     if not all([admin_api_key, admin_client_id, admin_password, admin_totp_secret]):
         print("[CRITICAL] Central feed credentials not found in environment variables! Please check your .env file.")
         
-    credentials = {
+    admin_credentials = {
         "email": "admin@algo-trading.console",
         "api_key": admin_api_key,
         "client_id": admin_client_id,
         "password": admin_password,
         "totp_secret": admin_totp_secret
     }
-    print(f"[Central Feed] Using central admin account ({admin_client_id}) for live market data feed.")
+    print(f"[Central Feed] Initializing 24/7 Central Angel One feed session ({admin_client_id})...")
         
-    session = UserSession(user_id, credentials, strategy_name)
+    session = UserSession(1, admin_credentials, strategy_name)
+    active_sessions[1] = session
     active_sessions[user_id] = session
     asyncio.create_task(session.start())
     return session
 
 def stop_user_system(user_id):
-    if user_id in active_sessions:
-        session = active_sessions[user_id]
+    if user_id in active_sessions and user_id != 1:
         del active_sessions[user_id]
-        # Only stop the session if no other active users are using it
-        if not any(s == session for s in active_sessions.values()):
-            session.stop()
-            print(f"[Session Manager] All users logged out. Stopped shared session.")
 
 async def daily_restart_checker_loop():
     """Daily check to restart all user systems cleanly at 9:00 AM IST."""
