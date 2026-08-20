@@ -180,8 +180,9 @@ def init_historical_caches():
     HISTORICAL_CANDLES = df_unique[['time', 'open', 'high', 'low', 'close', 'volume']].to_dict(orient='records')
     
     print("[CACHE INITIALIZER] Pre-calculating historical strategy signal markers...")
-    HISTORICAL_MARKERS["243A"] = get_strategy_signals_for_chart(df_old, "243A")
-    HISTORICAL_MARKERS["LONGPING"] = get_strategy_signals_for_chart(df_old, "LONGPING")
+    df_recent = df_old.tail(15000).copy()
+    HISTORICAL_MARKERS["243A"] = get_strategy_signals_for_chart(df_recent, "243A")
+    HISTORICAL_MARKERS["LONGPING"] = get_strategy_signals_for_chart(df_recent, "LONGPING")
     print(f"[CACHE INITIALIZER] Pre-calculation complete! (243A Markers: {len(HISTORICAL_MARKERS['243A'])}, LONGPING Markers: {len(HISTORICAL_MARKERS['LONGPING'])})")
 
 starting_sessions = set()
