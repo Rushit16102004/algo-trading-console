@@ -1090,6 +1090,10 @@
                                     <span id="status-risk" style="color: #10b981;">Healthy</span>
                                 </div>
                                 <div style="display: flex; justify-content: space-between;">
+                                    <span>Market Regime:</span>
+                                    <span id="status-regime" style="color: #60a5fa; font-weight: 700;">BULLISH_VOLATILE</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
                                     <span>Daily Trades:</span>
                                     <span id="status-trades">0</span>
                                 </div>
@@ -1518,6 +1522,24 @@
                         candleSeries.setMarkers([]);
                     }
                     
+                    // Render continuous HMM Volatility Regime Bands across full chart
+                    if (historicalCandlesData.length > 20 && hmmUpperSeries && hmmLowerSeries) {
+                        const hmmUpperData = [];
+                        const hmmLowerData = [];
+                        for (let i = 20; i < historicalCandlesData.length; i++) {
+                            const c = historicalCandlesData[i];
+                            let sum = 0;
+                            for (let j = i - 20; j < i; j++) {
+                                sum += Math.abs(historicalCandlesData[j].close - historicalCandlesData[j].open);
+                            }
+                            const meanRange = sum / 20;
+                            hmmUpperData.push({ time: c.time, value: +(c.high + meanRange * 0.8).toFixed(2) });
+                            hmmLowerData.push({ time: c.time, value: +(c.low - meanRange * 0.8).toFixed(2) });
+                        }
+                        hmmUpperSeries.setData(hmmUpperData);
+                        hmmLowerSeries.setData(hmmLowerData);
+                    }
+                    
                     // Scroll to real-time so they see today's last candle
                     chart.timeScale().scrollToRealTime();
                     updateLegend(historicalCandlesData[historicalCandlesData.length - 1]);
@@ -1839,10 +1861,22 @@
                             color: latest.close >= latest.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
                         });
                         
-                        // Update active position price lines dynamically on the chart
-                        activePriceLines.forEach(line => {
-                            try { candleSeries.removePriceLine(line); } catch (e) {}
-                        });
+                // Render HMM Volatility Regime Bands on Chart
+                if (data.hmm_upper && data.hmm_upper.length > 0 && hmmUpperSeries) {
+                    hmmUpperSeries.setData(data.hmm_upper);
+                } else if (hmmUpperSeries) {
+                    hmmUpperSeries.setData([]);
+                }
+                if (data.hmm_lower && data.hmm_lower.length > 0 && hmmLowerSeries) {
+                    hmmLowerSeries.setData(data.hmm_lower);
+                } else if (hmmLowerSeries) {
+                    hmmLowerSeries.setData([]);
+                }
+
+                // Update active position price lines dynamically on the chart
+                activePriceLines.forEach(line => {
+                    try { candleSeries.removePriceLine(line); } catch (e) {}
+                });
                         activePriceLines = [];
 
                         data.active_positions.forEach(pos => {
@@ -1904,6 +1938,18 @@
                     } else {
                         statusRisk.innerText = 'HEALTHY';
                         statusRisk.style.color = '#10b981';
+                    }
+                }
+                
+                const statusRegime = document.getElementById('status-regime');
+                if (statusRegime && data.hmm_regime) {
+                    statusRegime.innerText = data.hmm_regime.replace('_', ' ');
+                    if (data.hmm_regime.includes('BULLISH')) {
+                        statusRegime.style.color = '#10b981';
+                    } else if (data.hmm_regime.includes('BEARISH')) {
+                        statusRegime.style.color = '#ef4444';
+                    } else {
+                        statusRegime.style.color = '#60a5fa';
                     }
                 }
                 
