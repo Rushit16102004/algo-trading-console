@@ -1505,9 +1505,9 @@
                             if (candle) {
                                 const newM = { ...m };
                                 if (m.position === "belowBar" || m.shape === "arrowUp") {
-                                    newM.price = candle.low - 25; // 25 points offset below wick
+                                    newM.price = candle.low - 45; // 45 points offset below wick for clear spacing
                                 } else if (m.position === "aboveBar" || m.shape === "arrowDown" || m.shape === "circle") {
-                                    newM.price = candle.high + 25; // 25 points offset above wick
+                                    newM.price = candle.high + 45; // 45 points offset above wick for clear spacing
                                 }
                                 return newM;
                             }
@@ -1610,9 +1610,15 @@
                 },
                 rightPriceScale: {
                     borderColor: 'rgba(255, 255, 255, 0.08)',
+                    scaleMargins: {
+                        top: 0.25,
+                        bottom: 0.25,
+                    },
                 },
                 timeScale: {
                     borderColor: 'rgba(255, 255, 255, 0.08)',
+                    barSpacing: 10,
+                    minBarSpacing: 4,
                     timeVisible: true,
                     secondsVisible: false,
                     tickMarkFormatter: (time, tickMarkType, locale) => {
