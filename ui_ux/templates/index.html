@@ -1645,40 +1645,27 @@
                     secondsVisible: false,
                     tickMarkFormatter: (time, tickMarkType, locale) => {
                         const date = new Date(time * 1000);
-                        const options = {
+                        return date.toLocaleTimeString('en-IN', {
                             timeZone: 'Asia/Kolkata',
                             hour: '2-digit',
                             minute: '2-digit',
                             hour12: false
-                        };
-                        if (tickMarkType === 0 || tickMarkType === 1) {
-                            options.day = '2-digit';
-                            options.month = 'short';
-                        }
-                        try {
-                            return new Intl.DateTimeFormat('en-IN', options).format(date);
-                        } catch (e) {
-                            return date.toLocaleTimeString('en-IN', options);
-                        }
+                        });
                     }
                 },
                 localization: {
+                    locale: 'en-IN',
                     timeFormatter: (time) => {
                         const date = new Date(time * 1000);
-                        const options = {
+                        return date.toLocaleString('en-IN', {
                             timeZone: 'Asia/Kolkata',
-                            year: 'numeric',
-                            month: 'short',
                             day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
                             hour: '2-digit',
                             minute: '2-digit',
                             hour12: false
-                        };
-                        try {
-                            return new Intl.DateTimeFormat('en-IN', options).format(date);
-                        } catch (e) {
-                            return date.toLocaleString('en-IN', options);
-                        }
+                        });
                     }
                 },
             });
