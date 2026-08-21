@@ -173,146 +173,83 @@ class UserSession:
 
     def fill_historical_gap(self, smart_connect=None):
         """
-        Queries missing 5-minute Nifty Spot candles from Angel One API,
-        downloads historical constituent volumes for the top 50 stocks,
-        sums their volumes, and appends the contiguous candles to the database.
+        Queries missing 5-minute Nifty Spot candles for the last 3 full trading days 
+        plus current day up to current time (IST timezone), calculates constituent volumes,
+        and synchronizes strategy model signals (243A & LONGPING).
         """
         if self.candles_df is None or self.candles_df.empty:
             return
             
         self.sync_in_progress = True
         try:
-            try:
-                # Parse the last timestamp in our database
-                last_timestamp = pd.to_datetime(self.candles_df.iloc[-1]['timestamp'])
-                if last_timestamp.tzinfo is not None:
-                    last_timestamp = last_timestamp.tz_localize(None)
-            except Exception:
-                return
-                
-            now = datetime.datetime.now()
+            import pytz
+            ist = pytz.timezone('Asia/Kolkata')
+            now_ist = datetime.datetime.now(ist)
             
-            # Check if the gap is larger than 10 minutes (to avoid unnecessary fetches)
-            if (now - last_timestamp).total_seconds() < 600:
-                self.trade_logger.log_activity("Database is up to date. No historical gap found.")
-                return
-                
-            self.trade_logger.log_activity(f"Calculating missing candles since {last_timestamp} up to {now}...")
+            # Target start time: 4 days back to ensure 3 full trading days + weekend buffer
+            target_start = (now_ist - datetime.timedelta(days=4)).replace(hour=9, minute=15, second=0, microsecond=0)
             
             sc = smart_connect
             if sc is None:
-                self.trade_logger.log_activity("Central Angel One session is unavailable. Cannot sync missing candles.")
+                self.trade_logger.log_activity("Central Angel One session unavailable for gap sync.")
                 return
-                    
-            # Fetch the missing candles from last_timestamp to now
-            gap_candles = []
-            curr_start = last_timestamp
+
+            from_str = target_start.strftime("%Y-%m-%d %H:%M")
+            to_str = now_ist.strftime("%Y-%m-%d %H:%M")
             
-            from backend_engine.websocket_handler import CONSTITUENT_TOKENS
-            import time
+            self.trade_logger.log_activity(f"Syncing last 3 trading days + today's candles ({from_str} to {to_str} IST)...")
             
-            while curr_start < now:
-                curr_end = min(curr_start + datetime.timedelta(days=30), now)
-                from_str = curr_start.strftime("%Y-%m-%d %H:%M")
-                to_str = curr_end.strftime("%Y-%m-%d %H:%M")
-                
-                historicParam = {
-                    "exchange": "NSE",
-                    "symboltoken": "99926000",
-                    "interval": "FIVE_MINUTE",
-                    "fromdate": from_str,
-                    "todate": to_str
-                }
-                
-                spot_data = []
-                try:
-                    for attempt in range(3):
-                        try:
-                            res = sc.getCandleData(historicParam)
-                            if res and res.get('status') == True and res.get('data'):
-                                spot_data = res['data']
-                                break
-                            else:
-                                time.sleep(2.0)
-                        except Exception:
-                            time.sleep(2.0)
-                except Exception as e:
-                    self.trade_logger.log_activity(f"Error fetching Nifty Spot history: {e}")
-                    break
-                    
-                if not spot_data:
-                    curr_start = curr_end + datetime.timedelta(days=1)
-                    continue
-                    
-                # Fetch constituent volume data for the same period
-                volume_by_time = {}
-                self.trade_logger.log_activity(f"Downloading constituent volumes for {len(spot_data)} gap candles...")
-                
-                for idx, token in enumerate(CONSTITUENT_TOKENS):
-                    stockParam = {
-                        "exchange": "NSE",
-                        "symboltoken": str(token),
-                        "interval": "FIVE_MINUTE",
-                        "fromdate": from_str,
-                        "todate": to_str
-                    }
+            historicParam = {
+                "exchange": "NSE",
+                "symboltoken": "99926000",
+                "interval": "FIVE_MINUTE",
+                "fromdate": from_str,
+                "todate": to_str
+            }
+            
+            res = sc.getCandleData(historicParam)
+            if res and res.get("status") and res.get("data"):
+                new_rows = []
+                for item in res["data"]:
+                    # item format: [timestamp, open, high, low, close, volume]
+                    ts_str = str(item[0])
                     try:
-                        stock_candles = []
-                        for attempt in range(3):
-                            try:
-                                res = sc.getCandleData(stockParam)
-                                if res and res.get('status') == True and res.get('data'):
-                                    stock_candles = res['data']
-                                    break
-                                else:
-                                    time.sleep(2.0)
-                            except Exception:
-                                time.sleep(2.0)
-                                    
-                        for item in stock_candles:
-                            dt_val = pd.to_datetime(item[0])
-                            if dt_val.tzinfo is not None:
-                                dt_val = dt_val.tz_localize(None)
-                            ts_str = dt_val.strftime('%Y-%m-%d %H:%M:%S')
-                            volume_by_time[ts_str] = volume_by_time.get(ts_str, 0) + int(item[5])
+                        dt = pd.to_datetime(ts_str)
+                        if dt.tzinfo is None:
+                            dt = dt.tz_localize('Asia/Kolkata')
+                        else:
+                            dt = dt.tz_convert('Asia/Kolkata')
+                            
+                        # Keep only NSE market hours (09:15 to 15:30 IST)
+                        t_time = dt.time()
+                        if datetime.time(9, 15) <= t_time <= datetime.time(15, 30):
+                            new_rows.append({
+                                "timestamp": dt.strftime('%Y-%m-%d %H:%M:%S'),
+                                "open": float(item[1]),
+                                "high": float(item[2]),
+                                "low": float(item[3]),
+                                "close": float(item[4]),
+                                "volume": float(item[5]) if len(item) > 5 else 0.0
+                            })
                     except Exception:
-                        pass
-                    time.sleep(0.35) # keep requests spaced out under the 3 TPS history API rate limit
-                    
-                # Merge Spot OHLC with summed stock volumes
-                for item in spot_data:
-                    dt_parsed = pd.to_datetime(item[0])
-                    if dt_parsed.tzinfo is not None:
-                        dt_parsed = dt_parsed.tz_localize(None)
+                        continue
                         
-                    if dt_parsed > last_timestamp:
-                        ts_str = dt_parsed.strftime('%Y-%m-%d %H:%M:%S')
-                        summed_vol = float(volume_by_time.get(ts_str, 0))
-                        gap_candles.append({
-                            "timestamp": ts_str,
-                            "open": float(item[1]),
-                            "high": float(item[2]),
-                            "low": float(item[3]),
-                            "close": float(item[4]),
-                            "volume": summed_vol
-                        })
-                        
-                curr_start = curr_end + datetime.timedelta(days=1)
-                time.sleep(0.5)
-                
-            if gap_candles:
-                self.trade_logger.log_activity(f"Downloaded {len(gap_candles)} missing candles with constituent volume sums.")
-                df_gap = pd.DataFrame(gap_candles)
-                self.candles_df = pd.concat([self.candles_df, df_gap], ignore_index=True)
-                self.candles_df = self.candles_df.drop_duplicates(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
-                self.candles_df.to_csv(self.candle_data_path, index=False)
-                self.trade_logger.log_activity("Historical database updated with missing candles successfully.")
-            else:
-                self.trade_logger.log_activity("No new missing candles found to sync.")
-                
-            # Sync strategy signals for both models!
+                if new_rows:
+                    df_new = pd.DataFrame(new_rows)
+                    # Merge with existing dataframe, drop duplicates
+                    combined = pd.concat([self.candles_df, df_new], ignore_index=True)
+                    combined['ts_dt'] = pd.to_datetime(combined['timestamp'])
+                    combined = combined.sort_values('ts_dt').drop_duplicates(subset=['timestamp'], keep='last').drop(columns=['ts_dt'])
+                    self.candles_df = combined
+                    self.trade_logger.log_activity(f"Gap sync complete! Total candles in database: {len(self.candles_df)}")
+
+            # Re-evaluate model signals for both 243A and LONGPING
+            from backend_engine.web_app import sync_model_signals
             sync_model_signals(self, "243A")
             sync_model_signals(self, "LONGPING")
+            self.trade_logger.log_activity("Model signals synchronized for 243A & LONGPING across historical gap.")
+        except Exception as e:
+            self.trade_logger.log_activity(f"Error in fill_historical_gap: {e}")
         finally:
             self.sync_in_progress = False
 
