@@ -1522,24 +1522,6 @@
                         candleSeries.setMarkers([]);
                     }
                     
-                    // Render continuous HMM Volatility Regime Bands across full chart
-                    if (historicalCandlesData.length > 20 && hmmUpperSeries && hmmLowerSeries) {
-                        const hmmUpperData = [];
-                        const hmmLowerData = [];
-                        for (let i = 20; i < historicalCandlesData.length; i++) {
-                            const c = historicalCandlesData[i];
-                            let sum = 0;
-                            for (let j = i - 20; j < i; j++) {
-                                sum += Math.abs(historicalCandlesData[j].close - historicalCandlesData[j].open);
-                            }
-                            const meanRange = sum / 20;
-                            hmmUpperData.push({ time: c.time, value: +(c.high + meanRange * 0.8).toFixed(2) });
-                            hmmLowerData.push({ time: c.time, value: +(c.low - meanRange * 0.8).toFixed(2) });
-                        }
-                        hmmUpperSeries.setData(hmmUpperData);
-                        hmmLowerSeries.setData(hmmLowerData);
-                    }
-                    
                     // Scroll to real-time so they see today's last candle
                     chart.timeScale().scrollToRealTime();
                     updateLegend(historicalCandlesData[historicalCandlesData.length - 1]);
@@ -1693,23 +1675,7 @@
 
             volumeSeries.applyOptions({ visible: false });
 
-            // HMM Volatility Cone: upper and lower dashed projection bands
-            hmmUpperSeries = chart.addLineSeries({
-                color: 'rgba(96, 165, 250, 0.55)',
-                lineStyle: 2,
-                lineWidth: 1,
-                lastValueVisible: false,
-                priceLineVisible: false,
-                crosshairMarkerVisible: false,
-            });
-            hmmLowerSeries = chart.addLineSeries({
-                color: 'rgba(96, 165, 250, 0.55)',
-                lineStyle: 2,
-                lineWidth: 1,
-                lastValueVisible: false,
-                priceLineVisible: false,
-                crosshairMarkerVisible: false,
-            });
+
 
 
             chart.subscribeCrosshairMove((param) => {
