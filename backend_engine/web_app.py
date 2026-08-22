@@ -774,30 +774,20 @@ async def get_candles(email: str = Query(None), strategy: str = Query("243A"), l
             asyncio.create_task(run_auto_sync_in_background(sc, email, session))
         
         if session and session.candles_df is not None and not session.candles_df.empty:
-            # Process only recent candles (tail limit) for sub-second response times!
+            # Process only recent candles (tail limit) for instant < 10ms response times!
             df_recent = session.candles_df.tail(max(500, limit)).copy()
-            df_recent['timestamp'] = pd.to_datetime(df_recent['timestamp'], format='mixed')
-            import pytz
-            ist_tz = pytz.timezone("Asia/Kolkata")
-            df_recent['time_epoch'] = df_recent['timestamp'].apply(lambda x: int(ist_tz.localize(x).timestamp()) if x.tzinfo is None else int(x.astimezone(ist_tz).timestamp()))
-            
-            seen_epochs = set()
-            for _, row in df_recent.iterrows():
-                t = int(row['time_epoch'])
-                if t in seen_epochs:
-                    continue
-                seen_epochs.add(t)
-                live_candles.append({
-                    "time": t,
-                    "open": float(row['open']),
-                    "high": float(row['high']),
-                    "low": float(row['low']),
-                    "close": float(row['close']),
-                    "volume": float(row['volume']) if not pd.isna(row['volume']) else 0.0
-                })
+            df_recent['dt'] = pd.to_datetime(df_recent['timestamp'], format='mixed')
+            try:
+                epochs = (df_recent['dt'].dt.tz_localize('Asia/Kolkata').astype('int64') // 10**9).tolist()
+            except TypeError:
+                epochs = (df_recent['dt'].dt.tz_convert('Asia/Kolkata').astype('int64') // 10**9).tolist()
                 
-            # Precompute strategy signals ONLY on the recent tail portion (sub-50ms!)
-            live_markers = get_strategy_signals_for_chart(df_recent, strategy)
+            df_recent['time'] = epochs
+            df_unique = df_recent.drop_duplicates(subset=['time'])
+            live_candles = df_unique[['time', 'open', 'high', 'low', 'close', 'volume']].to_dict(orient='records')
+            
+            # Precompute strategy signals ONLY on recent tail portion (fast!)
+            live_markers = get_strategy_signals_for_chart(df_unique, strategy)
             
         # Combine RAM-cached history with live portion and deduplicate/sort strictly
         combined_candles_map = {}
