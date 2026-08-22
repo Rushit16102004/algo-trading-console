@@ -931,10 +931,10 @@
             </div>
 
             <!-- Model Decision Explainer Panel -->
-            <div class="glass-panel" id="model-explainer-panel" style="margin-top: 1rem; padding: 1rem; display: none !important;">
+            <div class="glass-panel" id="model-explainer-panel" style="margin-top: 1rem; padding: 1rem; display: none;">
 
             <!-- Pattern Match Panel -->
-            <div class="glass-panel" id="pattern-match-panel" style="margin-top: 1rem; padding: 1rem; display: none !important;">
+            <div class="glass-panel" id="pattern-match-panel" style="margin-top: 1rem; padding: 1rem; display: none;">
                 <div class="panel-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
                     <div class="panel-title" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">🧬 Today Looks Like...</div>
                     <div id="pattern-lib-size" style="font-size: 0.7rem; color: #6b7280; font-family: 'JetBrains Mono', monospace;">Library: — days</div>
@@ -2444,8 +2444,8 @@
             const leftCol = document.querySelector('.left-content');
             const rightCol = document.querySelector('.right-content');
             const patternPanel = document.getElementById('pattern-match-panel');
+            const signalsPanel = document.getElementById('signals-panel');
             const positionsPanel = document.getElementById('positions-table-wrapper');
-            const explainerPanel = document.getElementById('explainer-panel');
 
             if (tabName === 'chart') {
                 if (leftCol) leftCol.style.display = 'flex';
@@ -2455,7 +2455,7 @@
                 if (leftCol) leftCol.style.display = 'none';
                 if (rightCol) rightCol.style.display = 'flex';
                 if (patternPanel) {
-                    patternPanel.style.display = 'flex';
+                    patternPanel.style.setProperty('display', 'block', 'important');
                     fetchPatternMatch();
                     patternPanel.scrollIntoView({ behavior: 'smooth' });
                 }
@@ -2468,7 +2468,7 @@
                 if (leftCol) leftCol.style.display = 'flex';
                 if (rightCol) rightCol.style.display = 'none';
                 const posContainer = positionsPanel?.closest('.glass-panel');
-                if (posContainer) posContainer.style.display = 'flex';
+                if (posContainer) posContainer.style.setProperty('display', 'flex', 'important');
                 if (positionsPanel) {
                     positionsPanel.style.display = 'block';
                     positionsPanel.scrollIntoView({ behavior: 'smooth' });
@@ -2476,8 +2476,10 @@
             } else if (tabName === 'logs') {
                 if (leftCol) leftCol.style.display = 'none';
                 if (rightCol) rightCol.style.display = 'flex';
-                const logsPanel = document.getElementById('signals-log-panel');
-                if (logsPanel) logsPanel.scrollIntoView({ behavior: 'smooth' });
+                if (signalsPanel) {
+                    signalsPanel.style.setProperty('display', 'block', 'important');
+                    signalsPanel.scrollIntoView({ behavior: 'smooth' });
+                }
             }
         }
     </script>
