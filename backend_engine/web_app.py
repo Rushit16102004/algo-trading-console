@@ -609,8 +609,25 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A"), cu
     # Dynamic HMM Regime Change Channels (15-Candle Future Projection)
     # ----------------------------------------------------------------
     last_prediction = getattr(session, 'last_prediction', {})
-    hmm_regime_raw = last_prediction.get('hmm_regime', 'unknown') if last_prediction else 'unknown'
+    hmm_regime_raw = last_prediction.get('hmm_regime', last_prediction.get('hmm_regime_name', 'unknown')) if last_prediction else 'unknown'
     hmm_regime_key = str(hmm_regime_raw).lower().replace(' ', '').replace('_', '')
+    
+    # Live fallback calculation if last_prediction has not yet populated:
+    if (hmm_regime_key in ('unknown', '', 'none')) and session and session.candles_df is not None and not session.candles_df.empty:
+        df_tail = session.candles_df.tail(20)
+        if len(df_tail) >= 10:
+            c_first = df_tail['close'].iloc[0]
+            c_last = df_tail['close'].iloc[-1]
+            pct = (c_last - c_first) / c_first
+            if pct > 0.002:
+                hmm_regime_key = 'markup'
+            elif pct < -0.002:
+                hmm_regime_key = 'markdown'
+            else:
+                hmm_regime_key = 'compression'
+        else:
+            hmm_regime_key = 'compression'
+            
     hmm_prob = float(last_prediction.get('hmm_prob', last_prediction.get('gbm_prob_buy', 0.80))) if last_prediction else 0.80
     
     cone_state = HMM_CONE_STATE.get(email, {})

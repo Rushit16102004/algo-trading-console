@@ -356,16 +356,17 @@ class UserSession:
             self.trade_logger.log_activity(f"Error during strategy predict: {e}")
             return
             
-        # Format predictions dict for logging
+        # Format predictions dict for logging and status API
         predictions = {
-            'hmm_regime_name': metrics.get('hmm_regime', 'Unknown'),
+            'hmm_regime': metrics.get('hmm_regime', 'compression'),
+            'hmm_regime_name': metrics.get('hmm_regime', 'compression'),
             'gbm_prob_buy': metrics.get('gbm_prob_buy', 0.5 if signal == 1 else 0.1),
             'gbm_prob_sell': metrics.get('gbm_prob_sell', 0.5 if signal == -1 else 0.1),
             'tcn_predicted': 'BUY' if signal == 1 else ('SELL' if signal == -1 else 'HOLD'),
             'tcn_prob_buy': metrics.get('tcn_prob_buy', 0.5 if signal == 1 else 0.1),
             'tcn_prob_sell': metrics.get('tcn_prob_sell', 0.5 if signal == -1 else 0.1)
         }
-        hmm_regime = metrics.get('hmm_regime', 'Unknown')
+        hmm_regime = metrics.get('hmm_regime', 'compression')
         
         self.trade_logger.log_activity(
             f"[{self.strategy_name} Candle Completed] Close: {c:.2f} | Signal: {signal} | Metrics: {metrics}"
