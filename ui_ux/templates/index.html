@@ -2412,6 +2412,11 @@
                 if (data.status === "success") {
                     showToast(active ? "EMERGENCY STOP ACTIVATED!" : "Trading resumed successfully.", active ? "danger" : "success");
                 }
+            } catch (err) {
+                showToast("Failed to toggle emergency switch: " + err, "danger");
+            }
+        }
+
         function switchMobileTab(tabName) {
             document.querySelectorAll('.mobile-nav-item').forEach(btn => btn.classList.remove('active'));
             if (event && event.currentTarget) {
