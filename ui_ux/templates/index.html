@@ -932,18 +932,6 @@
 
             <!-- Model Decision Explainer Panel -->
             <div class="glass-panel" id="model-explainer-panel" style="margin-top: 1rem; padding: 1rem; display: none;">
-
-            <!-- Pattern Match Panel -->
-            <div class="glass-panel" id="pattern-match-panel" style="margin-top: 1rem; padding: 1rem; display: none;">
-                <div class="panel-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
-                    <div class="panel-title" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">🧬 Today Looks Like...</div>
-                    <div id="pattern-lib-size" style="font-size: 0.7rem; color: #6b7280; font-family: 'JetBrains Mono', monospace;">Library: — days</div>
-                </div>
-                <div id="pattern-match-cards" style="display: flex; flex-direction: column; gap: 10px;">
-                    <div style="text-align: center; color: #6b7280; font-size: 0.8rem; padding: 20px;">Loading pattern library...</div>
-                </div>
-            </div>
-
                 <div class="panel-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                     <div class="panel-title" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
@@ -1074,6 +1062,17 @@
                             <strong>⚠️ RISK DISCLAIMER:</strong> All signals are statistical projections and can be wrong. Option selling involves significant risk of capital. We accept no responsibility or liability for any financial losses taken by using this model.
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Pattern Match Panel -->
+            <div class="glass-panel" id="pattern-match-panel" style="margin-top: 1rem; padding: 1rem; display: none;">
+                <div class="panel-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="panel-title" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">🧬 Today Looks Like...</div>
+                    <div id="pattern-lib-size" style="font-size: 0.7rem; color: #6b7280; font-family: 'JetBrains Mono', monospace;">Library: — days</div>
+                </div>
+                <div id="pattern-match-cards" style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="text-align: center; color: #6b7280; font-size: 0.8rem; padding: 20px;">Loading pattern library...</div>
                 </div>
             </div>
 
