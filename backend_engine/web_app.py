@@ -204,11 +204,10 @@ def get_user_session(email: str, strategy_name: str = "243A"):
         return None
         
     admin_user_id = 1
-    if admin_user_id not in live_dryrun.active_sessions:
-        print(f"[Session Manager] Starting 24/7 central Angel One feed session for user {email}")
-        live_dryrun.start_user_system(admin_user_id, strategy_name=strategy_name)
-            
-    return live_dryrun.active_sessions.get(admin_user_id)
+    session = live_dryrun.active_sessions.get(admin_user_id)
+    if session and strategy_name in ["243A", "LONGPING"]:
+        session.strategy_name = strategy_name
+    return session
 
 def get_recent_logs(system_log_path: str, num_lines=150):
     if not os.path.exists(system_log_path):
@@ -246,7 +245,7 @@ async def market_hours_scheduler_loop():
             # Always keep central feed running — restart if it dropped
             if admin_user_id not in live_dryrun.active_sessions:
                 print(f"[Scheduler] Central feed not running. Auto-starting 24/7 central trading feed...")
-                live_dryrun.start_user_system(admin_user_id, strategy_name="243A")
+                await asyncio.to_thread(live_dryrun.start_user_system, admin_user_id, strategy_name="243A")
 
             # End-of-day: add today to pattern library at 15:32 IST
             if now.weekday() < 5 and now.hour == 15 and now.minute == 32:
