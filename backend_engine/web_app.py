@@ -271,9 +271,48 @@ async def market_hours_scheduler_loop():
             print(f"[Scheduler Error] {e}")
         await asyncio.sleep(30)
 
+PATTERN_JSON_PATH = "backend_engine/pattern_library.json"
+
+def load_pattern_library_json():
+    global PATTERN_LIBRARY
+    if os.path.exists(PATTERN_JSON_PATH):
+        try:
+            import numpy as np
+            with open(PATTERN_JSON_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                for k, v in data.items():
+                    PATTERN_LIBRARY[k] = {
+                        "vector": np.array(v["vector"]),
+                        "eod_change": v["eod_change"],
+                        "day_range": v["day_range"]
+                    }
+                print(f"[PatternLib] Loaded {len(PATTERN_LIBRARY)} fingerprints instantly from pattern_library.json.")
+                return True
+        except Exception as e:
+            print(f"[PatternLib Error] Failed to load pattern_library.json: {e}")
+    return False
+
+def save_pattern_library_json():
+    try:
+        data = {}
+        for k, v in PATTERN_LIBRARY.items():
+            data[k] = {
+                "vector": v["vector"].tolist(),
+                "eod_change": v["eod_change"],
+                "day_range": v["day_range"]
+            }
+        with open(PATTERN_JSON_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+    except Exception as e:
+        print(f"[PatternLib Error] Failed to save pattern_library.json: {e}")
+
 def precompute_pattern_library():
-    """Load historical 2024-2026 data and build daily feature fingerprint library."""
+    """Load historical data and build daily feature fingerprint library."""
     global PATTERN_LIBRARY, PATTERN_LIBRARY_LOCK, PATTERN_DF_CACHE
+    if PATTERN_LIBRARY:
+        return
+    if load_pattern_library_json():
+        return
     if PATTERN_LIBRARY_LOCK:
         return
     PATTERN_LIBRARY_LOCK = True
@@ -316,6 +355,7 @@ def precompute_pattern_library():
                 built += 1
             except Exception:
                 continue
+        save_pattern_library_json()
         print(f"[PatternLib] Built {built} new fingerprints. Total library: {len(PATTERN_LIBRARY)} days.")
     except Exception as e:
         print(f"[PatternLib] Error building library: {e}")
@@ -342,12 +382,10 @@ async def startup_event():
     download_local_assets()
     # Cache historical datasets in-memory
     init_historical_caches()
-    # Build pattern fingerprint library in background thread — delayed 60s so app starts fast
-    import threading, time as _time
-    def _delayed_precompute():
-        _time.sleep(60)  # Wait 60 seconds after startup before heavy computation
-        precompute_pattern_library()
-    threading.Thread(target=_delayed_precompute, daemon=True).start()
+    # Load pattern fingerprint library instantly from JSON
+    load_pattern_library_json()
+    import threading
+    threading.Thread(target=precompute_pattern_library, daemon=True).start()
     
     # Start the automated market hours scheduler task
     asyncio.create_task(market_hours_scheduler_loop())
