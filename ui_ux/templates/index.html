@@ -621,26 +621,67 @@
             }
         }
 
+        /* Mobile Bottom Navigation Bar */
+        .mobile-nav-bar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(10, 16, 30, 0.96);
+            border-top: 1px solid var(--panel-border);
+            backdrop-filter: blur(16px);
+            z-index: 9999;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .mobile-nav-item {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 6px 12px;
+            transition: all 0.2s ease;
+        }
+
+        .mobile-nav-item.active {
+            color: var(--accent-blue);
+        }
+
         @media (max-width: 768px) {
             body {
                 font-size: 13px;
             }
             header {
-                padding: 0.75rem 1rem;
+                padding: 0.6rem 1rem;
+                flex-wrap: wrap;
+                gap: 8px;
             }
             h1 {
-                font-size: 1.1rem;
+                font-size: 1rem;
             }
             .main-container {
-                padding: 0.75rem;
+                padding: 0.5rem;
                 gap: 0.75rem;
+                height: auto;
+                padding-bottom: 70px !important; /* Prevents mobile bottom bar overlap */
+                overflow-y: auto;
             }
             .glass-panel {
                 padding: 0.75rem;
                 border-radius: 8px;
             }
             #chart-container {
-                height: 400px !important;
+                height: calc(100vh - 240px) !important;
+                min-height: 380px !important;
             }
             th, td {
                 padding: 8px 10px;
@@ -649,6 +690,15 @@
             .quick-actions {
                 grid-template-columns: 1fr;
                 gap: 6px;
+            }
+            
+            /* Enable mobile navigation bar */
+            .mobile-nav-bar {
+                display: flex !important;
+            }
+
+            .left-content, .right-content {
+                width: 100% !important;
             }
             
             /* Mobile Usability & Comfort Improvements */
@@ -663,8 +713,8 @@
                 padding: 1.5rem 1.25rem;
             }
             .btn {
-                padding: 12px 16px;
-                font-size: 0.9rem;
+                padding: 10px 14px;
+                font-size: 0.85rem;
             }
             .form-group input, .form-group select {
                 font-size: 16px !important; /* Prevents auto-zoom on iOS */
@@ -673,7 +723,7 @@
             .toast-notification {
                 left: 16px;
                 right: 16px;
-                bottom: 16px;
+                bottom: 72px; /* Above mobile nav bar */
                 font-size: 0.8rem;
                 padding: 10px 16px;
             }
@@ -2362,10 +2412,49 @@
                 if (data.status === "success") {
                     showToast(active ? "EMERGENCY STOP ACTIVATED!" : "Trading resumed successfully.", active ? "danger" : "success");
                 }
-            } catch (err) {
-                showToast("Failed to toggle emergency switch: " + err, "danger");
+        function switchMobileTab(tabName) {
+            document.querySelectorAll('.mobile-nav-item').forEach(btn => btn.classList.remove('active'));
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
+
+            const leftCol = document.querySelector('.left-content');
+            const rightCol = document.querySelector('.right-content');
+
+            if (tabName === 'chart') {
+                if (leftCol) leftCol.style.display = 'flex';
+                if (rightCol) rightCol.style.display = 'none';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                if (leftCol) leftCol.style.display = 'none';
+                if (rightCol) rightCol.style.display = 'flex';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }
     </script>
+
+    <!-- Mobile Bottom Navigation Bar (Visible on mobile screens) -->
+    <nav class="mobile-nav-bar" id="mobile-nav-bar">
+        <button class="mobile-nav-item active" onclick="switchMobileTab('chart')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            <span>Chart</span>
+        </button>
+        <button class="mobile-nav-item" onclick="switchMobileTab('strategy')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.5 1z"/></svg>
+            <span>Strategy</span>
+        </button>
+        <button class="mobile-nav-item" onclick="switchMobileTab('positions')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
+            <span>Positions</span>
+        </button>
+        <button class="mobile-nav-item" onclick="switchMobileTab('pattern')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/></svg>
+            <span>Pattern</span>
+        </button>
+        <button class="mobile-nav-item" onclick="switchMobileTab('logs')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+            <span>Logs</span>
+        </button>
+    </nav>
 </body>
 </html>
