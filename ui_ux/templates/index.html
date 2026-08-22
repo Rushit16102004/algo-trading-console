@@ -1848,16 +1848,50 @@
                             color: latest.close >= latest.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
                         });
                         
-                // Render HMM Volatility Regime Bands on Chart
-                if (data.hmm_upper && data.hmm_upper.length > 0 && hmmUpperSeries) {
-                    hmmUpperSeries.setData(data.hmm_upper);
-                } else if (hmmUpperSeries) {
-                    hmmUpperSeries.setData([]);
-                }
-                if (data.hmm_lower && data.hmm_lower.length > 0 && hmmLowerSeries) {
-                    hmmLowerSeries.setData(data.hmm_lower);
-                } else if (hmmLowerSeries) {
-                    hmmLowerSeries.setData([]);
+        let activeChannelSeries = [];
+
+        function renderRegimeChannels(channels) {
+            // Remove previous channel series
+            activeChannelSeries.forEach(s => {
+                try { chart.removeSeries(s); } catch (e) {}
+            });
+            activeChannelSeries = [];
+            
+            if (!channels || channels.length === 0 || !chart) return;
+            
+            channels.forEach(ch => {
+                const reg = ch.regime || 'compression';
+                const isUp = reg.includes('up') || reg === 'markup';
+                const isDown = reg.includes('down') || reg === 'markdown';
+                const color = isUp ? 'rgba(16, 185, 129, 0.85)' : (isDown ? 'rgba(239, 68, 68, 0.85)' : 'rgba(96, 165, 250, 0.85)');
+                const lineW = Math.max(1, Math.min(3, Math.round((ch.probability || 0.8) * 3)));
+                
+                const uSeries = chart.addLineSeries({
+                    color: color,
+                    lineStyle: 0,
+                    lineWidth: lineW,
+                    lastValueVisible: false,
+                    priceLineVisible: false,
+                    crosshairMarkerVisible: false,
+                });
+                const lSeries = chart.addLineSeries({
+                    color: color,
+                    lineStyle: 0,
+                    lineWidth: lineW,
+                    lastValueVisible: false,
+                    priceLineVisible: false,
+                    crosshairMarkerVisible: false,
+                });
+                
+                uSeries.setData(ch.upper);
+                lSeries.setData(ch.lower);
+                activeChannelSeries.push(uSeries, lSeries);
+            });
+        }
+
+                // Render HMM Volatility Regime Channels on Chart
+                if (data.hmm_channels && data.hmm_channels.length > 0) {
+                    renderRegimeChannels(data.hmm_channels);
                 }
 
                 // Update active position price lines dynamically on the chart

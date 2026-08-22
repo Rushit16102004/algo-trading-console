@@ -78,18 +78,33 @@ HISTORICAL_MARKERS = {
 # Cached historical dataframe for pattern matching (loaded once, reused forever)
 PATTERN_DF_CACHE = None
 
-# HMM regime cone state: tracks last regime + anchor candle per user session
-HMM_CONE_STATE = {}  # key: email -> {"regime": str, "anchor_time": int, "anchor_price": float}
+REGIME_HISTORY_PATH = "backend_engine/regime_history.json"
+
+def load_regime_history():
+    if os.path.exists(REGIME_HISTORY_PATH):
+        try:
+            with open(REGIME_HISTORY_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+def save_regime_history(history):
+    try:
+        with open(REGIME_HISTORY_PATH, "w", encoding="utf-8") as f:
+            json.dump(history, f, indent=2)
+    except Exception as e:
+        print(f"[REGIME STORAGE ERROR] {e}")
 
 # Drift and volatility parameters per HMM regime (per 5-minute candle)
 HMM_REGIME_PARAMS = {
-    "markup":           {"drift": +0.00015, "vol": 0.00040},
-    "expansionup":      {"drift": +0.00008, "vol": 0.00025},
-    "distributiondown": {"drift": +0.00002, "vol": 0.00035},
+    "markup":           {"drift": +0.00060, "vol": 0.00045},
+    "expansionup":      {"drift": +0.00030, "vol": 0.00030},
+    "distributiondown": {"drift": +0.00010, "vol": 0.00035},
     "compression":      {"drift":  0.00000, "vol": 0.00015},
-    "distributionup":   {"drift": -0.00002, "vol": 0.00035},
-    "expansiondown":    {"drift": -0.00008, "vol": 0.00025},
-    "markdown":         {"drift": -0.00015, "vol": 0.00040},
+    "distributionup":   {"drift": -0.00010, "vol": 0.00035},
+    "expansiondown":    {"drift": -0.00030, "vol": 0.00030},
+    "markdown":         {"drift": -0.00060, "vol": 0.00045},
 }
 
 # -------------------------------------------------------------------
@@ -553,41 +568,64 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A"), cu
     import math
     
     # ----------------------------------------------------------------
-    # HMM Volatility Cone: compute upper/lower bands anchored at the
-    # candle where the regime last changed. Bands stay frozen until
-    # the regime changes again.
+    # Dynamic HMM Regime Change Channels (15-Candle Future Projection)
     # ----------------------------------------------------------------
     last_prediction = getattr(session, 'last_prediction', {})
     hmm_regime_raw = last_prediction.get('hmm_regime', 'unknown') if last_prediction else 'unknown'
     hmm_regime_key = str(hmm_regime_raw).lower().replace(' ', '').replace('_', '')
+    hmm_prob = float(last_prediction.get('hmm_prob', last_prediction.get('gbm_prob_buy', 0.80))) if last_prediction else 0.80
     
     cone_state = HMM_CONE_STATE.get(email, {})
     prev_regime = cone_state.get('regime', None)
     
-    # Detect regime change and record new anchor point
+    regime_history = load_regime_history()
+    
+    # Detect regime change and append to persistent JSON file
     if hmm_regime_key not in ('unknown', '') and hmm_regime_key != prev_regime and current_candle is not None:
         HMM_CONE_STATE[email] = {
             'regime': hmm_regime_key,
             'anchor_time': current_candle['time'],
-            'anchor_price': current_candle['close']
+            'anchor_price': current_candle['close'],
+            'probability': hmm_prob
         }
-        cone_state = HMM_CONE_STATE[email]
-    
-    # Build cone data from the stored anchor (even if regime hasn't changed this tick)
-    hmm_upper = []
-    hmm_lower = []
-    if cone_state and current_candle is not None:
-        regime_params = HMM_REGIME_PARAMS.get(cone_state.get('regime', ''), {"drift": 0.0, "vol": 0.00015})
-        drift = regime_params['drift']
-        vol   = regime_params['vol']
-        anchor_time  = cone_state['anchor_time']
-        anchor_price = cone_state['anchor_price']
-        for k in range(1, 11):  # project 10 candles = 50 minutes
+        
+        # Check if already present in history
+        if not any(item.get('anchor_time') == current_candle['time'] for item in regime_history):
+            regime_history.append({
+                'anchor_time': current_candle['time'],
+                'anchor_price': current_candle['close'],
+                'regime': hmm_regime_key,
+                'probability': round(hmm_prob, 2)
+            })
+            save_regime_history(regime_history)
+            
+    # Build 15-candle projection channels for all regime change anchor points
+    hmm_channels = []
+    for event in regime_history[-10:]: # Return last 10 historical regime changes for performance
+        reg_name = event.get('regime', 'compression')
+        params = HMM_REGIME_PARAMS.get(reg_name, {"drift": 0.0, "vol": 0.00015})
+        drift = params['drift']
+        vol = params['vol']
+        prob = event.get('probability', 0.80)
+        
+        anchor_time = event['anchor_time']
+        anchor_price = event['anchor_price']
+        
+        u_line = []
+        l_line = []
+        for k in range(0, 16): # 15 candles into future = 75 minutes
             t_k = anchor_time + k * 300
             p_k = anchor_price * (1.0 + drift * k)
-            band_k = anchor_price * vol * math.sqrt(k)
-            hmm_upper.append({"time": t_k, "value": round(p_k + band_k, 2)})
-            hmm_lower.append({"time": t_k, "value": round(p_k - band_k, 2)})
+            spread_k = anchor_price * (vol * max(0.5, prob)) * math.sqrt(k + 1)
+            u_line.append({"time": t_k, "value": round(p_k + spread_k, 2)})
+            l_line.append({"time": t_k, "value": round(p_k - spread_k, 2)})
+            
+        hmm_channels.append({
+            "regime": reg_name,
+            "probability": prob,
+            "upper": u_line,
+            "lower": l_line
+        })
     
     is_connected = conn_status == "live"
     return {
@@ -609,8 +647,7 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A"), cu
         "warmup_progress": getattr(session, 'warmup_progress', "0/0"),
         "warmup_time_remaining": getattr(session, 'warmup_time_remaining', 0),
         "last_prediction": last_prediction,
-        "hmm_upper": hmm_upper,
-        "hmm_lower": hmm_lower,
+        "hmm_channels": hmm_channels,
         "hmm_regime": hmm_regime_key
     }
 
