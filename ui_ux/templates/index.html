@@ -2435,46 +2435,72 @@
             }
         }
 
-        function switchMobileTab(tabName) {
+        function switchMobileTab(tabName, el) {
             document.querySelectorAll('.mobile-nav-item').forEach(btn => btn.classList.remove('active'));
-            if (event && event.currentTarget) {
-                event.currentTarget.classList.add('active');
+            if (el) {
+                el.classList.add('active');
             }
 
             const leftCol = document.querySelector('.left-content');
             const rightCol = document.querySelector('.right-content');
+            const patternPanel = document.getElementById('pattern-match-panel');
+            const positionsPanel = document.getElementById('positions-table-wrapper');
+            const explainerPanel = document.getElementById('explainer-panel');
 
             if (tabName === 'chart') {
                 if (leftCol) leftCol.style.display = 'flex';
                 if (rightCol) rightCol.style.display = 'none';
                 window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else {
+            } else if (tabName === 'pattern') {
                 if (leftCol) leftCol.style.display = 'none';
                 if (rightCol) rightCol.style.display = 'flex';
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                if (patternPanel) {
+                    patternPanel.style.display = 'flex';
+                    fetchPatternMatch();
+                    patternPanel.scrollIntoView({ behavior: 'smooth' });
+                }
+            } else if (tabName === 'strategy') {
+                if (leftCol) leftCol.style.display = 'none';
+                if (rightCol) rightCol.style.display = 'flex';
+                const stratPanel = document.getElementById('tab-live')?.closest('.glass-panel');
+                if (stratPanel) stratPanel.scrollIntoView({ behavior: 'smooth' });
+            } else if (tabName === 'positions') {
+                if (leftCol) leftCol.style.display = 'flex';
+                if (rightCol) rightCol.style.display = 'none';
+                const posContainer = positionsPanel?.closest('.glass-panel');
+                if (posContainer) posContainer.style.display = 'flex';
+                if (positionsPanel) {
+                    positionsPanel.style.display = 'block';
+                    positionsPanel.scrollIntoView({ behavior: 'smooth' });
+                }
+            } else if (tabName === 'logs') {
+                if (leftCol) leftCol.style.display = 'none';
+                if (rightCol) rightCol.style.display = 'flex';
+                const logsPanel = document.getElementById('signals-log-panel');
+                if (logsPanel) logsPanel.scrollIntoView({ behavior: 'smooth' });
             }
         }
     </script>
 
     <!-- Mobile Bottom Navigation Bar (Visible on mobile screens) -->
     <nav class="mobile-nav-bar" id="mobile-nav-bar">
-        <button class="mobile-nav-item active" onclick="switchMobileTab('chart')">
+        <button class="mobile-nav-item active" onclick="switchMobileTab('chart', this)">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
             <span>Chart</span>
         </button>
-        <button class="mobile-nav-item" onclick="switchMobileTab('strategy')">
+        <button class="mobile-nav-item" onclick="switchMobileTab('strategy', this)">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.5 1z"/></svg>
             <span>Strategy</span>
         </button>
-        <button class="mobile-nav-item" onclick="switchMobileTab('positions')">
+        <button class="mobile-nav-item" onclick="switchMobileTab('positions', this)">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
             <span>Positions</span>
         </button>
-        <button class="mobile-nav-item" onclick="switchMobileTab('pattern')">
+        <button class="mobile-nav-item" onclick="switchMobileTab('pattern', this)">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/></svg>
             <span>Pattern</span>
         </button>
-        <button class="mobile-nav-item" onclick="switchMobileTab('logs')">
+        <button class="mobile-nav-item" onclick="switchMobileTab('logs', this)">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
             <span>Logs</span>
         </button>
