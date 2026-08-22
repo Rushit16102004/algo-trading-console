@@ -666,21 +666,54 @@
                 font-size: 13px;
             }
             header {
-                padding: 0.5rem 0.75rem;
+                padding: 0.4rem 0.6rem;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 flex-wrap: nowrap;
+                gap: 6px;
+                height: 48px;
             }
-            header .btn-secondary, header #btn-toggle-explainer, header #btn-toggle-pattern {
+            header .btn-secondary, header #btn-toggle-explainer, header #btn-toggle-pattern, #header-user-email {
                 display: none !important;
             }
+            .logo-section {
+                gap: 6px;
+                flex-direction: row;
+                align-items: center;
+            }
             .logo-section h1 {
-                font-size: 0.9rem;
+                font-size: 0.85rem !important;
+                white-space: nowrap !important;
             }
             .logo-badge {
-                font-size: 0.7rem;
-                padding: 3px 6px;
+                font-size: 0.65rem;
+                padding: 2px 6px;
+            }
+            .pulse-badge {
+                padding: 2px 6px;
+                font-size: 0.65rem;
+            }
+            .panel-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 8px !important;
+            }
+            .panel-title {
+                white-space: nowrap !important;
+                font-size: 0.85rem !important;
+            }
+            .chart-controls-toolbar {
+                width: 100% !important;
+                display: flex !important;
+                overflow-x: auto !important;
+                white-space: nowrap !important;
+                gap: 6px !important;
+                padding-bottom: 4px !important;
+                -webkit-overflow-scrolling: touch;
+            }
+            .chart-controls-toolbar::-webkit-scrollbar {
+                display: none;
             }
             .main-container {
                 display: block !important;
@@ -707,7 +740,9 @@
             }
             #chart-container {
                 width: 100% !important;
-                height: calc(100vh - 180px) !important;
+                height: calc(100vh - 220px) !important;
+                min-height: 400px !important;
+            }
                 min-height: 420px !important;
             }
             th, td {
