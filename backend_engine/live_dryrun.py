@@ -853,38 +853,27 @@ def sync_last_72_candles(sc, candle_data_path, email=None):
     # Get last 72 candles
     spot_data = spot_data[-72:]
     
-    # 2. Fetch constituent stock volumes for the same time period
+    # 2. Fetch volume in 1 single call using Nifty Future token or spot data
     volume_by_time = {}
-    for idx, token in enumerate(CONSTITUENT_TOKENS):
-        stock_params = {
-            "exchange": "NSE",
-            "symboltoken": str(token),
+    try:
+        fut_token = getattr(sc, 'nifty_fut_token', '58072') or '58072'
+        fut_params = {
+            "exchange": "NFO",
+            "symboltoken": str(fut_token),
             "interval": "FIVE_MINUTE",
             "fromdate": from_str,
             "todate": to_str
         }
-        try:
-            stock_candles = []
-            for attempt in range(3):
-                try:
-                    res = sc.getCandleData(stock_params)
-                    if res and res.get('status') == True and res.get('data'):
-                        stock_candles = res['data']
-                        break
-                    else:
-                        time.sleep(2.0)
-                except Exception:
-                    time.sleep(2.0)
-                    
-            for item in stock_candles:
+        res_fut = sc.getCandleData(fut_params)
+        if res_fut and res_fut.get('status') == True and res_fut.get('data'):
+            for item in res_fut['data']:
                 dt_val = pd.to_datetime(item[0])
                 if dt_val.tzinfo is not None:
                     dt_val = dt_val.tz_localize(None)
                 ts_str = dt_val.strftime('%Y-%m-%d %H:%M:%S')
-                volume_by_time[ts_str] = volume_by_time.get(ts_str, 0) + int(item[5])
-        except Exception:
-            pass
-        time.sleep(0.35) # strict sleep to prevent hitting rate limit
+                volume_by_time[ts_str] = float(item[5]) if len(item) > 5 else 0.0
+    except Exception as vol_ex:
+        print(f"[Sync72] Future volume fetch notice: {vol_ex}")
         
     # 3. Read existing dataset
     df_old = pd.read_csv(candle_data_path)
