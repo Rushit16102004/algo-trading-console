@@ -51,7 +51,9 @@ async def security_headers_and_request_id(request: Request, call_next):
         )
         return response
     except Exception as e:
-        print(f"[ERROR-LOGGER] Request {request_id} failed: {e}", exc_info=True)
+        import traceback
+        print(f"[ERROR-LOGGER] Request {request_id} failed: {e}")
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
             content={"detail": f"An internal server error occurred. Request ID: {request_id}"}
