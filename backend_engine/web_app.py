@@ -547,14 +547,11 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A"), cu
 
     ltp = session.index_ltp
     conn_status = "offline"
-    if session and getattr(session, 'ws_handler', None):
+    central_session = live_dryrun.active_sessions.get(1) or session
+    if central_session and getattr(central_session, 'ws_handler', None):
+        conn_status = central_session.ws_handler.conn_status.get("status", "offline")
+    elif session and getattr(session, 'ws_handler', None):
         conn_status = session.ws_handler.conn_status.get("status", "offline")
-    elif hasattr(live_dryrun, 'central_feed') and live_dryrun.central_feed:
-        cf = live_dryrun.central_feed
-        if hasattr(cf, 'ws_handler') and cf.ws_handler and hasattr(cf.ws_handler, 'conn_status'):
-            conn_status = cf.ws_handler.conn_status.get("status", "offline")
-        elif hasattr(cf, 'conn_status') and isinstance(cf.conn_status, dict):
-            conn_status = cf.conn_status.get("status", "offline")
         
     active_positions = []
     realized_pnl_inr = 0.0

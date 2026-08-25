@@ -709,7 +709,17 @@ def start_user_system(user_id=1, credentials=None, strategy_name="243A"):
     session = UserSession(1, admin_credentials, strategy_name)
     active_sessions[1] = session
     active_sessions[user_id] = session
-    asyncio.create_task(session.start())
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(session.start())
+    except RuntimeError:
+        import threading
+        def _run_session_loop():
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            new_loop.run_until_complete(session.start())
+        t = threading.Thread(target=_run_session_loop, daemon=True)
+        t.start()
     return session
 
 def stop_user_system(user_id):
