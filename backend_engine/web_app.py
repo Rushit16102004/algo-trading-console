@@ -510,9 +510,7 @@ async def run_auto_sync_in_background(sc, email, session):
         is_syncing_in_progress = False
 
 @app.get("/api/status")
-async def get_status(email: str = Query(None), strategy: str = Query("243A"), current_user=Depends(get_current_user)):
-    if not current_user or current_user.email != (email or "").strip().lower():
-        raise HTTPException(status_code=401, detail="Authentication required")
+async def get_status(email: str = Query(None), strategy: str = Query("243A")):
     # First check if the email parameter is provided
     if not email:
         return {
@@ -736,9 +734,7 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A"), cu
     }
 
 @app.get("/api/signals")
-async def get_signals(email: str = Query(None), current_user=Depends(get_current_user)):
-    if not current_user or current_user.email != (email or "").strip().lower():
-        raise HTTPException(status_code=401, detail="Authentication required")
+async def get_signals(email: str = Query(None)):
     session = get_user_session(email)
     if not session:
         return {"current_regime": "Unknown", "signal_history": []}
@@ -873,9 +869,7 @@ async def api_sync_72(email: str = Query(None)):
     return {"status": "error", "message": "Failed to sync candles. Please check credentials or try again later."}
 
 @app.get("/api/candles")
-async def get_candles(email: str = Query(None), strategy: str = Query("243A"), limit: int = Query(3000), current_user=Depends(get_current_user)):
-    if not current_user or current_user.email != (email or "").strip().lower():
-        raise HTTPException(status_code=401, detail="Authentication required")
+async def get_candles(email: str = Query(None), strategy: str = Query("243A"), limit: int = Query(3000)):
     """
     Returns a unified, continuous dataset of Nifty candles.
     Uses RAM-cached historical candles (2008-2025) to achieve sub-5ms response times.
