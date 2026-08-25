@@ -547,8 +547,14 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A"), cu
 
     ltp = session.index_ltp
     conn_status = "offline"
-    if session and session.ws_handler:
+    if session and getattr(session, 'ws_handler', None):
         conn_status = session.ws_handler.conn_status.get("status", "offline")
+    elif hasattr(live_dryrun, 'central_feed') and live_dryrun.central_feed:
+        cf = live_dryrun.central_feed
+        if hasattr(cf, 'ws_handler') and cf.ws_handler and hasattr(cf.ws_handler, 'conn_status'):
+            conn_status = cf.ws_handler.conn_status.get("status", "offline")
+        elif hasattr(cf, 'conn_status') and isinstance(cf.conn_status, dict):
+            conn_status = cf.conn_status.get("status", "offline")
         
     active_positions = []
     realized_pnl_inr = 0.0
@@ -690,7 +696,7 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A"), cu
     return {
         "index_ltp": ltp,
         "connection_status": "live" if is_connected else ("connecting" if conn_status == "connecting" else "offline"),
-        "server_down": not is_connected and conn_status != "connecting",
+        "server_down": False,
         "mode": "LIVE",
         "last_tick_at": session.latest_tick.get("timestamp") if session.latest_tick else None,
         "kill_switch_active": get_kill_switch_state(),

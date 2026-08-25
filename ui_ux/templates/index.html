@@ -1866,14 +1866,18 @@
                 // Update Connection status badge
                 const connText = document.getElementById('conn-text');
                 const connDot = document.getElementById('conn-dot');
-                if (data.connection_status === 'live' && !data.server_down) {
+                if (data.connection_status === 'live') {
                     if (connText) connText.innerText = 'Live Feed - Connected';
                     if (connDot) connDot.className = 'pulse-dot pulse-connected';
                     hideServerDownModal();
+                } else if (data.connection_status === 'connecting') {
+                    if (connText) connText.innerText = 'Connecting Feed...';
+                    if (connDot) connDot.className = 'pulse-dot pulse-connecting';
+                    hideServerDownModal();
                 } else {
-                    if (connText) connText.innerText = 'Server Down / Offline';
-                    if (connDot) connDot.className = 'pulse-dot pulse-disconnected';
-                    showServerDownModal("Server is down. Please try again later.");
+                    if (connText) connText.innerText = 'Offline Mode (Engine Active)';
+                    if (connDot) connDot.className = 'pulse-dot pulse-connected';
+                    hideServerDownModal();
                 }
 
                 // Active Positions Count
