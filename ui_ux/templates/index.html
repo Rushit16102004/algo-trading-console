@@ -1307,49 +1307,21 @@
         // AUTHENTICATION LOGIC
         async function checkAuthentication() {
             let email = localStorage.getItem("user_email");
+            let token = localStorage.getItem("access_token");
             const authOverlay = document.getElementById("auth-overlay");
             
-            // If they signed out explicitly
-            if (localStorage.getItem("signed_out") === "true") {
-                document.getElementById("pin-lock-container").style.display = "none";
-                document.getElementById("signup-container").style.display = "none";
-                document.getElementById("signin-container").style.display = "block";
-                authOverlay.classList.add("active");
-                authOverlay.style.pointerEvents = "auto";
+            // If user is already logged in, immediately unlock dashboard and load app!
+            if (email && localStorage.getItem("signed_out") !== "true") {
+                loginSuccessful(email);
                 return;
             }
             
-            // If locked custom user session exists
-            if (email) {
-                document.getElementById("signin-container").style.display = "none";
-                document.getElementById("signup-container").style.display = "none";
-                document.getElementById("pin-lock-container").style.display = "block";
-                document.getElementById("lock-email-label").innerText = email;
-                authOverlay.classList.add("active");
-                authOverlay.style.pointerEvents = "auto";
-                return;
-            }
-            
-            // No session active -> check if database contains any account
-            try {
-                const res = await fetch("/api/auth/exists");
-                const data = await res.json();
-                
-                document.getElementById("pin-lock-container").style.display = "none";
-                if (data.exists) {
-                    // Account exists -> show Enter PIN / Login
-                    document.getElementById("signup-container").style.display = "none";
-                    document.getElementById("signin-container").style.display = "block";
-                } else {
-                    // No account -> show Create Account
-                    document.getElementById("signin-container").style.display = "none";
-                    document.getElementById("signup-container").style.display = "block";
-                }
-                authOverlay.classList.add("active");
-                authOverlay.style.pointerEvents = "auto";
-            } catch (err) {
-                console.error("Error checking account existence:", err);
-            }
+            // Otherwise show login screen
+            document.getElementById("signup-container").style.display = "none";
+            document.getElementById("pin-lock-container").style.display = "none";
+            document.getElementById("signin-container").style.display = "block";
+            authOverlay.classList.add("active");
+            authOverlay.style.pointerEvents = "auto";
         }
 
         function showSignUpForm() {
