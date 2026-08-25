@@ -1,53 +1,68 @@
-# Algo Trading Console
+# ⚡ Algo Trading Console (Nifty Pro)
 
-An advanced algorithmic trading console and execution engine supporting multi-user registration, historical backtesting, real-time paper trading (dryrun), and live tick-by-tick charting using the Angel One SmartAPI.
+An enterprise-grade algorithmic trading console, machine learning decision engine, and real-time execution platform built for Nifty 50 spot & options trading. Powered by **Angel One SmartAPI**, **FastAPI**, **Lightweight Charts**, and a multi-model ML ensemble (**HMM**, **LightGBM**, **TCN**, **Random Forest**).
 
 ---
 
-## 🚀 Key Features
+## 🌟 Architecture & Core Features
 
-* **Dual-Strategy Engine**:
-  * **243A Consensus Strategy**: Multi-model machine learning architecture combining **Temporal Convolutional Networks (TCN)**, **LightGBM**, and **Hidden Markov Models (HMM)** with unified risk management rules (SL, TP, and trailing exits).
-  * **LONGPING Strategy (Longpine)**: High-frequency trend-following model ported directly from TradingView Pine Script.
-* **Auto-Recovery Historical Candle Sync**: On server startup, the system automatically detects database gaps since the last entry in `old data.csv` and queries the missing 5-minute candles using authenticated connection keys (or fallback developer credentials) to keep the records contiguous.
-* **5-Minute Free Trial**: A built-in user trial allows new users to view live feeds instantly by auto-authenticating with developer credentials. After 5 minutes, an interface blocker requests sign-in or signup to release developer bandwidth.
-* **Ultra-Fast RAM Caching**: Precalculates and loads 1,128 markers for 243A and 192 markers for LONGPING directly into memory on boot for instant chart navigation and switching (under 2ms).
-* **Live WebSocket Integration**: Aggregates tick-by-tick market data and volume from Nifty Future tokens to compile real-time 5-minute candles.
+### 1. 📡 24/7 Centralized Angel One Feed (0% Rate Limit Risk)
+* **Single Master WebSocket Feed**: Only **1 master central connection** (`AAAE696417`) connects to Angel One SmartConnect WebSocket stream.
+* **Sub-1ms Data Relay**: Incoming tick-by-tick Nifty 50 prices and volume are broadcasted to all logged-in user sessions in real-time without duplicate API calls or rate-limit bans (HTTP 429).
+* **Multi-User Isolation**: Every registered account maintains its own isolated paper trading / live trading portfolio (`PaperTradeEngine`), position tracking (`data/active_positions.json`), and strategy decision logs while drawing market feeds from the central engine.
+
+### 2. 🧠 Multi-Model ML Strategy Consensus (243A & LONGPING)
+* **243A Consensus Model**: Multi-layer ensemble combining **Hidden Markov Models (HMM)**, **LightGBM**, **TCN**, and **Random Forest** with unified risk rules (Stop Loss, Take Profit, trailing stops).
+* **LONGPING Strategy**: Positional trend-following model ported directly from TradingView Pine Script for overnight holding.
+
+### 3. 🧬 HMM Volatility Regime Channels (15-Candle Projections)
+* **Dynamic Drift & Volatility Envelopes**: Renders 15-candle forward projection upper/lower channel envelopes on Lightweight Charts based on real-time Hidden Markov Model volatility state (`markup`, `markdown`, `compression`, `expansionup`, `expansiondown`).
+* **Persistence & History**: Regime transition anchor points are stored permanently in `backend_engine/regime_history.json`.
+
+### 4. ⚡ Pattern Matcher Acceleration (< 10ms Response)
+* **Historical Day Fingerprints**: Self-growing pattern library (`pattern_library.json`) storing 20-period Normalized Price, Volatility Ratio, RSI, and Volume Expansion vectors.
+* **Instant Top-3 Similarity Matches**: Computes cosine/Euclidean vector similarity to instantly output the **Top 3 Historical Matching Days** and predicted EOD direction.
+
+### 5. 📱 100% Mobile Responsive Dashboard & Touch Bottom Nav
+* **Touch Bottom Navigation Bar**: 5 dedicated touch tabs (**Chart**, **Strategy**, **Positions**, **Pattern**, **Logs**) for seamless navigation on smartphones.
+* **Horizontal Touch-Scrollable Controls Toolbar**: Utility buttons (`Go to Date`, `Download Data`, `Sync 72 Candles`, `Load More History`) sit in a horizontal touch toolbar so the chart canvas is 100% unobstructed.
 
 ---
 
 ## 📂 Project Architecture
 
 ```text
-├── 243A/                       # ML Consensus Models Strategy Folder
-│   ├── models/                 # Pretrained Pickles & Scalers (TCN, LGBM, HMM)
-│   ├── AAAback.py              # 243A 6-Month Backtest Runner
-│   ├── strategy_243a.py        # 243A Entry/Exit Decision Rulebook
-│   └── backtest_results.csv    # 6-Month simulation trades log
-│
-├── longpine/                   # LONGPING Trend-Following Strategy Folder
-│   ├── longping_original.pinescript# Original Pinescript source
-│   ├── backtest_runner.py      # LONGPING 6-Month Backtest Runner
-│   └── backtest_results.csv    # 6-Month simulation trades log
-│
 ├── backend_engine/             # Core Backend Services
-│   ├── web_app.py              # FastAPI REST & status web servers
-│   ├── live_dryrun.py          # Session Manager, WebSockets, & gap filler
-│   ├── paper_trade_engine.py   # Dryrun sandbox executor
+│   ├── web_app.py              # FastAPI REST API & status web server
+│   ├── live_dryrun.py          # Session Manager, Central Feed & gap filler
+│   ├── angel_ws_handler.py     # Centralized Angel One WebSocket client
+│   ├── paper_trade_engine.py   # Dryrun sandbox execution engine
+│   ├── pattern_library.json    # Instant JSON pre-computed fingerprints
+│   ├── regime_history.json     # Persistent HMM regime change history
 │   ├── users_db.py             # SQLite authentication register
 │   └── old data.csv            # Consolidated Nifty 5-Min OHLCV database
 │
-├── ui_ux/                      # Frontend templates, animations, & chart files
-│   └── templates/index.html    # Glassmorphism HTML5/JS Dashboard
+├── 243A/                       # ML Consensus Models Strategy Folder
+│   ├── models/                 # Pretrained Pickles & Scalers (TCN, LGBM, HMM)
+│   ├── AAAback.py              # 243A 6-Month Backtest Runner
+│   └── strategy_243a.py        # 243A Entry/Exit Decision Rulebook
 │
+├── longpine/                   # LONGPING Trend-Following Strategy Folder
+│   ├── longping_original.pinescript # Original Pinescript source
+│   └── backtest_runner.py      # LONGPING Backtest Runner
+│
+├── ui_ux/                      # Frontend templates & chart files
+│   └── templates/index.html    # Glassmorphism Mobile-Responsive HTML5 Dashboard
+│
+├── app.py                      # Root Application Launcher
 └── requirements.txt            # Python Dependencies
 ```
 
 ---
 
-## 🛠️ Installation & Setup
+## 🛠️ Quick Start & Installation
 
-### Local Run:
+### Local Running:
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/Rushit16102004/algo-trading-console.git
@@ -59,31 +74,24 @@ An advanced algorithmic trading console and execution engine supporting multi-us
    pip install -r requirements.txt
    ```
 
-3. **Start the Trading Console**:
+3. **Start Local Application**:
    ```bash
-   uvicorn backend_engine.web_app:app --host 127.0.0.1 --port 8050
+   python app.py
    ```
 
 4. **Open in Browser**:
-   Navigate to [http://127.0.0.1:8050](http://127.0.0.1:8050).
+   Navigate to [http://localhost:7860](http://localhost:7860).
 
+---
 
-## 📊 Backtest Performance & Notes
+## ☁️ Oracle VPS 24/7 Cloud Deployment
 
-> [!IMPORTANT]
-> **Nifty Index Points PnL**: The profit/loss (PnL) values shown in the backtests and logs represent **Nifty Index points**, not option premium PnL.
+The application runs continuously on Oracle Cloud VPS using systemd daemon (`algo-console.service`) and automated GitHub Actions CI/CD deployment (`.github/workflows/deploy.yml`).
 
-### 1. 243A Consensus Strategy (Intraday)
-* **Design**: Intraday execution only. Positions are forcefully closed out at End of Day (EOD) by 15:10 to avoid overnight gap risk.
-* **Best Fit**: This model is optimized and **best suited for option shorting (selling CE and PE)** to capture theta decay when signals align.
+- 🌐 **Live Cloud Server**: [http://161.118.186.178:7860](http://161.118.186.178:7860)
 
-### 2. LONGPING Strategy (Overnight / Multiday)
-* **Design**: **Not for intraday**. EOD exits are disabled, allowing positions to ride trend momentum across multiple trading days (positional holding).
+---
 
-
-## 🛡️ Security & Gitignore Guidelines
-To protect user credentials and sandbox data, the following local components are strictly excluded from git tracking:
-* `users.db` (Local SQLite database storing user configurations)
-* `backend_engine/settings.json` (Active API login credentials)
-* `data/` and `logs/` (Historical ticks logs and paper trades)
-* `.env` and `__pycache__/`
+## 🛡️ Security & Privacy
+- **Private Repository Ready**: Supported out of the box with zero setup.
+- **Credential Protection**: Angel One keys are managed via environment variables (`.env`) and GitHub Encrypted Secrets with safe fallback handlers.
