@@ -109,6 +109,8 @@ HMM_REGIME_PARAMS = {
     "markdown":         {"drift": -0.00060, "vol": 0.00045},
 }
 
+HMM_CONE_STATE = {}
+
 # -------------------------------------------------------------------
 # Pattern Library: daily LightGBM feature fingerprints (self-growing)
 # -------------------------------------------------------------------
