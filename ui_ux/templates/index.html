@@ -1958,23 +1958,31 @@
 
                 if (data.active_positions && data.active_positions.length > 0) {
                     data.active_positions.forEach(pos => {
+                        const entryLine = candleSeries.createPriceLine({
+                            price: pos.entry_nifty,
+                            color: 'rgba(59, 130, 246, 0.95)', // Vibrant Blue for ENTRY
+                            lineWidth: 2,
+                            lineStyle: 0, // Solid line
+                            axisLabelVisible: true,
+                            title: `${pos.position_type} ENTRY`,
+                        });
                         const slLine = candleSeries.createPriceLine({
                             price: pos.sl_nifty,
-                            color: 'rgba(239, 68, 68, 0.4)',
+                            color: 'rgba(239, 68, 68, 0.95)', // Red for SL
                             lineWidth: 1,
-                            lineStyle: 2,
+                            lineStyle: 2, // Dashed line
                             axisLabelVisible: true,
                             title: `${pos.position_type} SL`,
                         });
                         const tpLine = candleSeries.createPriceLine({
                             price: pos.tp_nifty,
-                            color: 'rgba(16, 185, 129, 0.4)',
+                            color: 'rgba(16, 185, 129, 0.95)', // Green for TP
                             lineWidth: 1,
-                            lineStyle: 2,
+                            lineStyle: 2, // Dashed line
                             axisLabelVisible: true,
                             title: `${pos.position_type} TP`,
                         });
-                        activePriceLines.push(slLine, tpLine);
+                        activePriceLines.push(entryLine, slLine, tpLine);
                     });
                 }
 
