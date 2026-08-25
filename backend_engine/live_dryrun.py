@@ -177,17 +177,28 @@ class UserSession:
         plus current day up to current time (IST timezone), calculates constituent volumes,
         and synchronizes strategy model signals (243A & LONGPING).
         """
-        if self.candles_df is None or self.candles_df.empty:
-            return
-            
         self.sync_in_progress = True
         try:
             import pytz
             ist = pytz.timezone('Asia/Kolkata')
             now_ist = datetime.datetime.now(ist)
             
-            # Target start time: 4 days back to ensure 3 full trading days + weekend buffer
-            target_start = (now_ist - datetime.timedelta(days=4)).replace(hour=9, minute=15, second=0, microsecond=0)
+            # Check last candle timestamp in database
+            last_ts_str = self.candles_df['timestamp'].iloc[-1]
+            last_dt = pd.to_datetime(last_ts_str)
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.tz_localize('Asia/Kolkata')
+            else:
+                last_dt = last_dt.tz_convert('Asia/Kolkata')
+                
+            # If database is up-to-date (less than 5 mins gap or market closed outside 9:15-15:30), skip heavy sync!
+            seconds_behind = (now_ist - last_dt).total_seconds()
+            if seconds_behind < 300:
+                self.trade_logger.log_activity("Database is already up to date. Gap sync skipped.")
+                return
+                
+            # Target start time: smart delta from last_dt to now_ist (max 3 days)
+            target_start = max(last_dt, now_ist - datetime.timedelta(days=3))
             
             sc = smart_connect
             if sc is None:
@@ -197,7 +208,7 @@ class UserSession:
             from_str = target_start.strftime("%Y-%m-%d %H:%M")
             to_str = now_ist.strftime("%Y-%m-%d %H:%M")
             
-            self.trade_logger.log_activity(f"Syncing last 3 trading days + today's candles ({from_str} to {to_str} IST)...")
+            self.trade_logger.log_activity(f"Smart delta syncing missing candles from {from_str} to {to_str} IST...")
             
             historicParam = {
                 "exchange": "NSE",
