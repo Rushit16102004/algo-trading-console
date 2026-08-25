@@ -168,13 +168,9 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
     elif strategy_name == "243A":
         strategy = get_strategy("243A")
         
-        # Determine simulation start period
-        if 'last_backtest_time' in locals() and last_backtest_time is not None:
-            # Start slightly before the last backtest trade to capture any live continuation
-            cutoff_date = last_backtest_time - pd.Timedelta(hours=24)
-        else:
-            last_date = df['timestamp'].max()
-            cutoff_date = last_date - pd.Timedelta(days=30)
+        # Determine simulation start period: cover recent 30 days up to current timestamp
+        last_date = df['timestamp'].max()
+        cutoff_date = last_date - pd.Timedelta(days=30)
             
         matching_indices = df[df['timestamp'] >= cutoff_date].index
         start_idx = max(150, matching_indices[0]) if len(matching_indices) > 0 else 150
@@ -198,9 +194,6 @@ def get_strategy_signals_for_chart(df: pd.DataFrame, strategy_name: str) -> list
             # Read from prediction cache first
             pred = get_cached_prediction(cache_df, timestamp, "243A")
             if pred is None:
-                volume = float(row.get('volume', 0))
-                if volume <= 0:
-                    continue
                 lookback = df.iloc[max(0, idx - 149) : idx + 1].reset_index(drop=True)
                 try:
                     pred = strategy.predict(lookback)
