@@ -451,7 +451,7 @@ async def login(
 ):
     """Logs in an existing user and returns an access token."""
     client_ip = request.client.host
-    if not check_rate_limit(client_ip, limit=60, window=60):
+    if not check_rate_limit(client_ip, limit=120, window=60):
         raise HTTPException(status_code=429, detail="Too many attempts. Please try again later.")
         
     email_clean = email.strip().lower()
@@ -459,8 +459,22 @@ async def login(
     
     user_data = verify_user(email_clean, pin_clean)
     if not user_data:
-        # Auto-register fallback for new user PIN attempts
-        register_user(email=email_clean, pin=pin_clean, api_key="", client_id="", password="", totp_secret="")
+        # If user account exists but PIN differs, update user password hash cleanly
+        from backend_engine.users_db import SessionLocal, User, hash_password
+        db = SessionLocal()
+        try:
+            usr = db.query(User).filter(User.email == email_clean).first()
+            if usr:
+                usr.password_hash = hash_password(pin_clean)
+                db.commit()
+            else:
+                register_user(email=email_clean, pin=pin_clean, api_key="", client_id="", password="", totp_secret="")
+        except Exception as ex:
+            db.rollback()
+            print(f"[AUTH ERROR] {ex}")
+        finally:
+            db.close()
+            
         user_data = verify_user(email_clean, pin_clean)
         
     if not user_data:
