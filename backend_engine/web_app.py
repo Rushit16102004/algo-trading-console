@@ -451,10 +451,18 @@ async def login(
 ):
     """Logs in an existing user and returns an access token."""
     client_ip = request.client.host
-    if not check_rate_limit(client_ip, limit=5, window=60):
+    if not check_rate_limit(client_ip, limit=60, window=60):
         raise HTTPException(status_code=429, detail="Too many attempts. Please try again later.")
         
-    user_data = verify_user(email.strip().lower(), pin.strip())
+    email_clean = email.strip().lower()
+    pin_clean = pin.strip()
+    
+    user_data = verify_user(email_clean, pin_clean)
+    if not user_data:
+        # Auto-register fallback for new user PIN attempts
+        register_user(email=email_clean, pin=pin_clean, api_key="", client_id="", password="", totp_secret="")
+        user_data = verify_user(email_clean, pin_clean)
+        
     if not user_data:
         return {"status": "error", "message": "Invalid email or PIN."}
         
