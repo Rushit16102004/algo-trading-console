@@ -815,7 +815,7 @@
 <body>
 
     <!-- SECURE PIN / AUTHENTICATION OVERLAY -->
-    <div id="auth-overlay" class="modal-overlay active" style="z-index: 1000; pointer-events: auto;">
+    <div id="auth-overlay" class="modal-overlay active" style="z-index: 1000;">
         <div class="modal-content" style="max-width: 420px; text-align: center;">
             
             <!-- PIN LOCK PANEL (for existing user) -->
@@ -1307,7 +1307,6 @@
         // AUTHENTICATION LOGIC
         async function checkAuthentication() {
             let email = localStorage.getItem("user_email");
-            let token = localStorage.getItem("access_token");
             const authOverlay = document.getElementById("auth-overlay");
             
             // If user is already logged in, immediately unlock dashboard and load app!
@@ -1320,6 +1319,7 @@
             document.getElementById("signup-container").style.display = "none";
             document.getElementById("pin-lock-container").style.display = "none";
             document.getElementById("signin-container").style.display = "block";
+            authOverlay.style.display = "flex";
             authOverlay.classList.add("active");
             authOverlay.style.pointerEvents = "auto";
         }
@@ -1424,8 +1424,14 @@
         function loginSuccessful(email) {
             localStorage.setItem("user_email", email);
             localStorage.removeItem("signed_out");
-            document.getElementById("auth-overlay").classList.remove("active");
-            document.getElementById("auth-overlay").style.pointerEvents = "none";
+            
+            const authOverlay = document.getElementById("auth-overlay");
+            if (authOverlay) {
+                authOverlay.classList.remove("active");
+                authOverlay.style.display = "none";
+                authOverlay.style.pointerEvents = "none";
+            }
+            
             document.getElementById("header-user-email").innerText = email;
             document.getElementById("btn-signout").style.display = "inline-flex";
             
@@ -1450,8 +1456,12 @@
             localStorage.setItem("signed_out", "true");
             document.getElementById("btn-signout").style.display = "none";
             document.getElementById("header-user-email").innerText = "";
-            document.getElementById("auth-overlay").classList.add("active");
-            document.getElementById("auth-overlay").style.pointerEvents = "auto";
+            const authOverlay = document.getElementById("auth-overlay");
+            if (authOverlay) {
+                authOverlay.style.display = "flex";
+                authOverlay.classList.add("active");
+                authOverlay.style.pointerEvents = "auto";
+            }
             checkAuthentication();
         }
 
