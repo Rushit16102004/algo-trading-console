@@ -1954,28 +1954,28 @@
                 activePriceLines.forEach(line => {
                     try { candleSeries.removePriceLine(line); } catch (e) {}
                 });
-                        activePriceLines = [];
+                activePriceLines = [];
 
-                        data.active_positions.forEach(pos => {
-                            const slLine = candleSeries.createPriceLine({
-                                price: pos.sl_nifty,
-                                color: 'rgba(239, 68, 68, 0.4)',
-                                lineWidth: 1,
-                                lineStyle: 2,
-                                axisLabelVisible: true,
-                                title: `${pos.position_type} SL`,
-                            });
-                            const tpLine = candleSeries.createPriceLine({
-                                price: pos.tp_nifty,
-                                color: 'rgba(16, 185, 129, 0.4)',
-                                lineWidth: 1,
-                                lineStyle: 2,
-                                axisLabelVisible: true,
-                                title: `${pos.position_type} TP`,
-                            });
-                            activePriceLines.push(slLine, tpLine);
+                if (data.active_positions && data.active_positions.length > 0) {
+                    data.active_positions.forEach(pos => {
+                        const slLine = candleSeries.createPriceLine({
+                            price: pos.sl_nifty,
+                            color: 'rgba(239, 68, 68, 0.4)',
+                            lineWidth: 1,
+                            lineStyle: 2,
+                            axisLabelVisible: true,
+                            title: `${pos.position_type} SL`,
                         });
-                    }
+                        const tpLine = candleSeries.createPriceLine({
+                            price: pos.tp_nifty,
+                            color: 'rgba(16, 185, 129, 0.4)',
+                            lineWidth: 1,
+                            lineStyle: 2,
+                            axisLabelVisible: true,
+                            title: `${pos.position_type} TP`,
+                        });
+                        activePriceLines.push(slLine, tpLine);
+                    });
                 }
 
                 // Update Risk & Security status card fields
