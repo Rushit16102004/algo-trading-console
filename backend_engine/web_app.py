@@ -864,12 +864,6 @@ async def get_candles(email: str = Query(None), strategy: str = Query("243A"), l
         
         session = get_user_session(email)
         
-        # Run background gap sync check asynchronously without blocking page load!
-        from backend_engine.live_dryrun import check_and_sync_missing
-        if not is_syncing_in_progress:
-            sc = session.smart_connect if session else None
-            asyncio.create_task(run_auto_sync_in_background(sc, email, session))
-        
         if session and session.candles_df is not None and not session.candles_df.empty:
             # Process only recent candles (tail limit) for instant < 2ms response times!
             df_recent = session.candles_df.tail(200).copy()
