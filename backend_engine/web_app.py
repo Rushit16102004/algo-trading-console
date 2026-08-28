@@ -634,8 +634,27 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
                 "open": float(ohlc["open"]),
                 "high": float(ohlc["high"]),
                 "low": float(ohlc["low"]),
-                "close": float(ltp)
+                "close": float(ltp),
+                "volume": float(ohlc.get("volume", 0))
             }
+
+    # Fallback current candle generation if candle_builder bucket is empty but ltp > 0
+    if current_candle is None and ltp > 0:
+        import time
+        now_epoch = int(time.time())
+        candle_bucket_time = (now_epoch // 300) * 300
+        last_close = ltp
+        if HISTORICAL_CANDLES and len(HISTORICAL_CANDLES) > 0:
+            last_close = float(HISTORICAL_CANDLES[-1]["close"])
+            
+        current_candle = {
+            "time": candle_bucket_time,
+            "open": float(last_close),
+            "high": float(max(last_close, ltp)),
+            "low": float(min(last_close, ltp)),
+            "close": float(ltp),
+            "volume": 0
+        }
             
     from backend_engine.kill_switch import get_kill_switch_state
     from backend_engine.config import TRADING_MODE

@@ -1890,16 +1890,20 @@
                     `;
                 }
 
-                // Handle live candle update in graph
-                if (data.current_candle && historicalCandlesData.length > 0) {
+                // Handle live tick candle update in graph
+                if (data.current_candle) {
                     const latest = data.current_candle;
-                    if (latest.time >= lastTimestamp) {
+                    try {
                         candleSeries.update(latest);
-                        volumeSeries.update({
-                            time: latest.time,
-                            value: latest.volume || 0,
-                            color: latest.close >= latest.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
-                        });
+                        if (volumeSeries) {
+                            volumeSeries.update({
+                                time: latest.time,
+                                value: latest.volume || 0,
+                                color: latest.close >= latest.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+                            });
+                        }
+                    } catch (err) {
+                        console.warn("Live candle update exception:", err);
                     }
                 }
 
