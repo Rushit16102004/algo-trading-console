@@ -660,7 +660,7 @@ def sync_model_signals(session, strategy_name):
         
         predictions_to_save = []
         for idx in missing_indices:
-            lookback = candles_df.iloc[:idx+1].copy()
+            lookback = candles_df.iloc[max(0, idx - 149):idx+1].copy()
             try:
                 result = strategy.predict(lookback, in_position=False)
                 signal = result.get('signal', 0)
