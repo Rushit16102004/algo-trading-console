@@ -1447,9 +1447,9 @@
             // Fetch unified candles data
             fetchCandles();
             
-            // Start status checking loops only if not already active
+            // Start high-frequency tick polling loop for real-time sub-second updates
             if (!statusInterval) {
-                statusInterval = setInterval(updateStatus, 3000);
+                statusInterval = setInterval(updateStatus, 300);
             }
             if (!signalsInterval) {
                 signalsInterval = setInterval(fetchSignals, 5000);
@@ -1896,11 +1896,24 @@
                     `;
                 }
 
-                // Handle live tick candle update in graph
+                // Handle live tick-by-tick candle update in graph
                 if (data.current_candle) {
                     const latest = data.current_candle;
                     try {
-                        candleSeries.update(latest);
+                        if (historicalCandlesData && historicalCandlesData.length > 0) {
+                            const lastCandle = historicalCandlesData[historicalCandlesData.length - 1];
+                            if (lastCandle && lastCandle.time === latest.time) {
+                                lastCandle.high = Math.max(lastCandle.high, latest.close, latest.high);
+                                lastCandle.low = Math.min(lastCandle.low, latest.close, latest.low);
+                                lastCandle.close = latest.close;
+                                candleSeries.update(lastCandle);
+                            } else {
+                                candleSeries.update(latest);
+                            }
+                        } else {
+                            candleSeries.update(latest);
+                        }
+
                         if (volumeSeries) {
                             volumeSeries.update({
                                 time: latest.time,
@@ -1909,7 +1922,7 @@
                             });
                         }
                     } catch (err) {
-                        console.warn("Live candle update exception:", err);
+                        console.warn("Live tick update exception:", err);
                     }
                 }
 
