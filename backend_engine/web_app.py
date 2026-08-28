@@ -595,7 +595,9 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
     # Calculate unrealized positions
     for pos in session.paper_trade_engine.active_positions:
         pos_type = pos.get("position_type")
-        entry_nifty = float(pos.get("entry_nifty_price"))
+        entry_nifty = float(pos.get("entry_nifty_price") or pos.get("entry_nifty") or pos.get("entry_price") or 0.0)
+        sl_nifty = float(pos.get("sl_nifty_price") or pos.get("sl_nifty") or 0.0)
+        tp_nifty = float(pos.get("tp_nifty_price") or pos.get("tp_nifty") or 0.0)
         lots = int(pos.get("option_lots", 1))
         qty = pos.get("lot_size", 65) * lots
         
@@ -605,14 +607,14 @@ async def get_status(email: str = Query(None), strategy: str = Query("243A")):
         
         active_positions.append({
             "position_type": pos_type,
-            "entry_nifty": entry_nifty,
-            "sl_nifty": pos.get("sl_nifty_price"),
-            "tp_nifty": pos.get("tp_nifty_price"),
+            "entry_nifty": round(entry_nifty, 2),
+            "sl_nifty": round(sl_nifty, 2),
+            "tp_nifty": round(tp_nifty, 2),
             "lots": lots,
             "pnl_points": round(pnl_pts, 2),
             "pnl": round(pos_pnl_inr, 2),
-            "entry_time": pos.get("entry_time"),
-            "entry_reason": pos.get("entry_reason"),
+            "entry_time": str(pos.get("entry_time", "")),
+            "entry_reason": str(pos.get("entry_reason", "Signal")),
         })
         
     recent_logs = get_recent_logs(session.trade_logger.system_log_path)

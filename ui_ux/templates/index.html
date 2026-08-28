@@ -1958,31 +1958,43 @@
 
                 if (data.active_positions && data.active_positions.length > 0) {
                     data.active_positions.forEach(pos => {
-                        const entryLine = candleSeries.createPriceLine({
-                            price: pos.entry_nifty,
-                            color: 'rgba(59, 130, 246, 0.95)', // Vibrant Blue for ENTRY
-                            lineWidth: 2,
-                            lineStyle: 0, // Solid line
-                            axisLabelVisible: true,
-                            title: `${pos.position_type} ENTRY`,
-                        });
-                        const slLine = candleSeries.createPriceLine({
-                            price: pos.sl_nifty,
-                            color: 'rgba(239, 68, 68, 0.95)', // Red for SL
-                            lineWidth: 1,
-                            lineStyle: 2, // Dashed line
-                            axisLabelVisible: true,
-                            title: `${pos.position_type} SL`,
-                        });
-                        const tpLine = candleSeries.createPriceLine({
-                            price: pos.tp_nifty,
-                            color: 'rgba(16, 185, 129, 0.95)', // Green for TP
-                            lineWidth: 1,
-                            lineStyle: 2, // Dashed line
-                            axisLabelVisible: true,
-                            title: `${pos.position_type} TP`,
-                        });
-                        activePriceLines.push(entryLine, slLine, tpLine);
+                        const entryPrice = parseFloat(pos.entry_nifty || pos.entry_nifty_price || 0);
+                        const slPrice = parseFloat(pos.sl_nifty || pos.sl_nifty_price || 0);
+                        const tpPrice = parseFloat(pos.tp_nifty || pos.tp_nifty_price || 0);
+
+                        if (entryPrice > 0) {
+                            const entryLine = candleSeries.createPriceLine({
+                                price: entryPrice,
+                                color: 'rgba(59, 130, 246, 0.95)', // Vibrant Blue for ENTRY
+                                lineWidth: 2,
+                                lineStyle: 0, // Solid line
+                                axisLabelVisible: true,
+                                title: `${pos.position_type} ENTRY`,
+                            });
+                            activePriceLines.push(entryLine);
+                        }
+                        if (slPrice > 0) {
+                            const slLine = candleSeries.createPriceLine({
+                                price: slPrice,
+                                color: 'rgba(239, 68, 68, 0.95)', // Red for SL
+                                lineWidth: 1,
+                                lineStyle: 2, // Dashed line
+                                axisLabelVisible: true,
+                                title: `${pos.position_type} SL`,
+                            });
+                            activePriceLines.push(slLine);
+                        }
+                        if (tpPrice > 0) {
+                            const tpLine = candleSeries.createPriceLine({
+                                price: tpPrice,
+                                color: 'rgba(16, 185, 129, 0.95)', // Green for TP
+                                lineWidth: 1,
+                                lineStyle: 2, // Dashed line
+                                axisLabelVisible: true,
+                                title: `${pos.position_type} TP`,
+                            });
+                            activePriceLines.push(tpLine);
+                        }
                     });
                 }
 

@@ -88,8 +88,11 @@ class PaperTradeEngine:
         new_pos = {
             "position_type": pos_type,
             "entry_nifty_price": float(nifty_close),
+            "entry_nifty": float(nifty_close),
             "sl_nifty_price": float(sl_nifty),
+            "sl_nifty": float(sl_nifty),
             "tp_nifty_price": float(tp_nifty),
+            "tp_nifty": float(tp_nifty),
             "entry_time": str(current_time),
             "option_token": 0,
             "option_tsym": "NIFTY50",
