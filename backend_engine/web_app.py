@@ -127,15 +127,19 @@ FEATURE_COLS_PATTERN = [
 
 def download_local_assets():
     """Downloads the standalone lightweight-charts library to local storage to prevent CDN errors."""
-    path = "ui_ux/static/lightweight-charts.js"
-    if not os.path.exists(path):
+    path1 = "ui_ux/static/lightweight-charts.js"
+    path2 = "ui_ux/static/js/lightweight-charts.js"
+    if not (os.path.exists(path1) and os.path.exists(path2)):
         print("[ASSETS] Downloading lightweight-charts.js locally...")
         try:
             import requests
             os.makedirs("ui_ux/static", exist_ok=True)
+            os.makedirs("ui_ux/static/js", exist_ok=True)
             r = requests.get("https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js", timeout=15)
             if r.status_code == 200:
-                with open(path, "w", encoding="utf-8") as f:
+                with open(path1, "w", encoding="utf-8") as f:
+                    f.write(r.text)
+                with open(path2, "w", encoding="utf-8") as f:
                     f.write(r.text)
                 print("[ASSETS] lightweight-charts.js downloaded successfully.")
             else:
