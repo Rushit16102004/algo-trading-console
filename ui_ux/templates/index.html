@@ -1559,10 +1559,9 @@
 
         // CHART AND STATUS LOGIC
         async function fetchCandles() {
-            const email = localStorage.getItem("user_email");
-            if (!email) return;
-            
-            const strategy = document.getElementById("active-strategy-select").value;
+            const email = localStorage.getItem("user_email") || "qaz@gmail.com";
+            const strategySelect = document.getElementById("active-strategy-select");
+            const strategy = strategySelect ? strategySelect.value : "243A";
             
             try {
                 const response = await fetch(`/api/candles?email=${encodeURIComponent(email)}&strategy=${strategy}&limit=${currentCandleLimit}`, {
@@ -1582,8 +1581,8 @@
                     
                     lastTimestamp = historicalCandlesData[historicalCandlesData.length - 1].time;
                     
-                    // Render markers calculated by backend with spacing (avoid touching wicks)
-                    if (isSignalsPanelVisible && data.markers && data.markers.length > 0 && historicalCandlesData.length > 0) {
+                    // Always render markers calculated by backend with spacing
+                    if (data.markers && data.markers.length > 0 && historicalCandlesData.length > 0) {
                         const candleMap = {};
                         for (const c of historicalCandlesData) {
                             candleMap[c.time] = c;
