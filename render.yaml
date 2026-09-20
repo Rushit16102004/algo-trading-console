@@ -1,8 +1,0 @@
-services:
-  - type: web
-    name: risk-ok-trading-dashboard
-    env: docker
-    plan: free
-    envVars:
-      - key: PORT
-        value: 8000
