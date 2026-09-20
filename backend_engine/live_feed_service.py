@@ -12,6 +12,9 @@ import numpy as np
 import pyotp
 from SmartApi import SmartConnect
 from SmartApi.smartWebSocketV2 import SmartWebSocketV2
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Import strategy config
 from backend_engine.config import (
