@@ -525,10 +525,9 @@ class LiveFeedService:
         return dt.replace(minute=minute, second=0, microsecond=0)
 
     def process_tick(self, tick_time, ltp, volume=0, token="99926000", name="NIFTY 50"):
-        """Central tick processor called for every incoming WebSocket tick."""
-        # Only process ticks during market hours (09:15 to 15:30 IST)
-        t_val = tick_time.hour * 100 + tick_time.minute
-        # Allow pre-market or live market, but discard off-market ticks
+        # Discard invalid/zero ticks or off-market ticks
+        if ltp is None or float(ltp) <= 1000:
+            return
         if t_val < 900 or t_val > 1535:
             return
 
@@ -936,12 +935,22 @@ class LiveFeedService:
         for _, row in df_slice.iterrows():
             ts = row["timestamp"]
             t_epoch = to_chart_epoch(ts)
+            c_open = float(row["open"])
+            c_high = float(row["high"])
+            c_low = float(row["low"])
+            c_close = float(row["close"])
+            if c_open <= 1000 or c_close <= 1000:
+                continue
+            if c_low <= 1000 or c_low < c_open * 0.7:
+                c_low = min(c_open, c_close)
+            if c_high < max(c_open, c_close):
+                c_high = max(c_open, c_close)
             records.append({
                 "time": t_epoch,
-                "open": float(row["open"]),
-                "high": float(row["high"]),
-                "low": float(row["low"]),
-                "close": float(row["close"]),
+                "open": c_open,
+                "high": c_high,
+                "low": c_low,
+                "close": c_close,
                 "volume": float(row.get("volume", 0.0))
             })
 
@@ -950,15 +959,24 @@ class LiveFeedService:
         if self.current_candle is not None:
             c = self.current_candle
             t_epoch = to_chart_epoch(c["bucket"])
-            forming_candle = {
-                "time": t_epoch,
-                "open": float(c["open"]),
-                "high": float(c["high"]),
-                "low": float(c["low"]),
-                "close": float(c["close"]),
-                "volume": float(c["volume"]),
-                "ticks": int(c["ticks"])
-            }
+            c_open = float(c["open"])
+            c_high = float(c["high"])
+            c_low = float(c["low"])
+            c_close = float(c["close"])
+            if c_open > 1000 and c_close > 1000:
+                if c_low <= 1000 or c_low < c_open * 0.7:
+                    c_low = min(c_open, c_close)
+                if c_high < max(c_open, c_close):
+                    c_high = max(c_open, c_close)
+                forming_candle = {
+                    "time": t_epoch,
+                    "open": c_open,
+                    "high": c_high,
+                    "low": c_low,
+                    "close": c_close,
+                    "volume": float(c["volume"]),
+                    "ticks": int(c["ticks"])
+                }
 
         # Combine historical markers and live markers (filtered to cutoff)
         # Deduplicate strictly by (time, shape) to avoid duplicate markers on same candle
