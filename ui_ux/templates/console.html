@@ -1,0 +1,2602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>243A Algo Trading Console — Angel One Live Stream & Signals</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="/static/js/lightweight-charts.js"></script>
+    <style>
+        :root {
+            --bg-color: #080c14;
+            --card-bg: #0f172a;
+            --card-border: #1e293b;
+            --accent-blue: #38bdf8;
+            --accent-green: #10b981;
+            --accent-red: #f43f5e;
+            --accent-yellow: #f59e0b;
+            --accent-purple: #a855f7;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100vh;
+            max-height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Slim Scrollbars */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Navigation Header */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            background: #090e17;
+            border-bottom: 1px solid var(--card-border);
+            height: 48px;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge-logo {
+            background: linear-gradient(135deg, #0284c7, #38bdf8);
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 3px 8px;
+            border-radius: 5px;
+            letter-spacing: 0.4px;
+        }
+
+        .title-text {
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .ticker-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .spot-price-box {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--card-border);
+            padding: 4px 12px;
+            border-radius: 6px;
+        }
+
+        .spot-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .spot-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.15rem;
+            font-weight: 700;
+            transition: color 0.3s;
+        }
+
+        .spot-change {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .pulse-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 14px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            border: 1px solid var(--card-border);
+            background: rgba(15, 23, 42, 0.6);
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+
+        .dot-live { background-color: var(--accent-green); box-shadow: 0 0 7px var(--accent-green); animation: blink 1.5s infinite; }
+        .dot-connecting { background-color: var(--accent-yellow); box-shadow: 0 0 7px var(--accent-yellow); animation: blink 1.5s infinite; }
+        .dot-offline { background-color: var(--accent-red); box-shadow: 0 0 7px var(--accent-red); }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Layout Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 495px;
+            gap: 16px;
+            padding: 14px 18px;
+            height: calc(100vh - 48px);
+            max-height: calc(100vh - 48px);
+            overflow: hidden;
+            box-sizing: border-box;
+            flex: 1;
+        }
+
+        @media (max-width: 1250px) {
+            .dashboard-grid { grid-template-columns: 1fr 450px; gap: 12px; padding: 10px 14px; }
+        }
+
+        @media (max-width: 992px) {
+            .dashboard-grid { grid-template-columns: 1fr; overflow-y: auto; height: auto; max-height: none; }
+            html, body { overflow-y: auto; height: auto; max-height: none; }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .card-header {
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            height: 40px;
+            user-select: none;
+        }
+
+        .card-title {
+            font-size: 0.84rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            color: #f1f5f9;
+        }
+
+        .card-collapse-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+            border-radius: 5px;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 0;
+            margin-left: 4px;
+        }
+
+        .card-collapse-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .chevron-icon {
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card.collapsed .chevron-icon {
+            transform: rotate(-90deg);
+        }
+
+        .card-collapsible-body {
+            transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+            max-height: 1500px;
+            opacity: 1;
+            overflow: hidden;
+        }
+
+        .card.collapsed .card-collapsible-body {
+            max-height: 0 !important;
+            opacity: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        /* Chart container */
+        .chart-box {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        #chartContainer {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Chart Legend Overlay */
+        .chart-legend {
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            z-index: 5;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(8px);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            display: flex;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .legend-item span { color: var(--text-muted); font-size: 0.7rem; }
+        .legend-item b { font-weight: 600; }
+
+        /* Chart Marker Labels Legend */
+        .marker-legend-bar {
+            padding: 6px 14px;
+            background: rgba(255, 255, 255, 0.01);
+            border-top: 1px solid var(--card-border);
+            display: flex;
+            gap: 14px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+            flex-shrink: 0;
+            align-items: center;
+        }
+
+        .m-item { display: flex; align-items: center; gap: 5px; }
+        .m-badge {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            display: inline-block;
+        }
+
+        /* Market Breadth Strip - Sleek Institutional Terminal Design */
+        .breadth-strip {
+            background: #080d19;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            height: 38px;
+            min-height: 38px;
+            max-height: 38px;
+            flex-shrink: 0;
+            overflow: hidden;
+            transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, padding 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .breadth-strip.collapsed {
+            max-height: 0 !important;
+            min-height: 0 !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            border-bottom: none !important;
+        }
+
+        .breadth-left-section {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            flex-shrink: 0;
+        }
+
+        .breadth-brand-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.69rem;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .breadth-sentiment-tag {
+            font-size: 0.67rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: rgba(56, 189, 248, 0.12);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.28);
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+
+        /* Inline Integrated Advances vs Declines Meter */
+        .breadth-gauge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 14px;
+            padding: 2px 9px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+        }
+
+        .breadth-stat-adv {
+            color: #34d399;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .breadth-stat-dec {
+            color: #fb7185;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .breadth-stat-pct {
+            font-size: 0.65rem;
+            opacity: 0.85;
+        }
+
+        .breadth-bar-track {
+            width: 76px;
+            height: 6px;
+            background: #1e293b;
+            border-radius: 3px;
+            overflow: hidden;
+            display: flex;
+            position: relative;
+        }
+
+        .breadth-adv-fill {
+            background: linear-gradient(90deg, #059669, #10b981);
+            height: 100%;
+            transition: width 0.4s ease;
+        }
+
+        .breadth-dec-fill {
+            background: linear-gradient(90deg, #f43f5e, #e11d48);
+            height: 100%;
+            transition: width 0.4s ease;
+        }
+
+        /* Right / Center Movers Ticker */
+        .breadth-movers-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+            flex: 1;
+            justify-content: flex-end;
+            margin: 0 4px;
+        }
+
+        .movers-strip-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .movers-tag-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .movers-list {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            overflow: hidden;
+        }
+
+        .mover-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 0.67rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: background 0.2s;
+        }
+
+        .mover-up {
+            background: rgba(16, 185, 129, 0.1);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .mover-down {
+            background: rgba(244, 63, 94, 0.1);
+            color: #fb7185;
+            border: 1px solid rgba(244, 63, 94, 0.2);
+        }
+
+        .movers-v-divider {
+            width: 1px;
+            height: 14px;
+            background: rgba(255, 255, 255, 0.12);
+            flex-shrink: 0;
+            margin: 0 2px;
+        }
+
+        .breadth-toggle-btn {
+            background: transparent;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            padding: 3px 6px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .breadth-toggle-btn:hover {
+            color: #f1f5f9;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Deck Quick-Toggle Toolbar */
+        .deck-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 4px 4px 8px 4px;
+            margin-bottom: 4px;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .deck-filter-pills {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .deck-pill {
+            background: #111a2e;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+            border-radius: 6px;
+            padding: 6px 11px;
+            font-size: 0.73rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .deck-pill:hover {
+            color: #fff;
+            background: #1e293b;
+            border-color: rgba(255, 255, 255, 0.18);
+        }
+
+        .deck-pill.active {
+            background: #0284c7;
+            color: #ffffff;
+            border-color: #38bdf8;
+            box-shadow: 0 0 10px rgba(2, 132, 199, 0.35);
+        }
+
+        .deck-quick-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .deck-action-btn {
+            background: #111a2e;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+            border-radius: 6px;
+            padding: 5px 9px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .deck-action-btn:hover {
+            background: #1e293b;
+            color: #fff;
+        }
+
+        /* Right Column Deck */
+        .right-column-deck {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            height: 100%;
+            min-height: 0;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        /* Forming Candle Mini Bar */
+        .fc-mini-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--card-border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.74rem;
+            flex-shrink: 0;
+        }
+
+        .fc-mini-bar span { color: var(--text-muted); }
+        .fc-mini-bar b { font-weight: 600; }
+
+        /* Tables */
+        .table-scroll-wrap {
+            overflow-y: auto;
+            max-height: 250px;
+            min-height: 130px;
+        }
+
+        .tick-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.73rem;
+        }
+
+        .tick-table th {
+            position: sticky;
+            top: 0;
+            background: #0c1322;
+            padding: 8px 12px;
+            text-align: left;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--card-border);
+            font-weight: 600;
+            z-index: 2;
+        }
+
+        .tick-table td {
+            padding: 7px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            white-space: nowrap;
+        }
+
+        .tick-row-up { color: #34d399; background: rgba(16, 185, 129, 0.03); }
+        .tick-row-down { color: #fb7185; background: rgba(244, 63, 94, 0.03); }
+        .tick-row-same { color: #cbd5e1; }
+
+        .pnl-green { color: #34d399; font-weight: 600; }
+        .pnl-red { color: #fb7185; font-weight: 600; }
+
+        /* Models Section */
+        .model-card {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .model-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .model-name { font-size: 0.78rem; font-weight: 600; color: var(--text-main); }
+        .model-badge {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .badge-buy { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-sell { background: rgba(244, 63, 94, 0.2); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.3); }
+        .badge-hold { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+
+        .prob-bar-container {
+            height: 6px;
+            background: #1e293b;
+            border-radius: 3px;
+            overflow: hidden;
+            display: flex;
+            margin-bottom: 4px;
+        }
+
+        .prob-buy-fill { background: var(--accent-green); height: 100%; transition: width 0.4s; }
+        .prob-sell-fill { background: var(--accent-red); height: 100%; transition: width 0.4s; }
+
+        .prob-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+        }
+
+        /* Active Position Box */
+        .active-pos-box {
+            padding: 12px 16px;
+            background: rgba(56, 189, 248, 0.02);
+            overflow-y: auto;
+            max-height: 230px;
+        }
+
+        .pos-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.74rem;
+        }
+
+        .pos-item span { color: var(--text-muted); font-size: 0.68rem; display: block; }
+        .pos-item b { font-size: 0.82rem; }
+
+        /* Features Table */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 12px 16px;
+        }
+
+        .feat-pill {
+            background: #090e1a;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 8px 10px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.72rem;
+        }
+
+        .feat-pill span { color: var(--text-muted); font-size: 0.66rem; }
+        .feat-pill b { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; margin-top: 2px; }
+
+        /* Dynamic Thermal Dissipation Lot Sizer Gauge */
+        .thermal-box {
+            padding: 14px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.015);
+        }
+
+        .thermal-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .thermal-temp-display {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .thermal-temp-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #f97316;
+        }
+
+        .thermal-lots-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.84rem;
+            font-weight: 600;
+            color: #34d399;
+        }
+
+        .thermal-meter-wrap {
+            position: relative;
+            margin: 4px 0;
+        }
+
+        .thermal-meter-track {
+            height: 9px;
+            border-radius: 5px;
+            background: #1e293b;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .thermal-meter-fill {
+            height: 100%;
+            width: 15%;
+            background: linear-gradient(90deg, #06b6d4 0%, #10b981 30%, #eab308 65%, #f97316 85%, #ef4444 100%);
+            border-radius: 5px;
+            transition: width 0.4s ease;
+        }
+
+        .thermal-ambient-mark {
+            position: absolute;
+            top: -2px;
+            left: calc(((1.0 - 0.5) / 3.9) * 100%);
+            width: 2px;
+            height: 13px;
+            background: #94a3b8;
+            border-radius: 1px;
+            pointer-events: none;
+        }
+
+        .thermal-meter-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: 3px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .thermal-lots-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .thermal-lot-chip {
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #090e1a;
+            text-align: center;
+            font-size: 0.72rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .thermal-lot-chip.active-lot {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: #10b981;
+            color: #34d399;
+            font-weight: 700;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+        }
+
+        .thermal-sub-details {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 4px;
+        }
+
+        /* Performance & Risk Metrics Dashboard */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 12px 18px;
+        }
+
+        .metric-card {
+            background: #090e1a;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 6px;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 54px;
+        }
+
+        .metric-card .m-title {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .metric-card .m-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.88rem;
+            font-weight: 700;
+            margin: 2px 0;
+        }
+
+        .metric-card .m-sub {
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Segmented Data Toggle Bar */
+        .data-tabs-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #090e1a;
+            padding: 3px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .data-tab {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .data-tab:hover {
+            color: #fff;
+        }
+
+        .data-tab.active {
+            background: #0284c7;
+            color: #fff;
+            box-shadow: 0 0 8px rgba(2, 132, 199, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Navigation -->
+    <header>
+        <div class="header-brand">
+            <span class="badge-logo">243A</span>
+            <span class="title-text">ALGO TRADING CONSOLE</span>
+            <div class="pulse-badge">
+                <span class="dot dot-connecting" id="wsDot"></span>
+                <span id="wsText">CONNECTING</span>
+            </div>
+            <div class="pulse-badge" style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; font-weight: 700; font-size: 0.68rem;">
+                🛡️ PAPER TRADING MODE (SIMULATED)
+            </div>
+        </div>
+
+        <div class="ticker-section">
+            <div class="spot-price-box">
+                <span class="spot-label">NIFTY 50 SPOT</span>
+                <span class="spot-value" id="spotLtp">--</span>
+                <span class="spot-change" id="spotChange">--</span>
+            </div>
+
+            <div class="spot-price-box" style="border-color: rgba(56, 189, 248, 0.4);">
+                <span class="spot-label">TOTAL NET PnL</span>
+                <span class="spot-value" id="totalNetPnl" style="color: #34d399;">--</span>
+            </div>
+
+            <div class="pulse-badge" id="hdrBreadthBadge">
+                <span style="color: var(--text-muted);">BREADTH:</span>
+                <span id="hdrAdv" style="color: #34d399; font-weight: 700;">-- ▲</span>
+                <span style="color: #475569;">/</span>
+                <span id="hdrDec" style="color: #fb7185; font-weight: 700;">-- ▼</span>
+                <b id="hdrSentiment" style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.1); color: #38bdf8;">--</b>
+            </div>
+
+            <div class="pulse-badge">
+                <span style="color: var(--text-muted);">REGIME:</span>
+                <b id="regimeBadge" style="color: var(--accent-purple); text-transform: uppercase;">COMPRESSION</b>
+            </div>
+
+            <div class="pulse-badge">
+                <span style="color: var(--text-muted);">NEXT CANDLE:</span>
+                <b id="candleCountdown" style="font-family: 'JetBrains Mono', monospace;">--:--</b>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Grid -->
+    <div class="dashboard-grid">
+
+        <!-- Left Column: Candlestick Chart (Full Height) -->
+        <div style="display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden;">
+
+            <!-- Candlestick Chart Card -->
+            <div class="card" style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 6 5-10"/></svg>
+                        NIFTY 50 (5-Minute) — Live ML Signals & Risk Entry Points
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <!-- Breadth Bar Quick Toggle -->
+                        <button id="btnToggleBreadth" onclick="toggleBreadthBar()" style="background:rgba(2, 132, 199, 0.18); color:#38bdf8; border:1px solid #0284c7; padding:3px 9px; border-radius:5px; font-size:0.7rem; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:4px;" title="Toggle Market Breadth Bar">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            Breadth
+                        </button>
+                        <!-- Marker Style Selector -->
+                        <div style="display: flex; background: #1e293b; border-radius: 5px; padding: 2px; border: 1px solid #334155;">
+                            <button id="btnModeLabels" onclick="setMarkerDisplayMode('compact')" style="background:#3b82f6; color:#fff; border:none; padding:3px 8px; border-radius:4px; font-size:0.7rem; cursor:pointer; font-weight:600;">🏷️ Short Labels</button>
+                            <button id="btnModeIcons" onclick="setMarkerDisplayMode('icons')" style="background:transparent; color:#94a3b8; border:none; padding:3px 8px; border-radius:4px; font-size:0.7rem; cursor:pointer; font-weight:600;">🔹 Icons Only</button>
+                        </div>
+                        <!-- Range Selector -->
+                        <button onclick="zoomRange('today')" style="background:#0284c7; color:#fff; border:none; padding:3px 9px; border-radius:5px; font-size:0.7rem; cursor:pointer; font-weight:600;">⚡ Today</button>
+                        <button onclick="zoomRange('5d')" style="background:#1e293b; color:#94a3b8; border:1px solid #334155; padding:3px 8px; border-radius:5px; font-size:0.7rem; cursor:pointer;">5D</button>
+                        <button onclick="zoomRange('1m')" style="background:#1e293b; color:#94a3b8; border:1px solid #334155; padding:3px 8px; border-radius:5px; font-size:0.7rem; cursor:pointer;">1M</button>
+                        <button onclick="zoomRange('3m')" style="background:#1e293b; color:#94a3b8; border:1px solid #334155; padding:3px 8px; border-radius:5px; font-size:0.7rem; cursor:pointer;">3M (All)</button>
+                    </div>
+                </div>
+
+                <!-- Live Nifty 50 Market Breadth Strip - Sleek Redesign -->
+                <div class="breadth-strip" id="marketBreadthStrip">
+                    <!-- Left: Breadth Title, Sentiment, & Integrated Advances/Declines Gauge -->
+                    <div class="breadth-left-section">
+                        <div class="breadth-brand-tag">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            <span>BREADTH</span>
+                        </div>
+                        <span id="breadthSentimentTag" class="breadth-sentiment-tag">CALCULATING...</span>
+
+                        <div class="breadth-gauge-pill" title="Nifty 50: Advances vs Declines">
+                            <span class="breadth-stat-adv"><b id="bAdvCount">0</b> <small>▲</small> (<span id="bAdvPct" class="breadth-stat-pct">0%</span>)</span>
+                            <div class="breadth-bar-track">
+                                <div id="breadthAdvFill" class="breadth-adv-fill" style="width: 50%;"></div>
+                                <div id="breadthDecFill" class="breadth-dec-fill" style="width: 50%;"></div>
+                            </div>
+                            <span class="breadth-stat-dec">(<span id="bDecPct" class="breadth-stat-pct">0%</span>) <small>▼</small> <b id="bDecCount">0</b></span>
+                            <span id="bUncCount" style="display:none;">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Right: Clean Movers Ticker Strip -->
+                    <div class="breadth-movers-section">
+                        <div class="movers-strip-group">
+                            <span class="movers-tag-label" style="color:#34d399;">GAINERS:</span>
+                            <div id="topGainersRow" class="movers-list"><span class="mover-chip mover-up">Loading...</span></div>
+                        </div>
+                        <div class="movers-v-divider"></div>
+                        <div class="movers-strip-group">
+                            <span class="movers-tag-label" style="color:#fb7185;">LOSERS:</span>
+                            <div id="topLosersRow" class="movers-list"><span class="mover-chip mover-down">Loading...</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Minimal Collapse Button -->
+                    <button class="breadth-toggle-btn" onclick="toggleBreadthBar()" title="Minimize / Hide Market Breadth Bar">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                    </button>
+                </div>
+
+                <div class="chart-box">
+                    <div class="chart-legend" id="chartLegend">
+                        <div class="legend-item"><span>O</span> <b id="legO">--</b></div>
+                        <div class="legend-item"><span>H</span> <b id="legH">--</b></div>
+                        <div class="legend-item"><span>L</span> <b id="legL">--</b></div>
+                        <div class="legend-item"><span>C</span> <b id="legC">--</b></div>
+                        <div class="legend-item"><span>V (50-Stock)</span> <b id="legV" style="color:#38bdf8;">--</b></div>
+                        <div id="chartEventBadge" style="display:none; margin-left:8px; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700; background:rgba(2,132,199,0.25); border:1px solid #0284c7; color:#38bdf8; font-family:'Inter',sans-serif;"></div>
+                        <div id="patternMatchBadge" style="display:none; margin-left:8px; padding:2px 9px; border-radius:4px; font-size:0.7rem; font-weight:700; background:rgba(16, 185, 129, 0.15); border:1px solid #10b981; color:#34d399; font-family:'Inter',sans-serif; align-items:center; gap:5px;">
+                            <span>🎯</span>
+                            <span id="patternMatchText">PATTERN: MATCHING...</span>
+                        </div>
+                    </div>
+                    <div id="chartContainer"></div>
+                    <canvas id="patternFillCanvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:2;"></canvas>
+                </div>
+
+                <!-- Marker Descriptions Legend -->
+                <div class="marker-legend-bar">
+                    <div class="m-item"><span class="m-badge" style="background:#10b981;"></span><span><b>BUY Signal</b> (T)</span></div>
+                    <div class="m-item"><span class="m-badge" style="background:#f43f5e;"></span><span><b>SELL Signal</b> (T)</span></div>
+                    <div class="m-item"><span class="m-badge" style="background:#06b6d4;"></span><span><b>ENTRY POINT</b> (T+1)</span></div>
+                    <div class="m-item"><span class="m-badge" id="mLegL1" style="background:#10b981; width:14px; height:3px; border-radius:2px;"></span><span><b>L1 (Target -20%)</b></span></div>
+                    <div class="m-item"><span class="m-badge" id="mLegL2" style="background:#34d399; width:14px; height:3px; border-radius:2px;"></span><span><b>L2 (0.05° Angle)</b></span></div>
+                    <div class="m-item"><span class="m-badge" id="mLegFill" style="background:rgba(16, 185, 129, 0.35); width:14px; height:8px; border-radius:2px; border:1px solid #10b981;"></span><span><b>Fill Zone</b></span></div>
+                    <div class="m-item"><span class="m-badge" style="background:#64748b; width:14px; height:2px; border-radius:2px;"></span><span><b>Flatline</b></span></div>
+                    <div class="m-item"><span class="m-badge" style="background:rgba(16,185,129,0.7); width:8px; height:10px; border-radius:1px;"></span><span><b>Volume Bars</b></span></div>
+                    <div class="m-item"><span class="m-badge" style="background:#f59e0b;"></span><span><b>EOD EXIT</b></span></div>
+                    <div class="m-item"><span class="m-badge" style="background:#10b981; border-radius:50%;"></span><span><b>TP EXIT</b></span></div>
+                    <div class="m-item"><span class="m-badge" style="background:#ef4444;"></span><span><b>SL EXIT</b></span></div>
+                    <div class="m-item"><span class="m-badge" style="background:#a855f7;"></span><span><b>TSL EXIT</b></span></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: All Cards & The 2 Blocks Stacked According to Arrows -->
+        <div class="right-column-deck">
+
+            <!-- Deck Quick-Toggle Toolbar -->
+            <div class="deck-toolbar">
+                <div class="deck-filter-pills">
+                    <button class="deck-pill active" id="filterPillAll" onclick="filterDeck('all', this)">⚡ All Views</button>
+                    <button class="deck-pill" id="filterPillTrades" onclick="filterDeck('trades', this)">🎯 Trades & Risk</button>
+                    <button class="deck-pill" id="filterPillModels" onclick="filterDeck('models', this)">🤖 ML Models</button>
+                    <button class="deck-pill" id="filterPillData" onclick="filterDeck('data', this)">📊 Tables</button>
+                </div>
+                <div class="deck-quick-actions">
+                    <button class="deck-action-btn" onclick="toggleAllCards(true)" title="Expand all cards">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="7 11 12 6 17 11"/><polyline points="7 18 12 13 17 18"/></svg>
+                        Expand All
+                    </button>
+                    <button class="deck-action-btn" onclick="toggleAllCards(false)" title="Collapse all cards">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
+                        Collapse All
+                    </button>
+                </div>
+            </div>
+
+            <!-- 1. Active Position Tracker Card -->
+            <div class="card" id="cardActivePos" data-category="trades" style="flex-shrink: 0;">
+                <div class="card-header" onclick="toggleCard(this)" style="cursor: pointer;">
+                    <div class="card-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        Active Trade Tracker
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="posStatusBadge" class="model-badge badge-hold">0 / 4 SLOTS USED</span>
+                        <button class="card-collapse-btn" title="Toggle section" onclick="event.stopPropagation(); toggleCard(this.closest('.card-header'));">
+                            <svg class="chevron-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-collapsible-body" id="bodyActivePos">
+                    <div class="active-pos-box" id="activePosBox">
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-align:center; padding:8px;">
+                            No active trades (0 / 4 slots used). Waiting for Candle T consensus signal.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 3-Model Prediction Engine Card -->
+            <div class="card" id="cardModels" data-category="models" style="flex-shrink: 0;">
+                <div class="card-header" onclick="toggleCard(this)" style="cursor: pointer;">
+                    <div class="card-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        3 ML Models Prediction Engine
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="consensusBadge" class="model-badge badge-hold">HOLD</span>
+                        <button class="card-collapse-btn" title="Toggle section" onclick="event.stopPropagation(); toggleCard(this.closest('.card-header'));">
+                            <svg class="chevron-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-collapsible-body" id="bodyModels">
+                    <!-- LightGBM -->
+                    <div class="model-card">
+                        <div class="model-header">
+                            <span class="model-name">1. LightGBM (Gradient Boost)</span>
+                            <span id="lgbmBadge" class="model-badge badge-hold">HOLD</span>
+                        </div>
+                        <div class="prob-bar-container">
+                            <div id="lgbmBuyBar" class="prob-buy-fill" style="width: 50%;"></div>
+                            <div id="lgbmSellBar" class="prob-sell-fill" style="width: 50%;"></div>
+                        </div>
+                        <div class="prob-labels">
+                            <span id="lgbmBuyTxt">BUY: 50%</span>
+                            <span id="lgbmSellTxt">SELL: 50%</span>
+                        </div>
+                    </div>
+
+                    <!-- TCN -->
+                    <div class="model-card">
+                        <div class="model-header">
+                            <span class="model-name">2. TCN (Temporal Convolution)</span>
+                            <span id="tcnBadge" class="model-badge badge-hold">HOLD</span>
+                        </div>
+                        <div class="prob-bar-container">
+                            <div id="tcnBuyBar" class="prob-buy-fill" style="width: 33%;"></div>
+                            <div id="tcnSellBar" class="prob-sell-fill" style="width: 33%;"></div>
+                        </div>
+                        <div class="prob-labels">
+                            <span id="tcnBuyTxt">BUY: 33%</span>
+                            <span id="tcnSellTxt">SELL: 33%</span>
+                        </div>
+                    </div>
+
+                    <!-- HMM -->
+                    <div class="model-card" style="border-bottom:none;">
+                        <div class="model-header">
+                            <span class="model-name">3. HMM (Regime Classifier)</span>
+                            <span id="hmmBadge" class="model-badge badge-hold" style="color:var(--accent-purple); background:rgba(168, 85, 247, 0.15);">COMPRESSION</span>
+                        </div>
+                        <div style="font-size:0.68rem; color:var(--text-muted);">
+                            Filters opposing trends (prevents BUY in markdown; prevents SELL in markup).
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Thermal Dissipation Lot Sizer Gauge Card -->
+            <div class="card" id="cardThermalSizer" data-category="trades" style="flex-shrink: 0;">
+                <div class="card-header" onclick="toggleCard(this)" style="cursor: pointer;">
+                    <div class="card-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M8 5a4 4 0 0 1 8 0v11.5a6.5 6.5 0 1 1-8 0V5z"/></svg>
+                        Dynamic Lot Sizer (Thermal Dissipation)
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="thermStatusBadge" class="model-badge badge-buy" style="font-size:0.65rem;">AMBIENT STABLE</span>
+                        <button class="card-collapse-btn" title="Toggle section" onclick="event.stopPropagation(); toggleCard(this.closest('.card-header'));">
+                            <svg class="chevron-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-collapsible-body" id="bodyThermal">
+                    <div class="thermal-box">
+                        <div class="thermal-top-row">
+                            <div class="thermal-temp-display">
+                                <span style="font-size:0.72rem; color:var(--text-muted);">HEAT TEMP:</span>
+                                <span id="thermTempTxt" class="thermal-temp-val">T = 1.00</span>
+                            </div>
+                            <div>
+                                <span style="font-size:0.72rem; color:var(--text-muted);">RECOMMENDED:</span>
+                                <span id="thermLotsTxt" class="thermal-lots-val">1 Lot (65 QTY)</span>
+                            </div>
+                        </div>
+
+                        <!-- Temperature Gauge Bar -->
+                        <div class="thermal-meter-wrap">
+                            <div class="thermal-meter-track">
+                                <div id="thermGaugeFill" class="thermal-meter-fill" style="width: 15%;"></div>
+                                <div class="thermal-ambient-mark" title="Ambient T=1.0"></div>
+                            </div>
+                            <div class="thermal-meter-labels">
+                                <span>0.5 T (Min)</span>
+                                <span>1.0 T (Ambient)</span>
+                                <span>2.5 T</span>
+                                <span>4.4 T (Max)</span>
+                            </div>
+                        </div>
+
+                        <!-- Lots Multiplier Selector Chips -->
+                        <div class="thermal-lots-row">
+                            <div id="lotChip1" class="thermal-lot-chip active-lot">1x (65 QTY)</div>
+                            <div id="lotChip2" class="thermal-lot-chip">2x (130 QTY)</div>
+                            <div id="lotChip3" class="thermal-lot-chip">3x (195 QTY)</div>
+                            <div id="lotChip4" class="thermal-lot-chip">4x (260 QTY)</div>
+                        </div>
+
+                        <div class="thermal-sub-details">
+                            <span>Heating: <b>+0.015 × PnL</b></span>
+                            <span>Dissipation: <b>-0.40 × (T - 1.0)</b></span>
+                            <span>Mode: <b style="color:#34d399;">Simulated Sizing</b></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Feature Inspector Card -->
+            <div class="card" id="cardFeatures" data-category="models" style="flex-shrink: 0;">
+                <div class="card-header" onclick="toggleCard(this)" style="cursor: pointer;">
+                    <div class="card-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
+                        Technical Features (5-Min Candle)
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="featTimeBadge" class="model-badge badge-buy" style="font-size:0.65rem;">LIVE 5-MIN</span>
+                        <button class="card-collapse-btn" title="Toggle section" onclick="event.stopPropagation(); toggleCard(this.closest('.card-header'));">
+                            <svg class="chevron-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-collapsible-body" id="bodyFeatures">
+                    <div class="features-grid">
+                        <div class="feat-pill">
+                            <span>RSI (14)</span>
+                            <b id="fRsi">50.0</b>
+                        </div>
+                        <div class="feat-pill">
+                            <span>ATR (14)</span>
+                            <b id="fAtr">1.00</b>
+                        </div>
+                        <div class="feat-pill">
+                            <span>MACD Norm</span>
+                            <b id="fMacd">0.00</b>
+                        </div>
+                        <div class="feat-pill">
+                            <span>BB Width</span>
+                            <b id="fBb">0.00</b>
+                        </div>
+                        <div class="feat-pill">
+                            <span>Vol Exp</span>
+                            <b id="fVol">1.0x</b>
+                        </div>
+                        <div class="feat-pill">
+                            <span>VWAP Disp</span>
+                            <b id="fVwap">0.00</b>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance & Risk Metrics Dashboard Card -->
+            <div class="card" id="cardMetrics" data-category="trades" style="flex-shrink: 0;">
+                <div class="card-header" onclick="toggleCard(this)" style="cursor: pointer;">
+                    <div class="card-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                        Performance & Risk Metrics Dashboard
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size:0.65rem; color:#38bdf8; font-weight:700;">INSTITUTIONAL METRICS</span>
+                        <button class="card-collapse-btn" title="Toggle section" onclick="event.stopPropagation(); toggleCard(this.closest('.card-header'));">
+                            <svg class="chevron-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-collapsible-body" id="bodyMetrics">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <span class="m-title">WIN RATE %</span>
+                            <span id="mWinRate" class="m-val" style="color:#34d399;">--%</span>
+                            <span id="mWinLossRatio" class="m-sub">0W / 0L</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="m-title">PROFIT FACTOR</span>
+                            <span id="mProfitFactor" class="m-val" style="color:#38bdf8;">--</span>
+                            <span class="m-sub">Gross W / Gross L</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="m-title">MAX DRAWDOWN</span>
+                            <span id="mMaxDD" class="m-val" style="color:#fb7185;">-- pts</span>
+                            <span id="mMaxDDInr" class="m-sub">-₹0</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="m-title">RECOVERY FACTOR</span>
+                            <span id="mRecovery" class="m-val" style="color:#a855f7;">--</span>
+                            <span class="m-sub">Net PnL / Max DD</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="m-title">AVG LOT SIZE</span>
+                            <span id="mAvgLot" class="m-val" style="color:#f59e0b;">--x</span>
+                            <span class="m-sub">Scaled Positions</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="m-title">EXECUTIONS</span>
+                            <span id="mExecCount" class="m-val" style="color:#e2e8f0;">--</span>
+                            <span id="mFilteredCount" class="m-sub">0 Skipped (0 pts)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Tables View Switcher Group -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; flex-shrink: 0;">
+                <div class="data-tabs-group">
+                    <button class="data-tab active" id="tabTicks" onclick="switchDataTab('ticks')">⚡ Work 1: Live Ticks</button>
+                    <button class="data-tab" id="tabHistory" onclick="switchDataTab('history')">📜 Work 2: Trades History</button>
+                    <button class="data-tab" id="tabBoth" onclick="switchDataTab('both')">📑 Both Stacked</button>
+                </div>
+            </div>
+
+            <!-- 4. BLOCK 1 (Arrow 1 Target): Work 1 - Live Tick Data Board -->
+            <div class="card" id="cardTickBoard" data-category="data" style="flex-shrink: 0;">
+                <div class="card-header" onclick="toggleCard(this)" style="cursor: pointer;">
+                    <div class="card-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        Work 1: Live Tick Data Board
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size:0.68rem; color:var(--accent-blue); font-weight:600;">Real-Time Feed</span>
+                        <button class="card-collapse-btn" title="Toggle section" onclick="event.stopPropagation(); toggleCard(this.closest('.card-header'));">
+                            <svg class="chevron-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-collapsible-body" id="bodyTickBoard">
+                    <!-- Forming Candle Mini Bar -->
+                    <div class="fc-mini-bar">
+                        <div><span>OPEN:</span> <b id="fcOpen">--</b></div>
+                        <div><span>HIGH:</span> <b id="fcHigh" style="color:#34d399;">--</b></div>
+                        <div><span>LOW:</span> <b id="fcLow" style="color:#fb7185;">--</b></div>
+                        <div><span>50-VOL:</span> <b id="fcVolume" style="color:#38bdf8;">--</b></div>
+                        <div><span>TICKS:</span> <b id="fcTicks">0</b></div>
+                    </div>
+
+                    <div class="table-scroll-wrap">
+                        <table class="tick-table">
+                            <thead>
+                                <tr>
+                                    <th>TIME</th>
+                                    <th>INSTRUMENT</th>
+                                    <th>TOKEN</th>
+                                    <th>LTP (₹)</th>
+                                    <th>CHANGE</th>
+                                    <th>VOLUME</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tickTableBody">
+                                <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:16px;">Streaming Angel One ticks in real-time...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. BLOCK 2 (Arrow 2 Target): Signals & Closed Trades History -->
+            <div class="card" id="cardTradeHistory" data-category="data" style="flex-shrink: 0; display: none;">
+                <div class="card-header" onclick="toggleCard(this)" style="cursor: pointer;">
+                    <div class="card-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Work 2: Closed Trades History
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size:0.68rem; color:#34d399; font-weight:600;">Net PnL Isolated</span>
+                        <button class="card-collapse-btn" title="Toggle section" onclick="event.stopPropagation(); toggleCard(this.closest('.card-header'));">
+                            <svg class="chevron-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-collapsible-body" id="bodyTradeHistory">
+                    <div class="table-scroll-wrap">
+                        <table class="tick-table">
+                            <thead>
+                                <tr>
+                                    <th>DIR</th>
+                                    <th>DATE</th>
+                                    <th>ENTRY (T+1)</th>
+                                    <th>ENTRY (₹)</th>
+                                    <th>EXIT</th>
+                                    <th>EXIT (₹)</th>
+                                    <th>LOTS</th>
+                                    <th>TRADE PNL</th>
+                                    <th>NET PNL</th>
+                                    <th>REASON</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                                <tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:16px;">No trades recorded yet.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Market Breadth Toggle
+        function toggleBreadthBar() {
+            const strip = document.getElementById('marketBreadthStrip');
+            const btn = document.getElementById('btnToggleBreadth');
+            if (!strip) return;
+            strip.classList.toggle('collapsed');
+            const isCollapsed = strip.classList.contains('collapsed');
+            if (btn) {
+                if (isCollapsed) {
+                    btn.style.color = '#94a3b8';
+                    btn.style.borderColor = '#334155';
+                    btn.style.background = '#1e293b';
+                } else {
+                    btn.style.color = '#38bdf8';
+                    btn.style.borderColor = '#0284c7';
+                    btn.style.background = 'rgba(2, 132, 199, 0.18)';
+                }
+            }
+            setTimeout(() => {
+                const container = document.getElementById('chartContainer');
+                if (chart && container) {
+                    chart.resize(container.clientWidth, container.clientHeight);
+                }
+            }, 320);
+        }
+
+        // Deck Quick Filter, Collapsible Cards & Tab Helpers
+        function toggleCard(headerEl) {
+            const card = headerEl.closest('.card');
+            if (card) {
+                card.classList.toggle('collapsed');
+            }
+        }
+
+        function toggleAllCards(expand) {
+            document.querySelectorAll('.right-column-deck .card').forEach(card => {
+                if (expand) {
+                    card.classList.remove('collapsed');
+                } else {
+                    card.classList.add('collapsed');
+                }
+            });
+        }
+
+        let currentDeckCategory = 'all';
+        function filterDeck(category, btnEl) {
+            currentDeckCategory = category;
+            document.querySelectorAll('.deck-pill').forEach(pill => pill.classList.remove('active'));
+            if (btnEl) btnEl.classList.add('active');
+
+            const cards = document.querySelectorAll('.right-column-deck .card');
+            cards.forEach(card => {
+                const cardCat = card.getAttribute('data-category');
+                if (category === 'all' || cardCat === category) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // If viewing data or all, honor the current data tab selection
+            if (category === 'all' || category === 'data') {
+                const activeTab = document.querySelector('.data-tab.active');
+                const tabId = activeTab ? activeTab.id : 'tabTicks';
+                if (tabId === 'tabTicks') switchDataTab('ticks', false);
+                else if (tabId === 'tabHistory') switchDataTab('history', false);
+                else if (tabId === 'tabBoth') switchDataTab('both', false);
+            }
+        }
+
+        function switchDataTab(tabName, updateButtons = true) {
+            if (updateButtons) {
+                document.querySelectorAll('.data-tab').forEach(tab => tab.classList.remove('active'));
+                if (tabName === 'ticks') document.getElementById('tabTicks')?.classList.add('active');
+                else if (tabName === 'history') document.getElementById('tabHistory')?.classList.add('active');
+                else if (tabName === 'both') document.getElementById('tabBoth')?.classList.add('active');
+            }
+
+            const cardTicks = document.getElementById('cardTickBoard');
+            const cardHistory = document.getElementById('cardTradeHistory');
+
+            // If the filter is explicitly hiding 'data', don't override
+            if (currentDeckCategory !== 'all' && currentDeckCategory !== 'data') return;
+
+            if (tabName === 'ticks') {
+                if (cardTicks) cardTicks.style.display = 'flex';
+                if (cardHistory) cardHistory.style.display = 'none';
+            } else if (tabName === 'history') {
+                if (cardTicks) cardTicks.style.display = 'none';
+                if (cardHistory) cardHistory.style.display = 'flex';
+            } else if (tabName === 'both') {
+                if (cardTicks) cardTicks.style.display = 'flex';
+                if (cardHistory) cardHistory.style.display = 'flex';
+            }
+        }
+
+        let chart = null;
+        let candleSeries = null;
+        let volumeSeries = null;
+        let patternLineSeries = null;
+        let patternLineSeries2 = null;
+        let patternFlatlineSeries = null;
+        let lastKnownCandleTime = null;
+        let existingMarkers = [];
+        let markerDisplayMode = 'compact';
+        let lastLoadedCandles = [];
+        let candleVolumeByTime = {};
+
+        // Initialize Lightweight Charts
+        function initChart() {
+            const container = document.getElementById('chartContainer');
+            chart = LightweightCharts.createChart(container, {
+                layout: {
+                    background: { color: '#0f172a' },
+                    textColor: '#94a3b8',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.04)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.04)' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: '#1e293b',
+                    scaleMargins: { top: 0.08, bottom: 0.22 },
+                },
+                timeScale: {
+                    borderColor: '#1e293b',
+                    timeVisible: true,
+                    secondsVisible: false,
+                },
+            });
+
+            candleSeries = chart.addCandlestickSeries({
+                upColor: '#10b981',
+                downColor: '#f43f5e',
+                borderUpColor: '#10b981',
+                borderDownColor: '#f43f5e',
+                wickUpColor: '#10b981',
+                wickDownColor: '#f43f5e',
+            });
+
+            // Volume Histogram Series: Anchored to bottom 20% of graph
+            volumeSeries = chart.addHistogramSeries({
+                priceFormat: { type: 'volume' },
+                priceScaleId: '', // Overlay on same pane without interfering with candlestick scale
+            });
+            volumeSeries.priceScale().applyOptions({
+                scaleMargins: {
+                    top: 0.80, // Upper 80% kept clear for candles & projection lines
+                    bottom: 0.0,
+                },
+            });
+
+            // Line 1: Historical Spike Projection Line (Solid Green for BUY, Solid Red for SELL)
+            patternLineSeries = chart.addLineSeries({
+                color: '#10b981',
+                lineWidth: 3,
+                lineStyle: LightweightCharts.LineStyle.Solid,
+                title: '',
+                priceLineVisible: false,
+                lastValueVisible: false,
+                crosshairMarkerVisible: false
+            });
+
+            // Line 2: 0.5° Angle Projection Line from Breakout Flatline (Dashed Green / Red)
+            patternLineSeries2 = chart.addLineSeries({
+                color: '#34d399',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                title: '',
+                priceLineVisible: false,
+                lastValueVisible: false,
+                crosshairMarkerVisible: false
+            });
+
+            // Flatline: Breakout Horizontal Reference Line (Dotted Slate/Gray)
+            patternFlatlineSeries = chart.addLineSeries({
+                color: '#64748b',
+                lineWidth: 1,
+                lineStyle: LightweightCharts.LineStyle.Dotted,
+                title: '',
+                priceLineVisible: false,
+                lastValueVisible: false,
+                crosshairMarkerVisible: false
+            });
+
+            // Synchronize canvas fill overlay with chart panning and zooming
+            chart.timeScale().subscribeVisibleTimeRangeChange(() => {
+                requestAnimationFrame(redrawPatternFill);
+            });
+            chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+                requestAnimationFrame(redrawPatternFill);
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                if (chart && container) {
+                    chart.resize(container.clientWidth, container.clientHeight);
+                    requestAnimationFrame(redrawPatternFill);
+                }
+            });
+
+            if (container) {
+                container.addEventListener('mousemove', () => requestAnimationFrame(redrawPatternFill));
+                container.addEventListener('wheel', () => requestAnimationFrame(redrawPatternFill), { passive: true });
+                container.addEventListener('mouseup', () => requestAnimationFrame(redrawPatternFill));
+                container.addEventListener('touchmove', () => requestAnimationFrame(redrawPatternFill), { passive: true });
+            }
+
+            // Crosshair update with Trade Event Tooltip
+            chart.subscribeCrosshairMove(param => {
+                const badge = document.getElementById('chartEventBadge');
+                if (!param || !param.time) {
+                    if (badge) badge.style.display = 'none';
+                    return;
+                }
+                const data = param.seriesData.get(candleSeries);
+                if (data) {
+                    document.getElementById('legO').textContent = data.open.toFixed(2);
+                    document.getElementById('legH').textContent = data.high.toFixed(2);
+                    document.getElementById('legL').textContent = data.low.toFixed(2);
+                    document.getElementById('legC').textContent = data.close.toFixed(2);
+
+                    const volData = (volumeSeries && param.seriesData) ? param.seriesData.get(volumeSeries) : null;
+                    const vVal = (volData && volData.value !== undefined) ? volData.value : (candleVolumeByTime[param.time] !== undefined ? candleVolumeByTime[param.time] : (data.volume ? data.volume : null));
+                    if (vVal !== null && vVal !== undefined) {
+                        document.getElementById('legV').textContent = vVal >= 1e6 ? (vVal / 1e6).toFixed(2) + 'M' : Number(vVal).toLocaleString();
+                    } else {
+                        document.getElementById('legV').textContent = '--';
+                    }
+                }
+
+                if (badge && existingMarkers && existingMarkers.length > 0) {
+                    const match = existingMarkers.find(m => m.time === param.time);
+                    if (match) {
+                        badge.style.display = 'inline-block';
+                        badge.textContent = match.detail || `${match.text} Event`;
+                        badge.style.borderColor = match.color || '#0284c7';
+                        badge.style.color = match.color || '#38bdf8';
+                        badge.style.background = `${match.color || '#0284c7'}22`;
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        // Switch Marker Display Mode: Short Labels vs Icons Only
+        function setMarkerDisplayMode(mode) {
+            markerDisplayMode = mode;
+            const btnLabels = document.getElementById('btnModeLabels');
+            const btnIcons = document.getElementById('btnModeIcons');
+            if (btnLabels && btnIcons) {
+                if (mode === 'compact') {
+                    btnLabels.style.background = '#3b82f6';
+                    btnLabels.style.color = '#fff';
+                    btnIcons.style.background = 'transparent';
+                    btnIcons.style.color = '#94a3b8';
+                } else {
+                    btnIcons.style.background = '#3b82f6';
+                    btnIcons.style.color = '#fff';
+                    btnLabels.style.background = 'transparent';
+                    btnLabels.style.color = '#94a3b8';
+                }
+            }
+            if (existingMarkers && existingMarkers.length > 0 && candleSeries) {
+                applyFormattedMarkers(existingMarkers);
+            }
+        }
+
+        function applyFormattedMarkers(rawMarkers) {
+            if (!candleSeries || !rawMarkers) return;
+            const formatted = rawMarkers.map(m => {
+                let displayTxt = m.text || '';
+                if (markerDisplayMode === 'icons') {
+                    displayTxt = '';
+                } else if (markerDisplayMode === 'compact') {
+                    if (displayTxt.includes('SIGNAL')) displayTxt = displayTxt.replace(' SIGNAL', '');
+                    if (displayTxt.includes('ENTRY POINT')) displayTxt = 'ENTRY';
+                }
+                return {
+                    time: m.time,
+                    position: m.position,
+                    color: m.color,
+                    shape: m.shape,
+                    text: displayTxt,
+                    detail: m.detail || displayTxt,
+                    size: 1
+                };
+            });
+            candleSeries.setMarkers(formatted);
+        }
+
+        // Timeframe Range Zooming
+        function zoomRange(range) {
+            if (!chart || !lastLoadedCandles || lastLoadedCandles.length === 0) return;
+            const timeScale = chart.timeScale();
+            const nowSec = lastLoadedCandles[lastLoadedCandles.length - 1].time;
+
+            let fromSec = nowSec;
+            if (range === 'today') {
+                const todayCandles = lastLoadedCandles.slice(-75);
+                fromSec = todayCandles[0].time;
+            } else if (range === '5d') {
+                const fiveDayCandles = lastLoadedCandles.slice(-375);
+                fromSec = fiveDayCandles[0].time;
+            } else if (range === '1m') {
+                const oneMonthCandles = lastLoadedCandles.slice(-1500);
+                fromSec = oneMonthCandles[0].time;
+            } else if (range === '3m') {
+                fromSec = lastLoadedCandles[0].time;
+            }
+
+            timeScale.setVisibleRange({
+                from: fromSec,
+                to: nowSec + 300
+            });
+        }
+
+        // Active pattern data reference for real-time canvas overlay rendering
+        let currentPatternData = null;
+
+        // Render Semi-Transparent Fill Overlay between Line 1 and Line 2
+        function redrawPatternFill() {
+            const canvas = document.getElementById('patternFillCanvas');
+            const chartEl = document.getElementById('chartContainer');
+            if (!canvas || !chartEl || !chart || !candleSeries) return;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            const dpr = window.devicePixelRatio || 1;
+            const w = chartEl.clientWidth;
+            const h = chartEl.clientHeight;
+
+            if (w <= 0 || h <= 0) return;
+
+            if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+                canvas.width = Math.round(w * dpr);
+                canvas.height = Math.round(h * dpr);
+                canvas.style.width = w + 'px';
+                canvas.style.height = h + 'px';
+            }
+
+            ctx.save();
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, w, h);
+
+            if (!currentPatternData || !currentPatternData.active || currentPatternData.invalidated) {
+                ctx.restore();
+                return;
+            }
+
+            const pl = currentPatternData;
+            if (!pl.entry_time || !pl.target_time || !pl.entry_price || !pl.target_price) {
+                ctx.restore();
+                return;
+            }
+
+            // Clip drawing to main chart pane to prevent bleed over right price scale or time scale
+            const firstCanvas = chartEl.querySelector('canvas');
+            const paneW = firstCanvas ? firstCanvas.clientWidth : (w - 55);
+            const paneH = firstCanvas ? firstCanvas.clientHeight : (h - 26);
+
+            ctx.beginPath();
+            ctx.rect(0, 0, paneW, paneH);
+            ctx.clip();
+
+            let x1 = chart.timeScale().timeToCoordinate(pl.entry_time);
+            let y1 = candleSeries.priceToCoordinate(pl.entry_price);
+            let x2 = chart.timeScale().timeToCoordinate(pl.target_time);
+            let y2_l1 = candleSeries.priceToCoordinate(pl.target_price);
+
+            const isBuy = pl.direction === 'BUY';
+            const l2Price = pl.target_price_2 || (isBuy ? pl.entry_price * 1.0005 : pl.entry_price * 0.9995);
+            let y2_l2 = candleSeries.priceToCoordinate(l2Price);
+
+            if (y1 === null || y2_l1 === null || y2_l2 === null) {
+                ctx.restore();
+                return;
+            }
+
+            // Fallback for horizontal coordinates if one end is panned offscreen
+            if (x1 === null && x2 !== null) x1 = -100;
+            if (x2 === null && x1 !== null) x2 = paneW + 100;
+            if (x1 === null || x2 === null) {
+                ctx.restore();
+                return;
+            }
+
+            // Draw semi-transparent shaded wedge polygon between Line 1 and Line 2
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2_l1);
+            ctx.lineTo(x2, y2_l2);
+            ctx.closePath();
+
+            const grad = ctx.createLinearGradient(x1, y1, x2, (y2_l1 + y2_l2) / 2);
+            if (isBuy) {
+                grad.addColorStop(0, 'rgba(16, 185, 129, 0.15)');
+                grad.addColorStop(1, 'rgba(16, 185, 129, 0.30)');
+                ctx.fillStyle = grad;
+            } else {
+                grad.addColorStop(0, 'rgba(239, 68, 68, 0.15)');
+                grad.addColorStop(1, 'rgba(239, 68, 68, 0.30)');
+                ctx.fillStyle = grad;
+            }
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Update 15M Historical Pattern Direction & Dual Projection Lines UI
+        function updatePatternMatchUI(pl) {
+            if (!pl) return;
+
+            const badge = document.getElementById('patternCardBadge');
+            const heroDir = document.getElementById('patternHeroDir');
+            const heroTarget = document.getElementById('patternHeroTarget');
+            const heroTarget2 = document.getElementById('patternHeroTarget2');
+            const consensus = document.getElementById('patternConsensus');
+            const distScore = document.getElementById('patternDistScore');
+            const l1Label = document.getElementById('patternL1Label');
+            const l2Label = document.getElementById('patternL2Label');
+            const l1Info = document.getElementById('patternL1Info');
+            const l2Info = document.getElementById('patternL2Info');
+            const entryInfo = document.getElementById('patternEntryInfo');
+            const slInfo = document.getElementById('patternSlInfo');
+            const statusBox = document.getElementById('patternStatusBox');
+            const statusText = document.getElementById('patternStatusText');
+            const chartBadge = document.getElementById('patternMatchBadge');
+            const chartBadgeText = document.getElementById('patternMatchText');
+
+            const isBuy = pl.direction === 'BUY';
+            const isSell = pl.direction === 'SELL';
+            // Upper side: GREEN (#10b981 / #34d399) | Lower side: RED (#ef4444 / #f87171)
+            const primaryColor = isBuy ? '#10b981' : '#ef4444';
+            const secondaryColor = isBuy ? '#34d399' : '#f87171';
+            const textThemeColor = isBuy ? '#34d399' : (isSell ? '#fb7185' : '#94a3b8');
+
+            const hasValidLine = pl.active && !pl.invalidated && pl.entry_time && pl.target_time && pl.target_price;
+
+            // 1. Chart Line Series: Plot Line 1, Line 2, and Breakout Flatline
+            // Note: lastValueVisible: false and priceLineVisible: false strictly hide the target point tag on the right axis
+            if (patternLineSeries && patternLineSeries2 && patternFlatlineSeries) {
+                if (hasValidLine) {
+                    // Line 1: 20% Reduced Historical Spike Projection (Solid Green for BUY, Solid Red for SELL)
+                    patternLineSeries.applyOptions({
+                        color: primaryColor,
+                        lastValueVisible: false,
+                        priceLineVisible: false,
+                        title: ''
+                    });
+                    patternLineSeries.setData([
+                        { time: pl.entry_time, value: pl.entry_price },
+                        { time: pl.target_time, value: pl.target_price }
+                    ]);
+
+                    // Line 2: 0.05° Angle Projection from Breakout Flatline (Dashed Green for BUY, Dashed Red for SELL)
+                    const l2Price = pl.target_price_2 || (isBuy ? pl.entry_price * 1.0005 : pl.entry_price * 0.9995);
+                    patternLineSeries2.applyOptions({
+                        color: secondaryColor,
+                        lastValueVisible: false,
+                        priceLineVisible: false,
+                        title: ''
+                    });
+                    patternLineSeries2.setData([
+                        { time: pl.entry_time, value: pl.entry_price },
+                        { time: pl.target_time, value: l2Price }
+                    ]);
+
+                    // Breakout Flatline: Dotted horizontal baseline at entry price
+                    patternFlatlineSeries.applyOptions({
+                        color: '#64748b',
+                        lastValueVisible: false,
+                        priceLineVisible: false,
+                        title: ''
+                    });
+                    patternFlatlineSeries.setData([
+                        { time: pl.entry_time, value: pl.entry_price },
+                        { time: pl.target_time, value: pl.entry_price }
+                    ]);
+                } else {
+                    // Clear all 3 lines immediately if inactive or 80-pt Stop Loss breached
+                    patternLineSeries.setData([]);
+                    patternLineSeries2.setData([]);
+                    patternFlatlineSeries.setData([]);
+                }
+            }
+
+            // Update global state and trigger canvas fill overlay redraw
+            currentPatternData = pl;
+            requestAnimationFrame(redrawPatternFill);
+
+            // Update bottom marker legend colors according to direction
+            const mLegL1 = document.getElementById('mLegL1');
+            const mLegL2 = document.getElementById('mLegL2');
+            const mLegFill = document.getElementById('mLegFill');
+            if (mLegL1) mLegL1.style.background = primaryColor;
+            if (mLegL2) mLegL2.style.background = secondaryColor;
+            if (mLegFill) {
+                mLegFill.style.background = isBuy ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)';
+                mLegFill.style.borderColor = primaryColor;
+            }
+
+            // 2. Chart Legend Badge
+            if (chartBadge && chartBadgeText) {
+                if (hasValidLine) {
+                    const l2Val = pl.target_price_2 || (isBuy ? pl.entry_price * 1.0005 : pl.entry_price * 0.9995);
+                    const l2Pct = pl.angle_pct_2 !== undefined ? pl.angle_pct_2 : (isBuy ? 0.05 : -0.05);
+                    chartBadge.style.display = 'inline-flex';
+                    chartBadge.style.borderColor = primaryColor;
+                    chartBadge.style.background = isBuy ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+                    chartBadge.style.color = secondaryColor;
+                    const prefix = pl.is_prev_day ? '⏮ [PREV DAY] ' : '🎯 ';
+                    chartBadgeText.textContent = `${prefix}15M ${pl.direction}: L1 Target (-20%) ${pl.target_price.toFixed(1)} (${pl.spike_pct >= 0 ? '+' : ''}${pl.spike_pct}%) | L2 (0.05°) ${l2Val.toFixed(1)} (${l2Pct >= 0 ? '+' : ''}${l2Pct}%)`;
+                } else if (pl.invalidated) {
+                    chartBadge.style.display = 'inline-flex';
+                    chartBadge.style.borderColor = '#ef4444';
+                    chartBadge.style.background = 'rgba(239, 68, 68, 0.18)';
+                    chartBadge.style.color = '#fb7185';
+                    chartBadgeText.textContent = `⛔ ALL LINES REMOVED: 80-Pt Stop Loss Hit`;
+                } else {
+                    chartBadge.style.display = 'none';
+                }
+            }
+
+            // 3. Right Deck Card Elements
+            if (heroDir) {
+                if (hasValidLine) {
+                    heroDir.innerHTML = `<span style="color:${primaryColor}; font-weight:800;">${isBuy ? '▲' : '▼'} ${pl.direction}</span>`;
+                } else if (pl.invalidated) {
+                    heroDir.innerHTML = `<span style="color:#fb7185; font-size:0.95rem;">SL HIT (-80 PTS)</span>`;
+                } else if (pl.drawn_today) {
+                    heroDir.innerHTML = `<span style="color:#94a3b8; font-size:0.95rem;">SESSION DONE</span>`;
+                } else {
+                    heroDir.innerHTML = `<span style="color:#94a3b8;">NEUTRAL</span>`;
+                }
+            }
+
+            if (heroTarget) {
+                if (hasValidLine) {
+                    heroTarget.style.color = primaryColor;
+                    heroTarget.innerHTML = `L1: ${pl.target_price.toFixed(1)} <span style="font-size:0.75rem; color:${textThemeColor};">(${pl.spike_pct >= 0 ? '+' : ''}${pl.spike_pct}%)</span>`;
+                } else if (pl.invalidated) {
+                    heroTarget.innerHTML = `<span style="color:#fb7185; font-size:0.85rem;">INVALIDATED</span>`;
+                } else {
+                    heroTarget.textContent = '--';
+                }
+            }
+
+            if (heroTarget2) {
+                if (hasValidLine) {
+                    const l2Val = pl.target_price_2 || (isBuy ? pl.entry_price * 1.0005 : pl.entry_price * 0.9995);
+                    const l2Pct = pl.angle_pct_2 !== undefined ? pl.angle_pct_2 : (isBuy ? 0.05 : -0.05);
+                    heroTarget2.style.color = secondaryColor;
+                    heroTarget2.innerHTML = `L2 (0.05°): ${l2Val.toFixed(1)} <span style="font-size:0.7rem; color:${secondaryColor};">(${l2Pct >= 0 ? '+' : ''}${l2Pct}%)</span>`;
+                } else {
+                    heroTarget2.textContent = '';
+                }
+            }
+
+            if (badge) {
+                if (hasValidLine) {
+                    if (pl.is_prev_day) {
+                        badge.textContent = `PREV DAY LINE (${pl.direction})`;
+                        badge.className = 'model-badge badge-hold';
+                    } else {
+                        badge.textContent = `2 LINES DRAWN (${pl.direction})`;
+                        badge.className = isBuy ? 'model-badge badge-buy' : 'model-badge badge-sell';
+                    }
+                } else if (pl.invalidated) {
+                    badge.textContent = `80-PT SL REMOVED`;
+                    badge.className = 'model-badge badge-sell';
+                } else if (pl.drawn_today) {
+                    badge.textContent = `DRAWN TODAY`;
+                    badge.className = 'model-badge badge-hold';
+                } else {
+                    badge.textContent = `WAITING 09:45`;
+                    badge.className = 'model-badge badge-hold';
+                }
+            }
+
+            if (consensus) consensus.textContent = pl.consensus || '--';
+            if (distScore) distScore.textContent = pl.diff_score ? pl.diff_score.toFixed(3) : '--';
+            
+            if (l1Label) l1Label.style.color = primaryColor;
+            if (l2Label) l2Label.style.color = secondaryColor;
+
+            if (l1Info) {
+                l1Info.style.color = primaryColor;
+                l1Info.textContent = hasValidLine ? `${pl.target_price.toFixed(1)} (${pl.spike_pct >= 0 ? '+' : ''}${pl.spike_pct}%)` : '--';
+            }
+            if (l2Info) {
+                const l2Val = pl.target_price_2 || (isBuy ? pl.entry_price * 1.0005 : pl.entry_price * 0.9995);
+                const l2Pct = pl.angle_pct_2 !== undefined ? pl.angle_pct_2 : (isBuy ? 0.05 : -0.05);
+                l2Info.style.color = secondaryColor;
+                l2Info.textContent = hasValidLine ? `${l2Val.toFixed(1)} (${l2Pct >= 0 ? '+' : ''}${l2Pct}%)` : '--';
+            }
+            if (entryInfo) {
+                entryInfo.textContent = pl.entry_price > 0 ? `${pl.entry_price.toFixed(1)} @ ${pl.entry_time_str || '--'}` : '--';
+            }
+            if (slInfo) {
+                if (pl.entry_price > 0 && pl.direction === 'BUY') {
+                    slInfo.textContent = `${(pl.entry_price - 80).toFixed(1)} (-80 pts)`;
+                } else if (pl.entry_price > 0 && pl.direction === 'SELL') {
+                    slInfo.textContent = `${(pl.entry_price + 80).toFixed(1)} (+80 pts)`;
+                } else {
+                    slInfo.textContent = '--';
+                }
+            }
+
+            if (statusText) {
+                statusText.textContent = pl.invalidation_reason || pl.status_text || 'Awaiting 09:45 AM evaluation window.';
+            }
+            if (statusBox) {
+                if (pl.invalidated) {
+                    statusBox.style.background = 'rgba(239, 68, 68, 0.12)';
+                    statusBox.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+                    statusBox.style.color = '#fb7185';
+                } else if (hasValidLine) {
+                    statusBox.style.background = isBuy ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)';
+                    statusBox.style.borderColor = primaryColor;
+                    statusBox.style.color = '#e2e8f0';
+                } else {
+                    statusBox.style.background = 'rgba(2,132,199,0.08)';
+                    statusBox.style.borderColor = 'rgba(2,132,199,0.25)';
+                    statusBox.style.color = '#94a3b8';
+                }
+            }
+        }
+
+        // Fetch Candle and Markers Data
+        async function fetchChartData() {
+            try {
+                const res = await fetch('/api/live/candles?limit=5000');
+                const data = await res.json();
+                if (data && data.candles && data.candles.length > 0) {
+                    lastLoadedCandles = data.candles;
+                    candleSeries.setData(data.candles);
+
+                    if (volumeSeries) {
+                        const volumeData = data.candles.map(c => ({
+                            time: c.time,
+                            value: c.volume || 0,
+                            color: (c.close >= c.open) ? 'rgba(16, 185, 129, 0.50)' : 'rgba(244, 63, 94, 0.50)'
+                        }));
+                        volumeSeries.setData(volumeData);
+                    }
+
+                    candleVolumeByTime = {};
+                    data.candles.forEach(c => {
+                        candleVolumeByTime[c.time] = c.volume;
+                    });
+
+                    const lastC = data.candles[data.candles.length - 1];
+                    if (lastC && document.getElementById('legV')) {
+                        const lv = lastC.volume;
+                        document.getElementById('legV').textContent = lv >= 1e6 ? (lv / 1e6).toFixed(2) + 'M' : Number(lv).toLocaleString();
+                    }
+
+                    if (data.markers && data.markers.length > 0) {
+                        existingMarkers = data.markers;
+                        applyFormattedMarkers(data.markers);
+                    }
+
+                    if (data.pattern_line) {
+                        updatePatternMatchUI(data.pattern_line);
+                    }
+
+                    if (!lastKnownCandleTime) {
+                        lastKnownCandleTime = lastC.time;
+                        zoomRange('today');
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching candles:', err);
+            }
+        }
+
+        // Fetch Real-Time State: LTP, Models, Breadth, Active Positions
+        async function fetchLiveState() {
+            try {
+                const res = await fetch('/api/live/state');
+                const state = await res.json();
+
+                // 1. Connection Status
+                const dot = document.getElementById('wsDot');
+                const txt = document.getElementById('wsText');
+                if (state.connection_status === 'live') {
+                    dot.className = 'dot dot-live';
+                    txt.textContent = 'LIVE';
+                } else if (state.connection_status === 'connecting') {
+                    dot.className = 'dot dot-connecting';
+                    txt.textContent = 'CONNECTING';
+                } else {
+                    dot.className = 'dot dot-offline';
+                    txt.textContent = 'OFFLINE';
+                }
+
+                // 2. Spot LTP & Change
+                if (state.ltp && state.ltp > 0) {
+                    const ltpEl = document.getElementById('spotLtp');
+                    const changeEl = document.getElementById('spotChange');
+                    ltpEl.textContent = state.ltp.toFixed(2);
+
+                    if (state.day_open && state.day_open > 0) {
+                        const change = state.ltp - state.day_open;
+                        const pct = (change / state.day_open) * 100;
+                        const sign = change >= 0 ? '+' : '';
+                        changeEl.textContent = `${sign}${change.toFixed(2)} (${sign}${pct.toFixed(2)}%)`;
+                        changeEl.style.color = change >= 0 ? '#34d399' : '#fb7185';
+                        ltpEl.style.color = change >= 0 ? '#34d399' : '#fb7185';
+                    }
+                }
+
+                // Total Net PnL
+                if (state.total_net_pnl !== undefined && state.total_net_pnl !== null) {
+                    const pnlEl = document.getElementById('totalNetPnl');
+                    if (pnlEl) {
+                        const pVal = state.total_net_pnl;
+                        const sign = pVal >= 0 ? '+' : '';
+                        pnlEl.textContent = `${sign}${pVal.toFixed(2)} pts`;
+                        pnlEl.style.color = pVal >= 0 ? '#34d399' : '#fb7185';
+                    }
+                }
+
+                // Market Breadth (Advances / Declines & Movers)
+                if (state.market_breadth) {
+                    const mb = state.market_breadth;
+
+                    const hdrAdv = document.getElementById('hdrAdv');
+                    const hdrDec = document.getElementById('hdrDec');
+                    const hdrSent = document.getElementById('hdrSentiment');
+                    if (hdrAdv) hdrAdv.textContent = `${mb.advances} ▲`;
+                    if (hdrDec) hdrDec.textContent = `${mb.declines} ▼`;
+                    if (hdrSent) {
+                        hdrSent.textContent = mb.sentiment;
+                        hdrSent.style.color = mb.sentiment_color || '#38bdf8';
+                        hdrSent.style.background = `${mb.sentiment_color || '#38bdf8'}18`;
+                    }
+
+                    const bAdv = document.getElementById('bAdvCount');
+                    const bAdvPct = document.getElementById('bAdvPct');
+                    const bDec = document.getElementById('bDecCount');
+                    const bDecPct = document.getElementById('bDecPct');
+                    const bUnc = document.getElementById('bUncCount');
+                    const tagEl = document.getElementById('breadthSentimentTag');
+
+                    if (bAdv) bAdv.textContent = mb.advances;
+                    if (bAdvPct) bAdvPct.textContent = `${mb.adv_pct}%`;
+                    if (bDec) bDec.textContent = mb.declines;
+                    if (bDecPct) bDecPct.textContent = `${mb.dec_pct}%`;
+                    if (bUnc) bUnc.textContent = mb.unchanged;
+
+                    if (tagEl) {
+                        tagEl.textContent = mb.sentiment;
+                        tagEl.style.color = mb.sentiment_color || '#38bdf8';
+                        tagEl.style.borderColor = `${mb.sentiment_color || '#38bdf8'}55`;
+                        tagEl.style.background = `${mb.sentiment_color || '#38bdf8'}18`;
+                    }
+
+                    const advBar = document.getElementById('breadthAdvFill');
+                    const decBar = document.getElementById('breadthDecFill');
+                    if (advBar) advBar.style.width = `${mb.adv_pct}%`;
+                    if (decBar) decBar.style.width = `${mb.dec_pct}%`;
+
+                    const gainersRow = document.getElementById('topGainersRow');
+                    if (gainersRow && mb.top_gainers) {
+                        if (mb.top_gainers.length > 0) {
+                            gainersRow.innerHTML = mb.top_gainers.slice(0, 3).map(g => {
+                                const sign = g.change >= 0 ? '+' : '';
+                                return `<span class="mover-chip mover-up">${g.name} ${sign}${g.change_pct.toFixed(1)}%</span>`;
+                            }).join('');
+                        } else {
+                            gainersRow.innerHTML = '<span class="mover-chip" style="color:#94a3b8;">--</span>';
+                        }
+                    }
+
+                    const losersRow = document.getElementById('topLosersRow');
+                    if (losersRow && mb.top_losers) {
+                        if (mb.top_losers.length > 0) {
+                            losersRow.innerHTML = mb.top_losers.slice(0, 3).map(l => {
+                                return `<span class="mover-chip mover-down">${l.name} ${l.change_pct.toFixed(1)}%</span>`;
+                            }).join('');
+                        } else {
+                            losersRow.innerHTML = '<span class="mover-chip" style="color:#94a3b8;">--</span>';
+                        }
+                    }
+                }
+
+                // 3. Regime
+                if (state.latest_prediction && state.latest_prediction.hmm_regime) {
+                    document.getElementById('regimeBadge').textContent = state.latest_prediction.hmm_regime;
+                    document.getElementById('hmmBadge').textContent = state.latest_prediction.hmm_regime.toUpperCase();
+                }
+
+                // 4. Current Forming Candle
+                if (state.current_candle) {
+                    const c = state.current_candle;
+                    document.getElementById('fcOpen').textContent = c.open ? c.open.toFixed(2) : '--';
+                    document.getElementById('fcHigh').textContent = c.high ? c.high.toFixed(2) : '--';
+                    document.getElementById('fcLow').textContent = c.low ? c.low.toFixed(2) : '--';
+                    document.getElementById('fcTicks').textContent = c.ticks || 0;
+
+                    const volVal = (c.volume && c.volume > 0) ? c.volume : (state.constituent_volume_sum || 0);
+                    const volEl = document.getElementById('fcVolume');
+                    if (volEl) {
+                        volEl.textContent = volVal >= 1e6 ? (volVal / 1e6).toFixed(2) + 'M' : Number(volVal).toLocaleString();
+                    }
+
+                    if (candleSeries && c.open) {
+                        const bucketTime = Math.floor(new Date(c.timestamp).getTime() / 1000);
+                        candleSeries.update({
+                            time: bucketTime,
+                            open: c.open,
+                            high: c.high,
+                            low: c.low,
+                            close: c.close,
+                            volume: c.volume || 0
+                        });
+
+                        if (volumeSeries) {
+                            volumeSeries.update({
+                                time: bucketTime,
+                                value: volVal,
+                                color: (c.close >= c.open) ? 'rgba(16, 185, 129, 0.50)' : 'rgba(244, 63, 94, 0.50)'
+                            });
+                        }
+                    }
+                }
+
+                // 5. Models Predictions
+                if (state.latest_prediction) {
+                    const p = state.latest_prediction;
+
+                    const consBadge = document.getElementById('consensusBadge');
+                    consBadge.textContent = p.consensus;
+                    consBadge.className = 'model-badge ' + (p.consensus === 'BUY' ? 'badge-buy' : (p.consensus === 'SELL' ? 'badge-sell' : 'badge-hold'));
+
+                    const lgbmBadge = document.getElementById('lgbmBadge');
+                    const lgbmSig = p.gbm_predicted === 1 ? 'BUY' : (p.gbm_predicted === -1 ? 'SELL' : 'HOLD');
+                    lgbmBadge.textContent = lgbmSig;
+                    lgbmBadge.className = 'model-badge ' + (lgbmSig === 'BUY' ? 'badge-buy' : (lgbmSig === 'SELL' ? 'badge-sell' : 'badge-hold'));
+
+                    const lgbmBuyPct = Math.round((p.gbm_prob_buy || 0.5) * 100);
+                    const lgbmSellPct = Math.round((p.gbm_prob_sell || 0.5) * 100);
+                    document.getElementById('lgbmBuyBar').style.width = `${lgbmBuyPct}%`;
+                    document.getElementById('lgbmSellBar').style.width = `${lgbmSellPct}%`;
+                    document.getElementById('lgbmBuyTxt').textContent = `BUY: ${lgbmBuyPct}%`;
+                    document.getElementById('lgbmSellTxt').textContent = `SELL: ${lgbmSellPct}%`;
+
+                    const tcnBadge = document.getElementById('tcnBadge');
+                    tcnBadge.textContent = p.tcn_predicted;
+                    tcnBadge.className = 'model-badge ' + (p.tcn_predicted === 'BUY' ? 'badge-buy' : (p.tcn_predicted === 'SELL' ? 'badge-sell' : 'badge-hold'));
+
+                    const tcnBuyPct = Math.round((p.tcn_prob_buy || 0.33) * 100);
+                    const tcnSellPct = Math.round((p.tcn_prob_sell || 0.33) * 100);
+                    document.getElementById('tcnBuyBar').style.width = `${tcnBuyPct}%`;
+                    document.getElementById('tcnSellBar').style.width = `${tcnSellPct}%`;
+                    document.getElementById('tcnBuyTxt').textContent = `BUY: ${tcnBuyPct}%`;
+                    document.getElementById('tcnSellTxt').textContent = `SELL: ${tcnSellPct}%`;
+                }
+
+                // 6. Features
+                if (state.feature_contributions) {
+                    const fc = state.feature_contributions;
+                    if (fc.RSI) document.getElementById('fRsi').textContent = fc.RSI.value;
+                    if (fc.ATR) document.getElementById('fAtr').textContent = fc.ATR.value;
+                    if (fc.MACD) document.getElementById('fMacd').textContent = fc.MACD.value;
+                    if (fc.Bollinger) document.getElementById('fBb').textContent = fc.Bollinger.value;
+                    if (fc.Volume) document.getElementById('fVol').textContent = fc.Volume.value;
+                    if (fc.VWAP) document.getElementById('fVwap').textContent = fc.VWAP.value;
+
+                    const ftBadge = document.getElementById('featTimeBadge');
+                    if (ftBadge && state.latest_prediction && state.latest_prediction.timestamp) {
+                        const parts = state.latest_prediction.timestamp.split(' ');
+                        const timePart = parts.length > 1 ? parts[1].slice(0, 5) : parts[0];
+                        ftBadge.textContent = `${timePart} CANDLE`;
+                    }
+                }
+
+                // 7. Dynamic Thermal Dissipation Lot Sizer Gauge
+                if (state.thermal_sizer) {
+                    const ts = state.thermal_sizer;
+                    const tempEl = document.getElementById('thermTempTxt');
+                    const lotsEl = document.getElementById('thermLotsTxt');
+                    const statusBadge = document.getElementById('thermStatusBadge');
+                    const gaugeFill = document.getElementById('thermGaugeFill');
+
+                    if (tempEl) tempEl.textContent = `T = ${ts.temperature.toFixed(2)}`;
+                    if (lotsEl) lotsEl.textContent = `${ts.recommended_lots} Lot${ts.recommended_lots > 1 ? 's' : ''} (${ts.recommended_qty} QTY)`;
+                    if (statusBadge) {
+                        statusBadge.textContent = ts.status;
+                        statusBadge.style.color = ts.status_color || '#34d399';
+                        statusBadge.style.borderColor = `${ts.status_color || '#34d399'}55`;
+                        statusBadge.style.background = `${ts.status_color || '#34d399'}18`;
+                    }
+                    if (gaugeFill) {
+                        const pct = Math.max(0, Math.min(100, ((ts.temperature - 0.5) / 3.9) * 100));
+                        gaugeFill.style.width = `${pct}%`;
+                    }
+
+                    // Update active lot chips
+                    [1, 2, 3, 4].forEach(lot => {
+                        const chip = document.getElementById(`lotChip${lot}`);
+                        if (chip) {
+                            if (lot === ts.recommended_lots) {
+                                chip.className = 'thermal-lot-chip active-lot';
+                            } else {
+                                chip.className = 'thermal-lot-chip';
+                            }
+                        }
+                    });
+                }
+
+                // 8. Performance & Risk Metrics Dashboard
+                if (state.performance_metrics) {
+                    const pm = state.performance_metrics;
+                    const wrEl = document.getElementById('mWinRate');
+                    const wlRatioEl = document.getElementById('mWinLossRatio');
+                    const pfEl = document.getElementById('mProfitFactor');
+                    const ddEl = document.getElementById('mMaxDD');
+                    const ddInrEl = document.getElementById('mMaxDDInr');
+                    const recEl = document.getElementById('mRecovery');
+                    const avgLotEl = document.getElementById('mAvgLot');
+                    const execEl = document.getElementById('mExecCount');
+                    const filtEl = document.getElementById('mFilteredCount');
+
+                    if (wrEl) wrEl.textContent = `${pm.win_rate_pct.toFixed(1)}%`;
+                    if (wlRatioEl) wlRatioEl.textContent = `${pm.wins}W / ${pm.losses}L (${pm.total_trades} Trades)`;
+                    if (pfEl) pfEl.textContent = pm.profit_factor >= 99 ? '99.9+' : pm.profit_factor.toFixed(2);
+                    if (ddEl) ddEl.textContent = `-${pm.max_dd_pts.toFixed(1)} pts`;
+                    if (ddInrEl) ddInrEl.textContent = `-₹${Number(pm.max_dd_inr).toLocaleString()}`;
+                    if (recEl) recEl.textContent = pm.recovery_factor >= 99 ? '99.9+' : `${pm.recovery_factor.toFixed(2)}x`;
+                    if (avgLotEl) avgLotEl.textContent = `${pm.avg_lot_size.toFixed(1)}x Lots`;
+                    if (execEl) execEl.textContent = `${pm.total_trades} Executed`;
+                    if (filtEl) filtEl.textContent = `${pm.filtered_skipped} Filtered (Excluded)`;
+                }
+
+                // 9. Active Positions (Max 4 Concurrent Trades)
+                const posBox = document.getElementById('activePosBox');
+                const posBadge = document.getElementById('posStatusBadge');
+                const activePositions = (state.active_positions && state.active_positions.length > 0)
+                    ? state.active_positions
+                    : (state.active_position ? [state.active_position] : []);
+                const maxConcurrent = state.max_concurrent || 4;
+
+                if (activePositions.length > 0) {
+                    posBadge.textContent = `${activePositions.length} / ${maxConcurrent} ACTIVE SLOTS`;
+                    posBadge.className = 'model-badge badge-buy';
+
+                    let cardsHtml = '';
+                    activePositions.forEach((pos, idx) => {
+                        const isEntered = pos.entered !== false && (pos.lot_size === undefined || pos.lot_size > 0);
+                        const lots = pos.lot_size ? Number(pos.lot_size) : 1.0;
+                        const dirColor = pos.direction === 'BUY' ? '#34d399' : '#fb7185';
+                        const badgeClass = pos.direction === 'BUY' ? 'badge-buy' : 'badge-sell';
+                        const pnlVal = isEntered ? ((pos.pnl_points || 0.0) * lots) : 0.0;
+                        const pnlClass = pnlVal >= 0 ? 'pnl-green' : 'pnl-red';
+                        const pnlSign = pnlVal >= 0 ? '+' : '';
+
+                        const statusTag = isEntered
+                            ? `<span class="model-badge ${badgeClass}" style="font-size:0.65rem; padding:2px 6px;">${lots.toFixed(0)} LOT (${lots * 65} QTY)</span>`
+                            : `<span style="font-size:0.65rem; padding:2px 6px; border-radius:4px; background:rgba(245,158,11,0.2); color:#f59e0b; border:1px solid rgba(245,158,11,0.3); font-weight:700;">FILTERED (${idx+1}/${maxConcurrent})</span>`;
+
+                        const pnlDisplay = isEntered
+                            ? `<span class="${pnlClass}" style="font-size:0.95rem; font-weight:700;">${pnlSign}${pnlVal.toFixed(2)} pts <span style="font-size:0.7rem; font-weight:500;">(₹${(pnlVal * 65).toFixed(0)})</span></span>`
+                            : `<span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">0.00 pts (0 QTY)</span>`;
+
+                        let entryTimeStr = '--';
+                        if (pos.entry_time) {
+                            const rawT = pos.entry_time.includes(' ') ? pos.entry_time.split(' ')[1] : pos.entry_time;
+                            const tParts = rawT.split(':');
+                            entryTimeStr = tParts.length >= 2 ? `${tParts[0]}:${tParts[1]}` : rawT;
+                        }
+                        const slVal = pos.sl_level !== undefined ? pos.sl_level : (pos.sl !== undefined ? pos.sl : 0.0);
+                        const tpVal = pos.tp_level !== undefined ? pos.tp_level : (pos.tp !== undefined ? pos.tp : 0.0);
+                        const curPrice = pos.current_price !== undefined ? pos.current_price : (state.ltp || pos.entry_price || 0.0);
+
+                        cardsHtml += `
+                            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:6px 10px; margin-bottom:6px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <span style="font-size:0.8rem; font-weight:700; color:${dirColor}; font-family:'JetBrains Mono', monospace;">
+                                             ${pos.direction} @ ${Number(pos.entry_price).toFixed(2)}
+                                        </span>
+                                        ${statusTag}
+                                    </div>
+                                    ${pnlDisplay}
+                                </div>
+                                <div class="pos-grid" style="margin-top:4px;">
+                                    <div class="pos-item"><span>ENTRY:</span> <b>${entryTimeStr}</b></div>
+                                    <div class="pos-item"><span>CURRENT LTP:</span> <b>${Number(curPrice).toFixed(2)}</b></div>
+                                    <div class="pos-item"><span>STOP LOSS (60):</span> <b style="color:#fb7185;">${Number(slVal).toFixed(2)}</b></div>
+                                    <div class="pos-item"><span>TARGET PROFIT:</span> <b style="color:#34d399;">${Number(tpVal).toFixed(2)}</b></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    posBox.innerHTML = cardsHtml;
+                } else {
+                    posBadge.textContent = `0 / ${maxConcurrent} SLOTS USED`;
+                    posBadge.className = 'model-badge badge-hold';
+                    posBox.innerHTML = `
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-align:center; padding:8px;">
+                            No active trades (0 / ${maxConcurrent} slots used). Waiting for Candle T signal.
+                        </div>
+                    `;
+                }
+
+                // 10. Trade History
+                if (state.closed_trades && state.closed_trades.length > 0) {
+                    const tbody = document.getElementById('historyTableBody');
+                    let html = '';
+                    const recentTrades = [...state.closed_trades].reverse().slice(0, 45);
+                    recentTrades.forEach(tr => {
+                        const isFiltered = tr.entered === false || (tr.lot_size !== undefined && tr.lot_size === 0);
+                        const lots = tr.lot_size !== undefined ? Number(tr.lot_size) : (isFiltered ? 0.0 : 1.0);
+                        const pnlVal = isFiltered ? 0.0 : (tr.pnl_points || 0.0);
+                        const pnlClass = pnlVal > 0 ? 'pnl-green' : (pnlVal < 0 ? 'pnl-red' : '');
+                        const pnlSign = pnlVal > 0 ? '+' : '';
+                        const pnlDisplay = isFiltered
+                            ? `<span style="color:var(--text-muted); font-size:0.7rem;">0.00 (Filtered)</span>`
+                            : `<span class="${pnlClass}">${pnlSign}${pnlVal.toFixed(2)} <span style="font-size:0.65rem; color:var(--text-muted);">(₹${(pnlVal * 65).toFixed(0)})</span></span>`;
+
+                        const cumPnl = tr.cumulative_net_pnl !== undefined ? tr.cumulative_net_pnl : (state.total_net_pnl || 0.0);
+                        const cumClass = cumPnl >= 0 ? 'pnl-green' : 'pnl-red';
+                        const cumSign = cumPnl >= 0 ? '+' : '';
+
+                        // Clean Lots Display (without "(65 Q)" clutter)
+                        const lotsDisplay = isFiltered
+                            ? `<span style="color:var(--text-muted); font-size:0.72rem;">0x</span>`
+                            : `<span style="color:#38bdf8; font-weight:700; font-size:0.75rem;">${lots.toFixed(0)}x</span>`;
+
+                        const exitBadge = isFiltered
+                            ? `<span style="color:#f59e0b; font-size:0.68rem; font-weight:600;">${tr.exit_reason || 'FILTERED'}</span>`
+                            : `<b>${tr.exit_reason || 'EOD'}</b>`;
+
+                        // Parse Date & strip seconds (:00) from Entry and Exit times
+                        let dateStr = '--';
+                        let entryTimeStr = '--';
+                        if (tr.entry_time) {
+                            if (tr.entry_time.includes(' ')) {
+                                const parts = tr.entry_time.split(' ');
+                                dateStr = parts[0];
+                                const tParts = parts[1].split(':');
+                                entryTimeStr = tParts.length >= 2 ? `${tParts[0]}:${tParts[1]}` : parts[1];
+                            } else {
+                                const tParts = tr.entry_time.split(':');
+                                entryTimeStr = tParts.length >= 2 ? `${tParts[0]}:${tParts[1]}` : tr.entry_time;
+                            }
+                        }
+
+                        let exitTimeStr = '--';
+                        if (tr.exit_time) {
+                            if (tr.exit_time.includes(' ')) {
+                                const parts = tr.exit_time.split(' ');
+                                const tParts = parts[1].split(':');
+                                exitTimeStr = tParts.length >= 2 ? `${tParts[0]}:${tParts[1]}` : parts[1];
+                            } else {
+                                const tParts = tr.exit_time.split(':');
+                                exitTimeStr = tParts.length >= 2 ? `${tParts[0]}:${tParts[1]}` : tr.exit_time;
+                            }
+                        }
+
+                        html += `
+                            <tr>
+                                <td><span class="model-badge ${tr.direction === 'BUY' ? 'badge-buy' : 'badge-sell'}">${tr.direction}</span></td>
+                                <td style="color:#94a3b8; font-weight:600; font-size:0.7rem;">${dateStr}</td>
+                                <td><b>${entryTimeStr}</b></td>
+                                <td>${Number(tr.entry_price).toFixed(2)}</td>
+                                <td>${exitTimeStr}</td>
+                                <td>${Number(tr.exit_price).toFixed(2)}</td>
+                                <td>${lotsDisplay}</td>
+                                <td>${pnlDisplay}</td>
+                                <td class="${cumClass}" style="font-weight:700;">${cumSign}${Number(cumPnl).toFixed(2)}</td>
+                                <td>${exitBadge}</td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                }
+
+                // 11. 15M Historical Pattern Direction & Projection Line
+                if (state.pattern_line) {
+                    updatePatternMatchUI(state.pattern_line);
+                }
+
+            } catch (err) {
+                console.error('Error fetching live state:', err);
+            }
+        }
+
+        // Fetch Live Streaming Ticks for Tick Board
+        async function fetchLiveTicks() {
+            try {
+                const res = await fetch('/api/live/ticks');
+                const data = await res.json();
+                if (data && data.ticks && data.ticks.length > 0) {
+                    const tbody = document.getElementById('tickTableBody');
+                    let rowsHtml = '';
+                    const recentTicks = [...data.ticks].reverse().slice(0, 45);
+                    recentTicks.forEach(t => {
+                        const rowClass = t.direction === 'up' ? 'tick-row-up' : (t.direction === 'down' ? 'tick-row-down' : 'tick-row-same');
+                        const arrow = t.direction === 'up' ? '▲' : (t.direction === 'down' ? '▼' : '—');
+                        const changeStr = t.change !== 0 ? (t.change > 0 ? `+${t.change}` : `${t.change}`) : '0.00';
+                        rowsHtml += `
+                            <tr class="${rowClass}">
+                                <td>${t.time}</td>
+                                <td><b>${t.name}</b></td>
+                                <td>${t.token}</td>
+                                <td style="font-weight:700;">${t.ltp.toFixed(2)}</td>
+                                <td>${arrow} ${changeStr}</td>
+                                <td>${t.volume.toLocaleString()}</td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = rowsHtml;
+                }
+            } catch (err) {
+                console.error('Error fetching ticks:', err);
+            }
+        }
+
+        // Candle Countdown Timer
+        function updateCountdown() {
+            const now = new Date();
+            const min = now.getMinutes();
+            const sec = now.getSeconds();
+            const minToNext = 5 - (min % 5) - 1;
+            const secToNext = 60 - sec;
+            const totalSec = minToNext * 60 + (secToNext === 60 ? 0 : secToNext);
+            const displayMin = Math.floor(totalSec / 60);
+            const displaySec = totalSec % 60;
+            document.getElementById('candleCountdown').textContent = 
+                `${String(displayMin).padStart(2, '0')}:${String(displaySec).padStart(2, '0')}`;
+        }
+
+        // Startup
+        window.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            fetchChartData();
+            fetchLiveState();
+            fetchLiveTicks();
+
+            // High frequency polling for Tick Board (every 600ms)
+            setInterval(fetchLiveTicks, 600);
+
+            // Medium frequency polling for State & Position (every 1000ms)
+            setInterval(fetchLiveState, 1000);
+
+            // Candle countdown (every 1s)
+            setInterval(updateCountdown, 1000);
+
+            // Full chart reload for new candle markers (every 10s)
+            setInterval(fetchChartData, 10000);
+
+            // Ensure chart fits container perfectly
+            setTimeout(() => {
+                const container = document.getElementById('chartContainer');
+                if (chart && container) chart.resize(container.clientWidth, container.clientHeight);
+            }, 200);
+        });
+    </script>
+</body>
+</html>
