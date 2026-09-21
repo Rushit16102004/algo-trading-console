@@ -443,6 +443,27 @@ async def get_live_ticks():
     svc = LiveFeedService.get_instance()
     return {"ticks": list(svc.ticks_buffer)}
 
+@app.get("/api/live/candle_tick")
+async def get_live_candle_tick():
+    """Ultra-fast <1ms lightweight endpoint for 200ms tick updates on chart."""
+    from backend_engine.live_feed_service import LiveFeedService
+    svc = LiveFeedService.get_instance()
+    c = svc.current_candle
+    if not c:
+        return {"candle": None, "ltp": svc.index_ltp}
+    return {
+        "candle": {
+            "time": c.get("time"),
+            "open": float(c.get("open", 0)),
+            "high": float(c.get("high", 0)),
+            "low": float(c.get("low", 0)),
+            "close": float(c.get("close", 0)),
+            "volume": float(c.get("volume", 0))
+        },
+        "ltp": svc.index_ltp,
+        "volume_sum": svc.constituent_volume_sum
+    }
+
 @app.get("/api/live/state")
 async def get_live_state():
     """Returns real-time trading console state: LTP, active trade, 3 models, features, signals."""

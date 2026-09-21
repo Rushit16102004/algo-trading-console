@@ -1571,6 +1571,11 @@
                 borderDownColor: '#f43f5e',
                 wickUpColor: '#10b981',
                 wickDownColor: '#f43f5e',
+                lastValueVisible: true,
+                priceLineVisible: true,
+                priceLineColor: '#38bdf8',
+                priceLineWidth: 1,
+                priceLineStyle: LightweightCharts.LineStyle.Dashed,
             });
 
             // Volume Histogram Series: Anchored to bottom 20% of graph
@@ -1878,30 +1883,50 @@
             // Note: lastValueVisible: false and priceLineVisible: false strictly hide the target point tag on the right axis
             if (patternLineSeries && patternLineSeries2 && patternFlatlineSeries) {
                 if (hasValidLine) {
-                    // Line 1: 20% Reduced Historical Spike Projection (Solid Green for BUY, Solid Red for SELL)
+                    const l2Price = pl.target_price_2 || (isBuy ? pl.entry_price * 1.0005 : pl.entry_price * 0.9995);
+
+                    // Interpolate 5-min step points from entry_time to target_time (15:00 PM)
+                    const line1Points = [];
+                    const line2Points = [];
+                    const flatlinePoints = [];
+
+                    const startTime = parseInt(pl.entry_time);
+                    const endTime = parseInt(pl.target_time);
+                    const duration = Math.max(300, endTime - startTime);
+
+                    for (let t = startTime; t <= endTime; t += 300) {
+                        const ratio = (t - startTime) / duration;
+                        const price1 = pl.entry_price + (pl.target_price - pl.entry_price) * ratio;
+                        const price2 = pl.entry_price + (l2Price - pl.entry_price) * ratio;
+
+                        line1Points.push({ time: t, value: price1 });
+                        line2Points.push({ time: t, value: price2 });
+                        flatlinePoints.push({ time: t, value: pl.entry_price });
+                    }
+
+                    if (line1Points.length > 0 && line1Points[line1Points.length - 1].time < endTime) {
+                        line1Points.push({ time: endTime, value: pl.target_price });
+                        line2Points.push({ time: endTime, value: l2Price });
+                        flatlinePoints.push({ time: endTime, value: pl.entry_price });
+                    }
+
+                    // Line 1: 20% Reduced Historical Spike Projection
                     patternLineSeries.applyOptions({
                         color: primaryColor,
                         lastValueVisible: false,
                         priceLineVisible: false,
                         title: ''
                     });
-                    patternLineSeries.setData([
-                        { time: pl.entry_time, value: pl.entry_price },
-                        { time: pl.target_time, value: pl.target_price }
-                    ]);
+                    patternLineSeries.setData(line1Points);
 
-                    // Line 2: 0.05° Angle Projection from Breakout Flatline (Dashed Green for BUY, Dashed Red for SELL)
-                    const l2Price = pl.target_price_2 || (isBuy ? pl.entry_price * 1.0005 : pl.entry_price * 0.9995);
+                    // Line 2: 0.05° Angle Projection from Breakout Flatline
                     patternLineSeries2.applyOptions({
                         color: secondaryColor,
                         lastValueVisible: false,
                         priceLineVisible: false,
                         title: ''
                     });
-                    patternLineSeries2.setData([
-                        { time: pl.entry_time, value: pl.entry_price },
-                        { time: pl.target_time, value: l2Price }
-                    ]);
+                    patternLineSeries2.setData(line2Points);
 
                     // Breakout Flatline: Dotted horizontal baseline at entry price
                     patternFlatlineSeries.applyOptions({
@@ -1910,10 +1935,7 @@
                         priceLineVisible: false,
                         title: ''
                     });
-                    patternFlatlineSeries.setData([
-                        { time: pl.entry_time, value: pl.entry_price },
-                        { time: pl.target_time, value: pl.entry_price }
-                    ]);
+                    patternFlatlineSeries.setData(flatlinePoints);
                 } else {
                     // Clear all 3 lines immediately if inactive or 80-pt Stop Loss breached
                     patternLineSeries.setData([]);
@@ -2070,11 +2092,15 @@
                 const res = await fetch('/api/live/candles?limit=5000');
                 const data = await res.json();
                 if (data && data.candles && data.candles.length > 0) {
-                    lastLoadedCandles = data.candles;
-                    candleSeries.setData(data.candles);
+                    let allCandles = [...data.candles];
+                    if (data.forming_candle) {
+                        allCandles.push(data.forming_candle);
+                    }
+                    lastLoadedCandles = allCandles;
+                    candleSeries.setData(allCandles);
 
                     if (volumeSeries) {
-                        const volumeData = data.candles.map(c => ({
+                        const volumeData = allCandles.map(c => ({
                             time: c.time,
                             value: c.volume || 0,
                             color: (c.close >= c.open) ? 'rgba(16, 185, 129, 0.50)' : 'rgba(244, 63, 94, 0.50)'
@@ -2243,20 +2269,18 @@
                         volEl.textContent = volVal >= 1e6 ? (volVal / 1e6).toFixed(2) + 'M' : Number(volVal).toLocaleString();
                     }
 
-                    if (candleSeries && c.open) {
-                        const bucketTime = Math.floor(new Date(c.timestamp).getTime() / 1000);
+                    if (candleSeries && c.open && c.time) {
                         candleSeries.update({
-                            time: bucketTime,
-                            open: c.open,
-                            high: c.high,
-                            low: c.low,
-                            close: c.close,
-                            volume: c.volume || 0
+                            time: c.time,
+                            open: parseFloat(c.open),
+                            high: parseFloat(c.high),
+                            low: parseFloat(c.low),
+                            close: parseFloat(c.close)
                         });
 
                         if (volumeSeries) {
                             volumeSeries.update({
-                                time: bucketTime,
+                                time: c.time,
                                 value: volVal,
                                 color: (c.close >= c.open) ? 'rgba(16, 185, 129, 0.50)' : 'rgba(244, 63, 94, 0.50)'
                             });
@@ -2572,6 +2596,47 @@
                 `${String(displayMin).padStart(2, '0')}:${String(displaySec).padStart(2, '0')}`;
         }
 
+        let lastCandleBucketTime = null;
+
+        // Ultra-fast 200ms sub-second candle tick poller for zero-lag chart updates
+        async function fetchFastCandleTick() {
+            try {
+                const res = await fetch('/api/live/candle_tick');
+                const data = await res.json();
+                if (data) {
+                    if (data.ltp && data.ltp > 0) {
+                        const ltpEl = document.getElementById('spotLtp');
+                        if (ltpEl) ltpEl.textContent = Number(data.ltp).toFixed(2);
+                    }
+                    if (data.candle && candleSeries) {
+                        const c = data.candle;
+                        if (c.open && c.time) {
+                            // If a new 5-minute candle bucket has started, fetch full chart data & markers once
+                            if (lastCandleBucketTime !== null && c.time > lastCandleBucketTime) {
+                                fetchChartData();
+                            }
+                            lastCandleBucketTime = c.time;
+
+                            candleSeries.update({
+                                time: c.time,
+                                open: parseFloat(c.open),
+                                high: parseFloat(c.high),
+                                low: parseFloat(c.low),
+                                close: parseFloat(c.close)
+                            });
+                            if (volumeSeries) {
+                                volumeSeries.update({
+                                    time: c.time,
+                                    value: parseFloat(c.volume || 0),
+                                    color: (c.close >= c.open) ? 'rgba(16, 185, 129, 0.50)' : 'rgba(244, 63, 94, 0.50)'
+                                });
+                            }
+                        }
+                    }
+                }
+            } catch (e) {}
+        }
+
         // Startup
         window.addEventListener('DOMContentLoaded', () => {
             initChart();
@@ -2579,17 +2644,17 @@
             fetchLiveState();
             fetchLiveTicks();
 
+            // Ultra-fast 200ms polling for sub-second live chart ticks
+            setInterval(fetchFastCandleTick, 200);
+
             // High frequency polling for Tick Board (every 600ms)
             setInterval(fetchLiveTicks, 600);
 
-            // Medium frequency polling for State & Position (every 1000ms)
-            setInterval(fetchLiveState, 1000);
+            // Medium frequency polling for State & Position Cards (every 1500ms)
+            setInterval(fetchLiveState, 1500);
 
             // Candle countdown (every 1s)
             setInterval(updateCountdown, 1000);
-
-            // Full chart reload for new candle markers (every 10s)
-            setInterval(fetchChartData, 10000);
 
             // Ensure chart fits container perfectly
             setTimeout(() => {
