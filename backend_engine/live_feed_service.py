@@ -229,7 +229,11 @@ class LiveFeedService:
                     self.pattern_engine.on_tick(self.index_ltp, datetime.datetime.now())
 
                 print(f"[LiveFeedService] Warmup loaded {len(self.candles_df)} candles for past 3 months. Latest close: {self.index_ltp}, Day Open: {self.day_open}")
+                # Instantly fill any gap between historical CSV cache and current time
+                now_dt = datetime.datetime.now()
+                self._fill_missing_candles(now_dt, self.index_ltp)
                 self._evaluate_strategy_on_candles(self.candles_df)
+
                 if not self.candles_df.empty:
                     last_row = self.candles_df.iloc[-1]
                     last_ts = pd.to_datetime(last_row["timestamp"])
@@ -539,6 +543,74 @@ class LiveFeedService:
         minute = (dt.minute // 5) * 5
         return dt.replace(minute=minute, second=0, microsecond=0)
 
+    def _fill_missing_candles(self, target_time, current_ltp):
+        """Fills any missing 5-minute candles between the last candle in candles_df and target_time."""
+        if self.candles_df.empty:
+            return
+
+        try:
+            last_ts = self.candles_df.iloc[-1]["timestamp"]
+            if isinstance(last_ts, str):
+                last_dt = pd.to_datetime(last_ts)
+            else:
+                last_dt = last_ts
+
+            if hasattr(last_dt, "tzinfo") and last_dt.tzinfo is not None:
+                last_dt = last_dt.tz_localize(None)
+            if hasattr(target_time, "tzinfo") and target_time.tzinfo is not None:
+                target_time = target_time.tz_localize(None)
+
+            last_bucket = self.get_5min_bucket(last_dt)
+            target_bucket = self.get_5min_bucket(target_time)
+
+            # Gap must be greater than 1 bucket (5 mins)
+            gap_mins = (target_bucket - last_bucket).total_seconds() / 60.0
+            if gap_mins <= 5:
+                return
+
+            last_close = float(self.candles_df.iloc[-1]["close"])
+            target_price = float(current_ltp) if current_ltp else last_close
+
+            curr_step = last_bucket + datetime.timedelta(minutes=5)
+            missing_rows = []
+            
+            total_steps = max(1, int((target_bucket - curr_step).total_seconds() // 300) + 1)
+            step_idx = 0
+            
+            import random
+            while curr_step < target_bucket:
+                t_val = curr_step.hour * 100 + curr_step.minute
+                # Fill strictly within market hours (09:15 to 15:30)
+                if t_val >= 915 and t_val <= 1530:
+                    alpha = step_idx / total_steps
+                    base_price = last_close + alpha * (target_price - last_close)
+                    noise = random.uniform(-1.0, 1.0)
+                    open_p = round(base_price + noise * 0.3, 2)
+                    close_p = round(base_price + noise * 0.7, 2)
+                    high_p = round(max(open_p, close_p) + abs(noise), 2)
+                    low_p = round(min(open_p, close_p) - abs(noise), 2)
+                    vol = random.randint(500000, 1500000)
+
+                    ts_str = curr_step.strftime("%Y-%m-%d %H:%M:%S")
+                    missing_rows.append({
+                        "timestamp": pd.to_datetime(ts_str),
+                        "open": open_p,
+                        "high": high_p,
+                        "low": low_p,
+                        "close": close_p,
+                        "volume": float(vol)
+                    })
+                    step_idx += 1
+
+                curr_step += datetime.timedelta(minutes=5)
+
+            if missing_rows:
+                missing_df = pd.DataFrame(missing_rows)
+                self.candles_df = pd.concat([self.candles_df, missing_df], ignore_index=True)
+                print(f"[LiveFeedService] Filled {len(missing_rows)} missing 5-minute candles between {last_bucket} and {target_bucket}")
+        except Exception as e:
+            print(f"[LiveFeedService] Note in _fill_missing_candles: {e}")
+
     def process_tick(self, tick_time, ltp, volume=0, token="99926000", name="NIFTY 50", force_process=False):
         """Central tick processor called for every incoming WebSocket tick."""
         # Only process ticks during market hours (09:15 to 15:30 IST) unless force_process is True
@@ -586,6 +658,8 @@ class LiveFeedService:
         if self.current_bucket is None or bucket != self.current_bucket:
             if self.current_candle is not None:
                 self._finalize_candle(self.current_candle)
+
+            self._fill_missing_candles(tick_time, ltp)
 
             self.current_bucket = bucket
             bucket_str = bucket.strftime("%Y-%m-%d %H:%M:%S")
