@@ -254,20 +254,148 @@ class LiveFeedService:
 
     def _load_historical_markers(self):
         """
-        Passes candles (including recent 72+ and gap-filled candles) through the 3 ML models
-        (LightGBM, TCN, HMM) to generate and display signals live on the chart.
+        Loads 3-month base backtest trades & markers for Institutional Metrics,
+        creates backups in backend_engine/cache_backups/,
+        and evaluates today's candles for live active positions in Active Trade Tracker!
         """
-        if not self.candles_df.empty:
-            print("[LiveFeedService] Evaluating 3 ML models (LightGBM, TCN, HMM) on recent candles & gap candles for signal generation...")
+        sig_csv = "backend_engine/model signal.csv"
+        markers_json = "backend_engine/model_markers.json"
+        backup_dir = "backend_engine/cache_backups"
+        os.makedirs(backup_dir, exist_ok=True)
+
+        need_generate = not (os.path.exists(sig_csv) and os.path.exists(markers_json))
+
+        if need_generate and not self.candles_df.empty:
+            print("[LiveFeedService] Generating 3-month base backtest signals...")
+            trades, markers = generate_model_signals_for_candles(self.candles_df)
+            self._historical_markers = markers
+            self.closed_trades = trades
+        elif os.path.exists(markers_json) and os.path.exists(sig_csv):
             try:
-                trades, markers = generate_model_signals_for_candles(self.candles_df)
-                self._historical_markers = markers
-                self.closed_trades = trades
-                if trades:
-                    self.thermal_sizer.T = trades[-1].get("temperature", 1.0)
-                print(f"[LiveFeedService] Dynamic signal generation complete: {len(trades)} trades, {len(markers)} markers generated for live chart display.")
+                with open(markers_json, "r", encoding="utf-8") as f:
+                    cached_markers = json.load(f)
+                df_sig = pd.read_csv(sig_csv)
+
+                # Save 1-2 day cache backup to folder
+                backup_csv = os.path.join(backup_dir, "model_signal_backup.csv")
+                backup_json = os.path.join(backup_dir, "model_markers_backup.json")
+                df_sig.to_csv(backup_csv, index=False)
+                with open(backup_json, "w", encoding="utf-8") as f:
+                    json.dump(cached_markers, f, indent=2)
+
+                # Filter to past 3 months (90 days)
+                now = datetime.datetime.now()
+                cutoff = now - datetime.timedelta(days=90)
+                cutoff_epoch = to_chart_epoch(cutoff)
+                self._historical_markers = [m for m in cached_markers if m.get("time", 0) >= cutoff_epoch]
+
+                all_trades = []
+                cum_net_pnl = 0.0
+                if not df_sig.empty:
+                    df_sig['Entry Time'] = pd.to_datetime(df_sig['Entry Time'])
+                    df_sig = df_sig[df_sig['Entry Time'] >= cutoff].copy()
+
+                    for _, row in df_sig.iterrows():
+                        entry_dt = row["Entry Time"]
+                        is_smart = is_smart_time(entry_dt.hour, entry_dt.day_name())
+                        lot_size = float(row.get("Lot Size", 1.0))
+                        is_entered = is_smart and (lot_size > 0)
+                        pnl_1qty = float(row.get("1 QTY PnL", 0.0))
+                        sim_pnl = float(row.get("Sim PnL", pnl_1qty * lot_size)) if is_entered else 0.0
+                        temp_val = float(row.get("Temperature", 1.0))
+                        if is_entered:
+                            cum_net_pnl = round(cum_net_pnl + sim_pnl, 2)
+
+                        all_trades.append({
+                            "id": len(all_trades) + 1,
+                            "direction": str(row.get("Direction", "BUY")).upper(),
+                            "entry_time": str(row.get("Entry Time")),
+                            "exit_time": str(row.get("Exit Time")),
+                            "entry_price": float(row.get("Nifty Enter Price", 0.0)),
+                            "exit_price": float(row.get("Nifty Exit Price", 0.0)),
+                            "1_qty_pnl": pnl_1qty if is_entered else 0.0,
+                            "lot_size": lot_size if is_entered else 0.0,
+                            "pnl_points": sim_pnl,
+                            "cumulative_net_pnl": cum_net_pnl,
+                            "exit_reason": str(row.get("Exit Reason", "EOD")).upper() if is_entered else f"{str(row.get('Exit Reason', 'EOD')).upper()} (TIME FILTERED)",
+                            "temperature": temp_val,
+                            "entered": is_entered
+                        })
+                self.closed_trades = all_trades
+                if all_trades:
+                    self.thermal_sizer.T = all_trades[-1]["temperature"]
+                print(f"[LiveFeedService] Loaded {len(self._historical_markers)} markers and {len(self.closed_trades)} 3-month trades for Institutional Metrics.")
             except Exception as e:
-                print(f"[LiveFeedService] Error in dynamic signal generation: {e}")
+                print(f"[LiveFeedService] Error reading historical markers: {e}")
+
+        # Evaluate today's candles for live active positions starting from 09:15 AM
+        self._evaluate_today_signals()
+
+    def _evaluate_today_signals(self):
+        """
+        Evaluates all candles for today starting from 09:15 AM day start.
+        Populates active_positions for Active Trade Tracker (including time-filtered slot reservation).
+        """
+        if self.candles_df.empty:
+            return
+
+        try:
+            today_date = datetime.datetime.now().date()
+            if "timestamp" in self.candles_df.columns:
+                self.candles_df["timestamp"] = pd.to_datetime(self.candles_df["timestamp"])
+                today_df = self.candles_df[self.candles_df["timestamp"].dt.date == today_date].copy()
+            else:
+                today_df = pd.DataFrame()
+
+            if len(today_df) < 5:
+                today_df = self.candles_df.tail(72).copy()
+
+            if len(today_df) >= 5:
+                recent_window = self.candles_df.tail(300).copy()
+                trades_today, markers_today = generate_model_signals_for_candles(recent_window)
+
+                # Merge new markers with historical markers
+                existing_times = {m.get("time") for m in self._historical_markers}
+                for m in markers_today:
+                    if m.get("time") not in existing_times:
+                        self._historical_markers.append(m)
+                        existing_times.add(m.get("time"))
+                self._historical_markers.sort(key=lambda x: x["time"])
+
+                # Check for active positions created today that have not reached exit time
+                now_dt = datetime.datetime.now()
+                active_pos_list = []
+                for tr in trades_today:
+                    e_time = pd.to_datetime(tr["entry_time"])
+                    x_time = pd.to_datetime(tr["exit_time"])
+                    if e_time <= now_dt <= x_time:
+                        dir_str = tr.get("direction", "BUY")
+                        entry_p = tr.get("entry_price", self.index_ltp)
+                        is_entered = tr.get("entered", True)
+                        lot_val = tr.get("lot_size", 1.0)
+
+                        sl_p = entry_p - SL_POINTS if dir_str == "BUY" else entry_p + SL_POINTS
+                        tp_p = entry_p + 100.0 if dir_str == "BUY" else entry_p - 100.0
+                        cur_ltp = self.index_ltp if self.index_ltp else entry_p
+                        pnl_pts = (cur_ltp - entry_p) if dir_str == "BUY" else (entry_p - cur_ltp)
+
+                        active_pos_list.append({
+                            "id": tr.get("id", len(active_pos_list) + 1),
+                            "direction": dir_str,
+                            "entry_time": tr.get("entry_time"),
+                            "entry_price": entry_p,
+                            "current_price": cur_ltp,
+                            "sl": sl_p,
+                            "tp": tp_p,
+                            "pnl_points": round(pnl_pts, 2),
+                            "lot_size": lot_val,
+                            "entered": is_entered
+                        })
+
+                self.active_positions = active_pos_list
+                print(f"[LiveFeedService] Evaluated today's candles: Found {len(self.active_positions)} active position(s) for Active Trade Tracker.")
+        except Exception as e:
+            print(f"[LiveFeedService] Error evaluating today's signals: {e}")
 
     def _evaluate_strategy_on_candles(self, df_candles):
         """Runs the 3 models on the latest candles window to get current regime and probabilities."""
