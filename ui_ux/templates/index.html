@@ -1484,17 +1484,7 @@
                 });
                 const data = await response.json();
                 if (data && data.candles && data.candles.length > 0) {
-                    historicalCandlesData = data.candles.filter(c => c.open > 1000 && c.close > 1000).map(c => {
-                        let cleanLow = c.low;
-                        if (!cleanLow || cleanLow <= 1000 || cleanLow < c.open * 0.7) {
-                            cleanLow = Math.min(c.open, c.close);
-                        }
-                        let cleanHigh = c.high;
-                        if (!cleanHigh || cleanHigh < Math.max(c.open, c.close)) {
-                            cleanHigh = Math.max(c.open, c.close);
-                        }
-                        return { ...c, low: cleanLow, high: cleanHigh };
-                    });
+                    historicalCandlesData = data.candles;
                     candleSeries.setData(historicalCandlesData);
                     
                     const volumeData = historicalCandlesData.map(c => ({
@@ -1813,23 +1803,14 @@
 
                 // Handle live candle update in graph
                 if (data.current_candle && historicalCandlesData.length > 0) {
-                    const latest = { ...data.current_candle };
-                    if (latest.open > 1000 && latest.close > 1000) {
-                        if (!latest.low || latest.low <= 1000 || latest.low < latest.open * 0.7) {
-                            latest.low = Math.min(latest.open, latest.close);
-                        }
-                        if (!latest.high || latest.high < Math.max(latest.open, latest.close)) {
-                            latest.high = Math.max(latest.open, latest.close);
-                        }
-                        if (latest.time >= lastTimestamp) {
-                            candleSeries.update(latest);
-                            volumeSeries.update({
-                                time: latest.time,
-                                value: latest.volume || 0,
-                                color: latest.close >= latest.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
-                            });
-                        }
-                    }
+                    const latest = data.current_candle;
+                    if (latest.time >= lastTimestamp) {
+                        candleSeries.update(latest);
+                        volumeSeries.update({
+                            time: latest.time,
+                            value: latest.volume || 0,
+                            color: latest.close >= latest.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+                        });
                         
         let activeChannelSeries = [];
 

@@ -2320,7 +2320,7 @@
                     document.getElementById('tcnSellTxt').textContent = `SELL: ${tcnSellPct}%`;
                 }
 
-                // 6. Features
+                // 6. Features & 5-Min Candle Badge
                 if (state.feature_contributions) {
                     const fc = state.feature_contributions;
                     if (fc.RSI) document.getElementById('fRsi').textContent = fc.RSI.value;
@@ -2329,11 +2329,19 @@
                     if (fc.Bollinger) document.getElementById('fBb').textContent = fc.Bollinger.value;
                     if (fc.Volume) document.getElementById('fVol').textContent = fc.Volume.value;
                     if (fc.VWAP) document.getElementById('fVwap').textContent = fc.VWAP.value;
+                }
 
-                    const ftBadge = document.getElementById('featTimeBadge');
-                    if (ftBadge && state.latest_prediction && state.latest_prediction.timestamp) {
-                        const parts = state.latest_prediction.timestamp.split(' ');
-                        const timePart = parts.length > 1 ? parts[1].slice(0, 5) : parts[0];
+                const ftBadge = document.getElementById('featTimeBadge');
+                if (ftBadge) {
+                    let ts = null;
+                    if (state.latest_prediction && state.latest_prediction.timestamp) {
+                        ts = state.latest_prediction.timestamp;
+                    } else if (state.current_candle && state.current_candle.timestamp) {
+                        ts = state.current_candle.timestamp;
+                    }
+                    if (ts) {
+                        const parts = String(ts).trim().split(' ');
+                        const timePart = parts.length > 1 ? parts[1].slice(0, 5) : parts[0].slice(0, 5);
                         ftBadge.textContent = `${timePart} CANDLE`;
                     }
                 }
@@ -2596,8 +2604,6 @@
                 `${String(displayMin).padStart(2, '0')}:${String(displaySec).padStart(2, '0')}`;
         }
 
-        let lastCandleBucketTime = null;
-
         // Ultra-fast 200ms sub-second candle tick poller for zero-lag chart updates
         async function fetchFastCandleTick() {
             try {
@@ -2611,12 +2617,6 @@
                     if (data.candle && candleSeries) {
                         const c = data.candle;
                         if (c.open && c.time) {
-                            // If a new 5-minute candle bucket has started, fetch full chart data & markers once
-                            if (lastCandleBucketTime !== null && c.time > lastCandleBucketTime) {
-                                fetchChartData();
-                            }
-                            lastCandleBucketTime = c.time;
-
                             candleSeries.update({
                                 time: c.time,
                                 open: parseFloat(c.open),
@@ -2655,6 +2655,9 @@
 
             // Candle countdown (every 1s)
             setInterval(updateCountdown, 1000);
+
+            // Full chart reload for new candle markers (every 10s)
+            setInterval(fetchChartData, 10000);
 
             // Ensure chart fits container perfectly
             setTimeout(() => {

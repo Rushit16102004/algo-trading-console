@@ -230,6 +230,21 @@ class LiveFeedService:
 
                 print(f"[LiveFeedService] Warmup loaded {len(self.candles_df)} candles for past 3 months. Latest close: {self.index_ltp}, Day Open: {self.day_open}")
                 self._evaluate_strategy_on_candles(self.candles_df)
+                if not self.candles_df.empty:
+                    last_row = self.candles_df.iloc[-1]
+                    last_ts = pd.to_datetime(last_row["timestamp"])
+                    self.current_bucket = self.get_5min_bucket(last_ts)
+                    self.current_candle = {
+                        "time": to_chart_epoch(self.current_bucket),
+                        "bucket": self.current_bucket,
+                        "timestamp": self.current_bucket.strftime("%Y-%m-%d %H:%M:%S"),
+                        "open": float(last_row["open"]),
+                        "high": float(last_row["high"]),
+                        "low": float(last_row["low"]),
+                        "close": float(last_row["close"]),
+                        "volume": float(last_row.get("volume", 0.0)),
+                        "ticks": 1
+                    }
         except Exception as e:
             print(f"[LiveFeedService] Error in _warmup_history: {e}")
 
@@ -524,12 +539,12 @@ class LiveFeedService:
         minute = (dt.minute // 5) * 5
         return dt.replace(minute=minute, second=0, microsecond=0)
 
-    def process_tick(self, tick_time, ltp, volume=0, token="99926000", name="NIFTY 50"):
+    def process_tick(self, tick_time, ltp, volume=0, token="99926000", name="NIFTY 50", force_process=False):
         """Central tick processor called for every incoming WebSocket tick."""
-        # Only process ticks during market hours (09:15 to 15:30 IST)
+        # Only process ticks during market hours (09:15 to 15:30 IST) unless force_process is True
         t_val = tick_time.hour * 100 + tick_time.minute
-        # Allow pre-market or live market, but discard off-market ticks
-        if t_val < 900 or t_val > 1535:
+        # Allow pre-market or live market, but discard off-market ticks unless force_process is set
+        if not force_process and (t_val < 900 or t_val > 1535):
             return
 
         self.tick_count += 1
@@ -617,15 +632,31 @@ class LiveFeedService:
             c_vol = float(temp_df.iloc[0]["volume"])
             candle["volume"] = c_vol
 
+        c_ts = pd.to_datetime(candle["timestamp"])
         new_row = pd.DataFrame([{
-            "timestamp": pd.to_datetime(candle["timestamp"]),
+            "timestamp": c_ts,
             "open": float(candle["open"]),
             "high": float(candle["high"]),
             "low": float(candle["low"]),
             "close": float(candle["close"]),
             "volume": c_vol
         }])
-        self.candles_df = pd.concat([self.candles_df, new_row], ignore_index=True)
+        
+        # Prevent duplicate row creation if timestamp matches last row
+        if not self.candles_df.empty:
+            last_ts = self.candles_df.iloc[-1]["timestamp"]
+            if str(last_ts) == str(c_ts):
+                idx = self.candles_df.index[-1]
+                self.candles_df.at[idx, "open"] = float(candle["open"])
+                self.candles_df.at[idx, "high"] = float(candle["high"])
+                self.candles_df.at[idx, "low"] = float(candle["low"])
+                self.candles_df.at[idx, "close"] = float(candle["close"])
+                self.candles_df.at[idx, "volume"] = c_vol
+            else:
+                self.candles_df = pd.concat([self.candles_df, new_row], ignore_index=True)
+        else:
+            self.candles_df = pd.concat([self.candles_df, new_row], ignore_index=True)
+
         print(f"[Candle Closed] {candle['timestamp']} | O:{candle['open']} H:{candle['high']} L:{candle['low']} C:{candle['close']} Constituent Vol:{candle['volume']:,} Ticks:{candle['ticks']}")
 
         # Feed 5-min candle to Pattern Match Engine (temp 15m in-memory aggregation)
@@ -1206,6 +1237,52 @@ class LiveFeedService:
 
         tf = threading.Thread(target=self._flusher_worker, daemon=True)
         tf.start()
+
+        ts = threading.Thread(target=self._simulated_tick_worker, daemon=True)
+        ts.start()
+
+    def _simulated_tick_worker(self):
+        """Fallback synthetic tick generator thread when live WebSocket is offline or without API keys."""
+        import random
+        sim_time = None
+        while self.is_running:
+            # If live WebSocket is active, yield to real ticks
+            if self.connection_status == "live":
+                time.sleep(2)
+                continue
+
+            self.connection_status = "simulated"
+            if sim_time is None:
+                if not self.candles_df.empty and "timestamp" in self.candles_df.columns:
+                    last_ts = self.candles_df.iloc[-1]["timestamp"]
+                    if isinstance(last_ts, str):
+                        sim_time = pd.to_datetime(last_ts)
+                    else:
+                        sim_time = last_ts
+                else:
+                    sim_time = datetime.datetime.now()
+
+            # Advance simulated time by 5-10 seconds per tick loop
+            sim_time += datetime.timedelta(seconds=random.randint(5, 10))
+
+            # Keep simulated time within 09:15 to 15:30 IST market hours
+            if sim_time.hour > 15 or (sim_time.hour == 15 and sim_time.minute > 30):
+                sim_time = sim_time.replace(hour=9, minute=15, second=0) + datetime.timedelta(days=1)
+            elif sim_time.hour < 9 or (sim_time.hour == 9 and sim_time.minute < 15):
+                sim_time = sim_time.replace(hour=9, minute=15, second=0)
+
+            # Generate realistic micro fluctuation around current LTP
+            base_p = self.index_ltp if (self.index_ltp and self.index_ltp > 0) else 23372.4
+            noise = random.choice([-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5])
+            sim_ltp = round(base_p + noise, 2)
+            sim_vol = random.randint(100, 3000)
+
+            # Process simulated tick with force_process=True
+            try:
+                self.process_tick(sim_time, sim_ltp, volume=sim_vol, force_process=True)
+            except Exception as ex:
+                pass
+            time.sleep(1.0)
 
     def _stream_worker(self):
         """Worker thread connecting to WebSocket with auto-reconnection."""
