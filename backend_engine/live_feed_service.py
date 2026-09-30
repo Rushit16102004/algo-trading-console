@@ -254,82 +254,165 @@ class LiveFeedService:
 
     def _load_historical_markers(self):
         """
-        Loads 3-month base backtest trades & markers for Institutional Metrics,
-        creates backups in backend_engine/cache_backups/,
-        and evaluates today's candles for live active positions in Active Trade Tracker!
+        Rolling 3-Month Incremental Signal Engine:
+        1. Loads existing signals from backend_engine/model signal.csv.
+        2. Incrementally backtests ONLY new/un-backtested candles (if code wasn't running for a few days).
+        3. Prunes signals older than 3 months (90 calendar days / ~60 trading days FIFO).
+        4. Saves updated signals to model signal.csv and backend_engine/cache_backups/.
+        5. Populates active_positions for Active Trade Tracker.
+        """
+        self._sync_incremental_rolling_signals()
+        self._evaluate_today_signals()
+
+    def _sync_incremental_rolling_signals(self):
+        """
+        Incremental Backtest & Rolling 3-Month Pruner:
+        Prevents duplicate backtesting of historical dates while maintaining strictly 3 months of signals.
         """
         sig_csv = "backend_engine/model signal.csv"
         markers_json = "backend_engine/model_markers.json"
         backup_dir = "backend_engine/cache_backups"
         os.makedirs(backup_dir, exist_ok=True)
 
-        need_generate = not (os.path.exists(sig_csv) and os.path.exists(markers_json))
+        now = datetime.datetime.now()
+        cutoff_90d = now - datetime.timedelta(days=90)
+        cutoff_epoch = to_chart_epoch(cutoff_90d)
 
-        if need_generate and not self.candles_df.empty:
-            print("[LiveFeedService] Generating 3-month base backtest signals...")
-            trades, markers = generate_model_signals_for_candles(self.candles_df)
-            self._historical_markers = markers
-            self.closed_trades = trades
-        elif os.path.exists(markers_json) and os.path.exists(sig_csv):
+        df_existing = pd.DataFrame()
+        last_sig_time = None
+
+        if os.path.exists(sig_csv):
+            try:
+                df_existing = pd.read_csv(sig_csv)
+                if not df_existing.empty and "Entry Time" in df_existing.columns:
+                    df_existing["Entry Time"] = pd.to_datetime(df_existing["Entry Time"])
+                    last_sig_time = df_existing["Entry Time"].max()
+            except Exception as e:
+                print(f"[LiveFeedService] Note reading existing signal CSV: {e}")
+                df_existing = pd.DataFrame()
+
+        # If new un-backtested candles exist after last_sig_time, run ML models ONLY on new candles
+        if not self.candles_df.empty:
+            self.candles_df["timestamp"] = pd.to_datetime(self.candles_df["timestamp"])
+            
+            if last_sig_time is not None:
+                unbacktested_df = self.candles_df[self.candles_df["timestamp"] > last_sig_time].copy()
+                if not unbacktested_df.empty:
+                    print(f"[Incremental Sync] Found {len(unbacktested_df)} new un-backtested candles after {last_sig_time}. Running incremental ML backtest...")
+                    min_idx = max(0, self.candles_df.index[self.candles_df["timestamp"] > last_sig_time][0] - 300)
+                    eval_window = self.candles_df.iloc[min_idx:].copy()
+                    
+                    new_trades, new_markers = generate_model_signals_for_candles(eval_window)
+                    fresh_trades = [t for t in new_trades if pd.to_datetime(t["entry_time"]) > last_sig_time]
+                    
+                    if fresh_trades:
+                        df_fresh = pd.DataFrame(fresh_trades)
+                        df_fresh_export = pd.DataFrame({
+                            "Entry Time": pd.to_datetime(df_fresh["entry_time"]),
+                            "Exit Time": pd.to_datetime(df_fresh["exit_time"]),
+                            "Direction": df_fresh["direction"],
+                            "Nifty Enter Price": df_fresh["entry_price"],
+                            "Nifty Exit Price": df_fresh["exit_price"],
+                            "1 QTY PnL": df_fresh["1_qty_pnl"],
+                            "Lot Size": df_fresh["lot_size"],
+                            "Sim PnL": df_fresh["pnl_points"],
+                            "Total Net PnL": df_fresh["cumulative_net_pnl"],
+                            "65 QTY PnL": df_fresh["pnl_points"] * 65.0,
+                            "Exit Reason": df_fresh["exit_reason"],
+                            "Temperature": df_fresh["temperature"]
+                        })
+                        df_existing = pd.concat([df_existing, df_fresh_export], ignore_index=True)
+                        print(f"[Incremental Sync] Appended {len(df_fresh_export)} new signal trades to dataset.")
+            else:
+                print("[LiveFeedService] Initializing 3-month rolling backtest signals across dataset...")
+                trades_all, markers_all = generate_model_signals_for_candles(self.candles_df)
+                if trades_all:
+                    df_fresh = pd.DataFrame(trades_all)
+                    df_existing = pd.DataFrame({
+                        "Entry Time": pd.to_datetime(df_fresh["entry_time"]),
+                        "Exit Time": pd.to_datetime(df_fresh["exit_time"]),
+                        "Direction": df_fresh["direction"],
+                        "Nifty Enter Price": df_fresh["entry_price"],
+                        "Nifty Exit Price": df_fresh["exit_price"],
+                        "1 QTY PnL": df_fresh["1_qty_pnl"],
+                        "Lot Size": df_fresh["lot_size"],
+                        "Sim PnL": df_fresh["pnl_points"],
+                        "Total Net PnL": df_fresh["cumulative_net_pnl"],
+                        "65 QTY PnL": df_fresh["pnl_points"] * 65.0,
+                        "Exit Reason": df_fresh["exit_reason"],
+                        "Temperature": df_fresh["temperature"]
+                    })
+                    with open(markers_json, "w", encoding="utf-8") as f:
+                        json.dump(markers_all, f, indent=2)
+
+        # Rolling 3-Month Pruning (Delete signals older than 90 calendar days / ~60 trading days)
+        if not df_existing.empty:
+            df_existing["Entry Time"] = pd.to_datetime(df_existing["Entry Time"])
+            pre_count = len(df_existing)
+            df_existing = df_existing[df_existing["Entry Time"] >= cutoff_90d].copy()
+            pruned_count = pre_count - len(df_existing)
+            if pruned_count > 0:
+                print(f"[Rolling 3-Month Pruning] Deleted {pruned_count} old signals outside 90-day (3-month) window.")
+
+            df_existing.sort_values("Entry Time", inplace=True)
+            df_existing.reset_index(drop=True, inplace=True)
+            df_existing.to_csv(sig_csv, index=False)
+
+            # Save backup copy to folder
+            backup_csv = os.path.join(backup_dir, "model_signal_backup.csv")
+            df_existing.to_csv(backup_csv, index=False)
+
+        # Build closed_trades list and historical markers for live chart display
+        all_trades = []
+        cum_net_pnl = 0.0
+        if not df_existing.empty:
+            for _, row in df_existing.iterrows():
+                entry_dt = row["Entry Time"]
+                is_smart = is_smart_time(entry_dt.hour, entry_dt.day_name())
+                lot_size = float(row.get("Lot Size", 1.0))
+                is_entered = is_smart and (lot_size > 0)
+                pnl_1qty = float(row.get("1 QTY PnL", 0.0))
+                sim_pnl = float(row.get("Sim PnL", pnl_1qty * lot_size)) if is_entered else 0.0
+                temp_val = float(row.get("Temperature", 1.0))
+                if is_entered:
+                    cum_net_pnl = round(cum_net_pnl + sim_pnl, 2)
+
+                all_trades.append({
+                    "id": len(all_trades) + 1,
+                    "direction": str(row.get("Direction", "BUY")).upper(),
+                    "entry_time": str(row.get("Entry Time")),
+                    "exit_time": str(row.get("Exit Time")),
+                    "entry_price": float(row.get("Nifty Enter Price", 0.0)),
+                    "exit_price": float(row.get("Nifty Exit Price", 0.0)),
+                    "1_qty_pnl": pnl_1qty if is_entered else 0.0,
+                    "lot_size": lot_size if is_entered else 0.0,
+                    "pnl_points": sim_pnl,
+                    "cumulative_net_pnl": cum_net_pnl,
+                    "exit_reason": str(row.get("Exit Reason", "EOD")).upper() if is_entered else f"{str(row.get('Exit Reason', 'EOD')).upper()} (TIME FILTERED)",
+                    "temperature": temp_val,
+                    "entered": is_entered
+                })
+
+        self.closed_trades = all_trades
+        if all_trades:
+            self.thermal_sizer.T = all_trades[-1]["temperature"]
+
+        if os.path.exists(markers_json):
             try:
                 with open(markers_json, "r", encoding="utf-8") as f:
                     cached_markers = json.load(f)
-                df_sig = pd.read_csv(sig_csv)
-
-                # Save 1-2 day cache backup to folder
-                backup_csv = os.path.join(backup_dir, "model_signal_backup.csv")
-                backup_json = os.path.join(backup_dir, "model_markers_backup.json")
-                df_sig.to_csv(backup_csv, index=False)
-                with open(backup_json, "w", encoding="utf-8") as f:
-                    json.dump(cached_markers, f, indent=2)
-
-                # Filter to past 3 months (90 days)
-                now = datetime.datetime.now()
-                cutoff = now - datetime.timedelta(days=90)
-                cutoff_epoch = to_chart_epoch(cutoff)
                 self._historical_markers = [m for m in cached_markers if m.get("time", 0) >= cutoff_epoch]
+            except Exception:
+                self._historical_markers = []
 
-                all_trades = []
-                cum_net_pnl = 0.0
-                if not df_sig.empty:
-                    df_sig['Entry Time'] = pd.to_datetime(df_sig['Entry Time'])
-                    df_sig = df_sig[df_sig['Entry Time'] >= cutoff].copy()
+        backup_json = os.path.join(backup_dir, "model_markers_backup.json")
+        try:
+            with open(backup_json, "w", encoding="utf-8") as f:
+                json.dump(self._historical_markers, f, indent=2)
+        except Exception:
+            pass
 
-                    for _, row in df_sig.iterrows():
-                        entry_dt = row["Entry Time"]
-                        is_smart = is_smart_time(entry_dt.hour, entry_dt.day_name())
-                        lot_size = float(row.get("Lot Size", 1.0))
-                        is_entered = is_smart and (lot_size > 0)
-                        pnl_1qty = float(row.get("1 QTY PnL", 0.0))
-                        sim_pnl = float(row.get("Sim PnL", pnl_1qty * lot_size)) if is_entered else 0.0
-                        temp_val = float(row.get("Temperature", 1.0))
-                        if is_entered:
-                            cum_net_pnl = round(cum_net_pnl + sim_pnl, 2)
-
-                        all_trades.append({
-                            "id": len(all_trades) + 1,
-                            "direction": str(row.get("Direction", "BUY")).upper(),
-                            "entry_time": str(row.get("Entry Time")),
-                            "exit_time": str(row.get("Exit Time")),
-                            "entry_price": float(row.get("Nifty Enter Price", 0.0)),
-                            "exit_price": float(row.get("Nifty Exit Price", 0.0)),
-                            "1_qty_pnl": pnl_1qty if is_entered else 0.0,
-                            "lot_size": lot_size if is_entered else 0.0,
-                            "pnl_points": sim_pnl,
-                            "cumulative_net_pnl": cum_net_pnl,
-                            "exit_reason": str(row.get("Exit Reason", "EOD")).upper() if is_entered else f"{str(row.get('Exit Reason', 'EOD')).upper()} (TIME FILTERED)",
-                            "temperature": temp_val,
-                            "entered": is_entered
-                        })
-                self.closed_trades = all_trades
-                if all_trades:
-                    self.thermal_sizer.T = all_trades[-1]["temperature"]
-                print(f"[LiveFeedService] Loaded {len(self._historical_markers)} markers and {len(self.closed_trades)} 3-month trades for Institutional Metrics.")
-            except Exception as e:
-                print(f"[LiveFeedService] Error reading historical markers: {e}")
-
-        # Evaluate today's candles for live active positions starting from 09:15 AM
-        self._evaluate_today_signals()
+        print(f"[LiveFeedService] Rolling 3-Month Signal Engine Ready: Loaded {len(self.closed_trades)} trades, Net PnL: {cum_net_pnl:+.2f} pts across past 90 days.")
 
     def _evaluate_today_signals(self):
         """
