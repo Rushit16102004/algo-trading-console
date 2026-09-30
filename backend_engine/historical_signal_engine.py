@@ -517,27 +517,27 @@ def generate_model_signals_for_candles(df_candles):
                 t_sig_epoch = to_chart_epoch(c_time)
                 t_entry_epoch = to_chart_epoch(next_time)
 
-                # 1. ALWAYS Display Signal Marker on Candle T
-                sig_key = (t_sig_epoch, "signal")
-                if sig_key not in seen_markers:
-                    seen_markers.add(sig_key)
-                    markers.append({
-                        "time": t_sig_epoch,
-                        "position": "belowBar" if sig_dir == "BUY" else "aboveBar",
-                        "color": "#10b981" if sig_dir == "BUY" else "#ef4444",
-                        "shape": "arrowUp" if sig_dir == "BUY" else "arrowDown",
-                        "text": "BUY" if sig_dir == "BUY" else "SELL",
-                        "detail": f"{sig_dir} SIGNAL on Candle T @ {c_time.strftime('%H:%M')} (Regime: {regime})",
-                        "size": 1
-                    })
-
-                # 2. Check Specific Time Filter from simulate_risk_rules.py
                 entry_hour = next_time.hour
                 entry_day = next_time.day_name()
                 is_entered = is_smart_time(entry_hour, entry_day)
 
-                # 3. If entered, place ENTRY marker on Candle T+1
+                # Only process and display signal/entry if trade is ACTUALLY entered
                 if is_entered:
+                    # 1. Display Signal Marker on Candle T
+                    sig_key = (t_sig_epoch, "signal")
+                    if sig_key not in seen_markers:
+                        seen_markers.add(sig_key)
+                        markers.append({
+                            "time": t_sig_epoch,
+                            "position": "belowBar" if sig_dir == "BUY" else "aboveBar",
+                            "color": "#10b981" if sig_dir == "BUY" else "#ef4444",
+                            "shape": "arrowUp" if sig_dir == "BUY" else "arrowDown",
+                            "text": "BUY" if sig_dir == "BUY" else "SELL",
+                            "detail": f"{sig_dir} SIGNAL on Candle T @ {c_time.strftime('%H:%M')} (Regime: {regime})",
+                            "size": 1
+                        })
+
+                    # 2. Place ENTRY marker on Candle T+1
                     entry_key = (t_entry_epoch, "entry")
                     if entry_key not in seen_markers:
                         seen_markers.add(entry_key)
@@ -551,26 +551,24 @@ def generate_model_signals_for_candles(df_candles):
                             "size": 1
                         })
 
-                # In BOTH cases: ADD TO active_positions!
-                # "also time filter like in morning we not enter but signal is come so that this is also consider as 1 trade"
-                # It occupies 1 of the 4 slots until it exits!
-                tp_dist = 200.0 if regime in ['markup', 'markdown', 'expansionup', 'expansiondown'] else 100.0
-                lot_size = float(thermal_sizer.get_lot_size(entry_hour, entry_day, sig_dir, entry_open)) if is_entered else 0.0
-                active_positions.append({
-                    "id": len(trades) + len(active_positions) + 1,
-                    "direction": sig_dir,
-                    "signal_time": c_time,
-                    "entry_time": next_time,
-                    "entry_price": entry_open,
-                    "high": entry_open,
-                    "low": entry_open,
-                    "sl": entry_open - SL_POINTS if sig_dir == "BUY" else entry_open + SL_POINTS,
-                    "tp": entry_open + tp_dist if sig_dir == "BUY" else entry_open - tp_dist,
-                    "regime": regime,
-                    "lot_size": lot_size,
-                    "temperature": round(thermal_sizer.T, 2),
-                    "entered": is_entered
-                })
+                    # 3. Add to active_positions to reserve 1 of 4 slots
+                    tp_dist = 200.0 if regime in ['markup', 'markdown', 'expansionup', 'expansiondown'] else 100.0
+                    lot_size = float(thermal_sizer.get_lot_size(entry_hour, entry_day, sig_dir, entry_open))
+                    active_positions.append({
+                        "id": len(trades) + len(active_positions) + 1,
+                        "direction": sig_dir,
+                        "signal_time": c_time,
+                        "entry_time": next_time,
+                        "entry_price": entry_open,
+                        "high": entry_open,
+                        "low": entry_open,
+                        "sl": entry_open - SL_POINTS if sig_dir == "BUY" else entry_open + SL_POINTS,
+                        "tp": entry_open + tp_dist if sig_dir == "BUY" else entry_open - tp_dist,
+                        "regime": regime,
+                        "lot_size": lot_size,
+                        "temperature": round(thermal_sizer.T, 2),
+                        "entered": True
+                    })
 
     markers.sort(key=lambda x: x["time"])
     print(f"[HistoricalSignalEngine] Generated {len(trades)} sequential trades and {len(markers)} markers (max 4 concurrent signals, Thermal Sizer T={thermal_sizer.T:.2f}).")

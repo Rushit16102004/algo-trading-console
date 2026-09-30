@@ -1,23 +1,5 @@
 [
   {
-    "time": 1790681100,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 11:25 (Regime: markup)",
-    "size": 1
-  },
-  {
-    "time": 1790681400,
-    "position": "belowBar",
-    "color": "#06b6d4",
-    "shape": "circle",
-    "text": "ENTRY",
-    "detail": "ENTRY POINT (T+1): BUY @ 22696.2 (11:30)",
-    "size": 1
-  },
-  {
     "time": 1790682900,
     "position": "belowBar",
     "color": "#10b981",
@@ -41,16 +23,7 @@
     "color": "#ef4444",
     "shape": "cross",
     "text": "SL",
-    "detail": "SL EXIT: BUY @ 22636.2 | 1 Lot(s) | Trade PnL: -60.0 pts | Total Net PnL: -60.0 pts",
-    "size": 1
-  },
-  {
-    "time": 1790685000,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "cross",
-    "text": "SL",
-    "detail": "SL EXIT: BUY @ 22667.8 | 1 Lot(s) | Trade PnL: -60.0 pts | Total Net PnL: -120.0 pts",
+    "detail": "SL EXIT: BUY @ 22667.8 | 1 Lot(s) | Trade PnL: -60.0 pts | Total Net PnL: -60.0 pts",
     "size": 1
   },
   {

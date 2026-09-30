@@ -378,30 +378,12 @@
     "size": 1
   },
   {
-    "time": 1783431000,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 13:30",
-    "size": 1
-  },
-  {
     "time": 1783436400,
     "position": "aboveBar",
     "color": "#ef4444",
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): BUY @ 24414.9 (-240.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1783436700,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 15:05",
     "size": 1
   },
   {
@@ -537,24 +519,6 @@
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): BUY @ 24234.5 (-120.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1783512000,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 12:00",
-    "size": 1
-  },
-  {
-    "time": 1783512300,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 12:05",
     "size": 1
   },
   {
@@ -747,15 +711,6 @@
     "size": 1
   },
   {
-    "time": 1783609200,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 15:00",
-    "size": 1
-  },
-  {
     "time": 1783675800,
     "position": "belowBar",
     "color": "#10b981",
@@ -825,33 +780,6 @@
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): BUY @ 24152.6 (-60.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1783690200,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 13:30",
-    "size": 1
-  },
-  {
-    "time": 1783690500,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 13:35",
-    "size": 1
-  },
-  {
-    "time": 1783693500,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 14:25",
     "size": 1
   },
   {
@@ -1170,69 +1098,6 @@
     "size": 1
   },
   {
-    "time": 1784120700,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 13:05",
-    "size": 1
-  },
-  {
-    "time": 1784194800,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 09:40",
-    "size": 1
-  },
-  {
-    "time": 1784199300,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 10:55",
-    "size": 1
-  },
-  {
-    "time": 1784205600,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 12:40",
-    "size": 1
-  },
-  {
-    "time": 1784208300,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 13:25",
-    "size": 1
-  },
-  {
-    "time": 1784208900,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 13:35",
-    "size": 1
-  },
-  {
-    "time": 1784209200,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 13:40",
-    "size": 1
-  },
-  {
     "time": 1784280300,
     "position": "belowBar",
     "color": "#10b981",
@@ -1311,24 +1176,6 @@
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): BUY @ 24213.8 (-120.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1784296500,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 13:55",
-    "size": 1
-  },
-  {
-    "time": 1784297400,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 14:10",
     "size": 1
   },
   {
@@ -1494,15 +1341,6 @@
     "size": 1
   },
   {
-    "time": 1784550900,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 12:35",
-    "size": 1
-  },
-  {
     "time": 1784553600,
     "position": "belowBar",
     "color": "#ef4444",
@@ -1518,69 +1356,6 @@
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): SELL @ 24239.8 (-60.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1784555100,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 13:45",
-    "size": 1
-  },
-  {
-    "time": 1784555700,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 13:55",
-    "size": 1
-  },
-  {
-    "time": 1784556000,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 14:00",
-    "size": 1
-  },
-  {
-    "time": 1784628000,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 10:00",
-    "size": 1
-  },
-  {
-    "time": 1784628600,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 10:10",
-    "size": 1
-  },
-  {
-    "time": 1784629200,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 10:20",
-    "size": 1
-  },
-  {
-    "time": 1784629800,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 10:30",
     "size": 1
   },
   {
@@ -1782,39 +1557,12 @@
     "size": 1
   },
   {
-    "time": 1784806500,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 11:35",
-    "size": 1
-  },
-  {
-    "time": 1784808600,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 12:10",
-    "size": 1
-  },
-  {
     "time": 1784809800,
     "position": "aboveBar",
     "color": "#ef4444",
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): BUY @ 23890.2 (-60.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1784810400,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 12:40",
     "size": 1
   },
   {
@@ -1878,15 +1626,6 @@
     "shape": "square",
     "text": "EXIT (EOD)",
     "detail": "EXIT (EOD): SELL @ 23873.0 (-58.6 pts)",
-    "size": 1
-  },
-  {
-    "time": 1784819400,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 15:10",
     "size": 1
   },
   {
@@ -2007,48 +1746,12 @@
     "size": 1
   },
   {
-    "time": 1784893500,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 11:45",
-    "size": 1
-  },
-  {
     "time": 1784893800,
     "position": "belowBar",
     "color": "#ef4444",
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): SELL @ 23707.0 (-60.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1784894400,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 12:00",
-    "size": 1
-  },
-  {
-    "time": 1784895300,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 12:15",
-    "size": 1
-  },
-  {
-    "time": 1784895600,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 12:20",
     "size": 1
   },
   {
@@ -2178,30 +1881,12 @@
     "size": 1
   },
   {
-    "time": 1785160500,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 13:55",
-    "size": 1
-  },
-  {
     "time": 1785160800,
     "position": "belowBar",
     "color": "#ef4444",
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): SELL @ 23980.4 (-240.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1785162000,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 14:20",
     "size": 1
   },
   {
@@ -2448,15 +2133,6 @@
     "size": 1
   },
   {
-    "time": 1785423600,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 15:00",
-    "size": 1
-  },
-  {
     "time": 1785490200,
     "position": "aboveBar",
     "color": "#ef4444",
@@ -2535,15 +2211,6 @@
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): SELL @ 24372.0 (-60.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1785499500,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 12:05",
     "size": 1
   },
   {
@@ -2961,78 +2628,6 @@
     "size": 1
   },
   {
-    "time": 1786009200,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 09:40",
-    "size": 1
-  },
-  {
-    "time": 1786011600,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 10:20",
-    "size": 1
-  },
-  {
-    "time": 1786026000,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 14:20",
-    "size": 1
-  },
-  {
-    "time": 1786096200,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 09:50",
-    "size": 1
-  },
-  {
-    "time": 1786100100,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 10:55",
-    "size": 1
-  },
-  {
-    "time": 1786100400,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 11:00",
-    "size": 1
-  },
-  {
-    "time": 1786103100,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 11:45",
-    "size": 1
-  },
-  {
-    "time": 1786104000,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 12:00",
-    "size": 1
-  },
-  {
     "time": 1786353000,
     "position": "belowBar",
     "color": "#10b981",
@@ -3078,84 +2673,12 @@
     "size": 1
   },
   {
-    "time": 1786356600,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 10:10",
-    "size": 1
-  },
-  {
-    "time": 1786356900,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 10:15",
-    "size": 1
-  },
-  {
-    "time": 1786357200,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 10:20",
-    "size": 1
-  },
-  {
     "time": 1786364100,
     "position": "belowBar",
     "color": "#ef4444",
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): SELL @ 24617.9 (-60.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1786368600,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 13:30",
-    "size": 1
-  },
-  {
-    "time": 1786439700,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 09:15",
-    "size": 1
-  },
-  {
-    "time": 1786440300,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 09:25",
-    "size": 1
-  },
-  {
-    "time": 1786440900,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 09:35",
-    "size": 1
-  },
-  {
-    "time": 1786443000,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 10:10",
     "size": 1
   },
   {
@@ -3375,33 +2898,6 @@
     "size": 1
   },
   {
-    "time": 1786701300,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 09:55",
-    "size": 1
-  },
-  {
-    "time": 1786701900,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 10:05",
-    "size": 1
-  },
-  {
-    "time": 1786709700,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 12:15",
-    "size": 1
-  },
-  {
     "time": 1786960500,
     "position": "aboveBar",
     "color": "#ef4444",
@@ -3489,15 +2985,6 @@
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): SELL @ 24312.5 (-60.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1786971300,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 12:55",
     "size": 1
   },
   {
@@ -4005,30 +3492,12 @@
     "size": 1
   },
   {
-    "time": 1787665800,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 13:50",
-    "size": 1
-  },
-  {
     "time": 1787668200,
     "position": "belowBar",
     "color": "#ef4444",
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): SELL @ 24202.0 (-60.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1787669100,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 14:45",
     "size": 1
   },
   {
@@ -4329,123 +3798,6 @@
     "size": 1
   },
   {
-    "time": 1788168900,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 09:35",
-    "size": 1
-  },
-  {
-    "time": 1788169200,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 09:40",
-    "size": 1
-  },
-  {
-    "time": 1788171300,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 10:15",
-    "size": 1
-  },
-  {
-    "time": 1788172200,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 10:30",
-    "size": 1
-  },
-  {
-    "time": 1788177000,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 11:50",
-    "size": 1
-  },
-  {
-    "time": 1788177600,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 12:00",
-    "size": 1
-  },
-  {
-    "time": 1788179700,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 12:35",
-    "size": 1
-  },
-  {
-    "time": 1788261300,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 11:15",
-    "size": 1
-  },
-  {
-    "time": 1788264300,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 12:05",
-    "size": 1
-  },
-  {
-    "time": 1788267600,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 13:00",
-    "size": 1
-  },
-  {
-    "time": 1788267900,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 13:05",
-    "size": 1
-  },
-  {
-    "time": 1788268200,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 13:10",
-    "size": 1
-  },
-  {
-    "time": 1788269700,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 13:35",
-    "size": 1
-  },
-  {
     "time": 1788271200,
     "position": "aboveBar",
     "color": "#ef4444",
@@ -4599,39 +3951,12 @@
     "size": 1
   },
   {
-    "time": 1788349200,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 11:40",
-    "size": 1
-  },
-  {
-    "time": 1788354600,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 13:10",
-    "size": 1
-  },
-  {
     "time": 1788355200,
     "position": "belowBar",
     "color": "#ef4444",
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): SELL @ 23879.0 (-60.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1788355200,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 13:20",
     "size": 1
   },
   {
@@ -5091,33 +4416,6 @@
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): SELL @ 23558.6 (-240.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1788964200,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 14:30",
-    "size": 1
-  },
-  {
-    "time": 1788964500,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 14:35",
-    "size": 1
-  },
-  {
-    "time": 1788965400,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 14:50",
     "size": 1
   },
   {
@@ -5643,78 +4941,6 @@
     "size": 1
   },
   {
-    "time": 1789637400,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 09:30",
-    "size": 1
-  },
-  {
-    "time": 1789646100,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 11:55",
-    "size": 1
-  },
-  {
-    "time": 1789646700,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 12:05",
-    "size": 1
-  },
-  {
-    "time": 1789725000,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 09:50",
-    "size": 1
-  },
-  {
-    "time": 1789733400,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 12:10",
-    "size": 1
-  },
-  {
-    "time": 1789734600,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 12:30",
-    "size": 1
-  },
-  {
-    "time": 1789738800,
-    "position": "aboveBar",
-    "color": "#ef4444",
-    "shape": "arrowDown",
-    "text": "SELL",
-    "detail": "SELL SIGNAL on Candle T @ 13:40",
-    "size": 1
-  },
-  {
-    "time": 1789742700,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 14:45",
-    "size": 1
-  },
-  {
     "time": 1789744800,
     "position": "aboveBar",
     "color": "#ef4444",
@@ -5820,15 +5046,6 @@
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): SELL @ 23434.0 (-60.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1789997100,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 13:25",
     "size": 1
   },
   {
@@ -6225,24 +5442,6 @@
     "shape": "square",
     "text": "EXIT (SL)",
     "detail": "EXIT (SL): SELL @ 23117.8 (-240.0 pts)",
-    "size": 1
-  },
-  {
-    "time": 1790344800,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 14:00",
-    "size": 1
-  },
-  {
-    "time": 1790346900,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 14:35",
     "size": 1
   },
   {

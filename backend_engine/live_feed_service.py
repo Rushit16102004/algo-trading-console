@@ -428,24 +428,25 @@ class LiveFeedService:
                 is_smart = is_smart_time(entry_dt.hour, entry_dt.day_name())
                 is_entered = is_smart and (lot_size > 0)
 
-                # 1. Signal marker on Candle T (5 min before Entry)
-                sig_dt = entry_dt - datetime.timedelta(minutes=5)
-                sig_epoch = to_chart_epoch(sig_dt)
-                sig_key = (sig_epoch, direction, "arrowUp" if direction == "BUY" else "arrowDown")
-                if sig_key not in seen_marker_keys:
-                    seen_marker_keys.add(sig_key)
-                    generated_markers.append({
-                        "time": sig_epoch,
-                        "position": "belowBar" if direction == "BUY" else "aboveBar",
-                        "color": "#10b981" if direction == "BUY" else "#ef4444",
-                        "shape": "arrowUp" if direction == "BUY" else "arrowDown",
-                        "text": direction,
-                        "detail": f"{direction} SIGNAL on Candle T @ {sig_dt.strftime('%H:%M')}",
-                        "size": 1
-                    })
-
-                # 2. Entry marker on Candle T+1 if entered
+                # Only generate & display markers for trades that were ACTUALLY entered
                 if is_entered:
+                    # 1. Signal marker on Candle T (5 min before Entry)
+                    sig_dt = entry_dt - datetime.timedelta(minutes=5)
+                    sig_epoch = to_chart_epoch(sig_dt)
+                    sig_key = (sig_epoch, direction, "arrowUp" if direction == "BUY" else "arrowDown")
+                    if sig_key not in seen_marker_keys:
+                        seen_marker_keys.add(sig_key)
+                        generated_markers.append({
+                            "time": sig_epoch,
+                            "position": "belowBar" if direction == "BUY" else "aboveBar",
+                            "color": "#10b981" if direction == "BUY" else "#ef4444",
+                            "shape": "arrowUp" if direction == "BUY" else "arrowDown",
+                            "text": direction,
+                            "detail": f"{direction} SIGNAL on Candle T @ {sig_dt.strftime('%H:%M')}",
+                            "size": 1
+                        })
+
+                    # 2. Entry marker on Candle T+1 if entered
                     entry_epoch = to_chart_epoch(entry_dt)
                     entry_key = (entry_epoch, "ENTRY", "circle")
                     if entry_key not in seen_marker_keys:
