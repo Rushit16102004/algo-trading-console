@@ -1,0 +1,182 @@
+[
+  {
+    "time": 1790600400,
+    "position": "aboveBar",
+    "color": "#ef4444",
+    "shape": "arrowDown",
+    "text": "SELL",
+    "detail": "SELL SIGNAL on Candle T @ 13:00 (Regime: distributiondown)",
+    "size": 1
+  },
+  {
+    "time": 1790600700,
+    "position": "aboveBar",
+    "color": "#06b6d4",
+    "shape": "circle",
+    "text": "ENTRY",
+    "detail": "ENTRY POINT (T+1): SELL @ 22822.5 (13:05)",
+    "size": 1
+  },
+  {
+    "time": 1790602200,
+    "position": "aboveBar",
+    "color": "#ef4444",
+    "shape": "arrowDown",
+    "text": "SELL",
+    "detail": "SELL SIGNAL on Candle T @ 13:30 (Regime: distributiondown)",
+    "size": 1
+  },
+  {
+    "time": 1790602500,
+    "position": "aboveBar",
+    "color": "#06b6d4",
+    "shape": "circle",
+    "text": "ENTRY",
+    "detail": "ENTRY POINT (T+1): SELL @ 22832.2 (13:35)",
+    "size": 1
+  },
+  {
+    "time": 1790603400,
+    "position": "aboveBar",
+    "color": "#ef4444",
+    "shape": "arrowDown",
+    "text": "SELL",
+    "detail": "SELL SIGNAL on Candle T @ 13:50 (Regime: distributiondown)",
+    "size": 1
+  },
+  {
+    "time": 1790603700,
+    "position": "aboveBar",
+    "color": "#06b6d4",
+    "shape": "circle",
+    "text": "ENTRY",
+    "detail": "ENTRY POINT (T+1): SELL @ 22835.2 (13:55)",
+    "size": 1
+  },
+  {
+    "time": 1790604000,
+    "position": "aboveBar",
+    "color": "#ef4444",
+    "shape": "arrowDown",
+    "text": "SELL",
+    "detail": "SELL SIGNAL on Candle T @ 14:00 (Regime: distributiondown)",
+    "size": 1
+  },
+  {
+    "time": 1790604300,
+    "position": "aboveBar",
+    "color": "#06b6d4",
+    "shape": "circle",
+    "text": "ENTRY",
+    "detail": "ENTRY POINT (T+1): SELL @ 22833.5 (14:05)",
+    "size": 1
+  },
+  {
+    "time": 1790608200,
+    "position": "aboveBar",
+    "color": "#f59e0b",
+    "shape": "square",
+    "text": "EOD",
+    "detail": "EOD EXIT: SELL @ 22788.2 | 1 Lot(s) | Trade PnL: +34.2 pts | Total Net PnL: +34.2 pts",
+    "size": 1
+  },
+  {
+    "time": 1790673300,
+    "position": "aboveBar",
+    "color": "#ef4444",
+    "shape": "arrowDown",
+    "text": "SELL",
+    "detail": "SELL SIGNAL on Candle T @ 09:15 (Regime: markdown)",
+    "size": 1
+  },
+  {
+    "time": 1790675100,
+    "position": "aboveBar",
+    "color": "#ef4444",
+    "shape": "arrowDown",
+    "text": "SELL",
+    "detail": "SELL SIGNAL on Candle T @ 09:45 (Regime: markdown)",
+    "size": 1
+  },
+  {
+    "time": 1790676000,
+    "position": "aboveBar",
+    "color": "#ef4444",
+    "shape": "arrowDown",
+    "text": "SELL",
+    "detail": "SELL SIGNAL on Candle T @ 10:00 (Regime: markdown)",
+    "size": 1
+  },
+  {
+    "time": 1790679900,
+    "position": "belowBar",
+    "color": "#10b981",
+    "shape": "arrowUp",
+    "text": "BUY",
+    "detail": "BUY SIGNAL on Candle T @ 11:05 (Regime: expansionup)",
+    "size": 1
+  },
+  {
+    "time": 1790681100,
+    "position": "belowBar",
+    "color": "#10b981",
+    "shape": "arrowUp",
+    "text": "BUY",
+    "detail": "BUY SIGNAL on Candle T @ 11:25 (Regime: markup)",
+    "size": 1
+  },
+  {
+    "time": 1790682900,
+    "position": "belowBar",
+    "color": "#10b981",
+    "shape": "arrowUp",
+    "text": "BUY",
+    "detail": "BUY SIGNAL on Candle T @ 11:55 (Regime: markup)",
+    "size": 1
+  },
+  {
+    "time": 1790683200,
+    "position": "belowBar",
+    "color": "#06b6d4",
+    "shape": "circle",
+    "text": "ENTRY",
+    "detail": "ENTRY POINT (T+1): BUY @ 22727.8 (12:00)",
+    "size": 1
+  },
+  {
+    "time": 1790685000,
+    "position": "aboveBar",
+    "color": "#ef4444",
+    "shape": "cross",
+    "text": "SL",
+    "detail": "SL EXIT: BUY @ 22667.8 | 4 Lot(s) | Trade PnL: -240.0 pts | Total Net PnL: -69.7 pts",
+    "size": 1
+  },
+  {
+    "time": 1790685000,
+    "position": "aboveBar",
+    "color": "#ef4444",
+    "shape": "square",
+    "text": "EXIT (SL)",
+    "detail": "EXIT (SL): BUY @ 22667.8 (-60.0 pts)",
+    "size": 1
+  },
+  {
+    "time": 1790760000,
+    "position": "belowBar",
+    "color": "#10b981",
+    "shape": "arrowUp",
+    "text": "BUY",
+    "detail": "BUY SIGNAL on Candle T @ 09:20 (Regime: distributionup)",
+    "size": 1
+  },
+  {
+    "time": 1790761800,
+    "position": "belowBar",
+    "color": "#10b981",
+    "shape": "arrowUp",
+    "text": "BUY",
+    "detail": "BUY SIGNAL on Candle T @ 09:50 (Regime: distributionup)",
+    "size": 1
+  }
+]

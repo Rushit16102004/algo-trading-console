@@ -397,22 +397,100 @@ class LiveFeedService:
         if all_trades:
             self.thermal_sizer.T = all_trades[-1]["temperature"]
 
+        # Build and merge markers from cached json and df_existing for all 3 months
+        generated_markers = []
+        seen_marker_keys = set()
+
         if os.path.exists(markers_json):
             try:
                 with open(markers_json, "r", encoding="utf-8") as f:
                     cached_markers = json.load(f)
-                self._historical_markers = [m for m in cached_markers if m.get("time", 0) >= cutoff_epoch]
+                for m in cached_markers:
+                    t = m.get("time", 0)
+                    if t >= cutoff_epoch:
+                        key = (t, str(m.get("text", "")), str(m.get("shape", "")))
+                        if key not in seen_marker_keys:
+                            seen_marker_keys.add(key)
+                            generated_markers.append(m)
             except Exception:
-                self._historical_markers = []
+                pass
 
-        backup_json = os.path.join(backup_dir, "model_markers_backup.json")
+        if not df_existing.empty:
+            for _, row in df_existing.iterrows():
+                entry_dt = pd.to_datetime(row["Entry Time"])
+                exit_dt = pd.to_datetime(row["Exit Time"]) if pd.notna(row.get("Exit Time")) else None
+                direction = str(row.get("Direction", "BUY")).upper()
+                entry_price = float(row.get("Nifty Enter Price", 0.0))
+                exit_price = float(row.get("Nifty Exit Price", 0.0))
+                sim_pnl = float(row.get("Sim PnL", 0.0))
+                exit_reason = str(row.get("Exit Reason", "EOD")).upper()
+                lot_size = float(row.get("Lot Size", 1.0))
+                is_smart = is_smart_time(entry_dt.hour, entry_dt.day_name())
+                is_entered = is_smart and (lot_size > 0)
+
+                # 1. Signal marker on Candle T (5 min before Entry)
+                sig_dt = entry_dt - datetime.timedelta(minutes=5)
+                sig_epoch = to_chart_epoch(sig_dt)
+                sig_key = (sig_epoch, direction, "arrowUp" if direction == "BUY" else "arrowDown")
+                if sig_key not in seen_marker_keys:
+                    seen_marker_keys.add(sig_key)
+                    generated_markers.append({
+                        "time": sig_epoch,
+                        "position": "belowBar" if direction == "BUY" else "aboveBar",
+                        "color": "#10b981" if direction == "BUY" else "#ef4444",
+                        "shape": "arrowUp" if direction == "BUY" else "arrowDown",
+                        "text": direction,
+                        "detail": f"{direction} SIGNAL on Candle T @ {sig_dt.strftime('%H:%M')}",
+                        "size": 1
+                    })
+
+                # 2. Entry marker on Candle T+1 if entered
+                if is_entered:
+                    entry_epoch = to_chart_epoch(entry_dt)
+                    entry_key = (entry_epoch, "ENTRY", "circle")
+                    if entry_key not in seen_marker_keys:
+                        seen_marker_keys.add(entry_key)
+                        generated_markers.append({
+                            "time": entry_epoch,
+                            "position": "belowBar" if direction == "BUY" else "aboveBar",
+                            "color": "#06b6d4",
+                            "shape": "circle",
+                            "text": "ENTRY",
+                            "detail": f"ENTRY POINT (T+1): {direction} @ {entry_price:.1f} ({entry_dt.strftime('%H:%M')})",
+                            "size": 1
+                        })
+
+                    # 3. Exit marker on Exit Time if entered and exit_dt valid
+                    if exit_dt is not None and pd.notna(exit_dt):
+                        exit_epoch = to_chart_epoch(exit_dt)
+                        exit_key = (exit_epoch, f"EXIT ({exit_reason})", "square")
+                        if exit_key not in seen_marker_keys:
+                            seen_marker_keys.add(exit_key)
+                            color = "#10b981" if sim_pnl >= 0 else "#ef4444"
+                            generated_markers.append({
+                                "time": exit_epoch,
+                                "position": "aboveBar" if direction == "BUY" else "belowBar",
+                                "color": color,
+                                "shape": "square",
+                                "text": f"EXIT ({exit_reason})",
+                                "detail": f"EXIT ({exit_reason}): {direction} @ {exit_price:.1f} ({sim_pnl:+.1f} pts)",
+                                "size": 1
+                            })
+
+        generated_markers.sort(key=lambda x: x["time"])
+        self._historical_markers = generated_markers
+
         try:
+            with open(markers_json, "w", encoding="utf-8") as f:
+                json.dump(self._historical_markers, f, indent=2)
+            backup_json = os.path.join(backup_dir, "model_markers_backup.json")
             with open(backup_json, "w", encoding="utf-8") as f:
                 json.dump(self._historical_markers, f, indent=2)
         except Exception:
             pass
 
-        print(f"[LiveFeedService] Rolling 3-Month Signal Engine Ready: Loaded {len(self.closed_trades)} trades, Net PnL: {cum_net_pnl:+.2f} pts across past 90 days.")
+        print(f"[LiveFeedService] Rolling 3-Month Signal Engine Ready: Loaded {len(self.closed_trades)} trades, {len(self._historical_markers)} markers, Net PnL: {cum_net_pnl:+.2f} pts across past 90 days.")
+
 
     def _evaluate_today_signals(self):
         """

@@ -493,7 +493,7 @@ async def get_live_state():
     }
 
 @app.get("/api/live/candles")
-async def get_live_candles(limit: int = Query(600)):
+async def get_live_candles(limit: int = Query(6000)):
     """Returns 5-minute candles and all markers (Signal on T, Entry on T+1, Exits) for Work 2."""
     from backend_engine.live_feed_service import LiveFeedService
     svc = LiveFeedService.get_instance()
