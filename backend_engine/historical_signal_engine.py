@@ -484,11 +484,9 @@ def generate_model_signals_for_candles(df_candles):
 
         active_positions = remaining_positions
 
-        # Check for new signal only if fewer than 4 positions are active
+        # Check for new signal only if fewer than 4 positions are active (Pyramiding Limit = 4)
         if len(active_positions) < MAX_CONCURRENT_SIGNALS:
-            # Avoid opening trades after 14:45
-            if (c_time.hour * 100 + c_time.minute) >= 1445:
-                continue
+            # Allow trades on all candles from 1st candle (09:15) through EOD candle
 
             p_buy = gbm_prob_series.iloc[i]
             p_sell = 1.0 - p_buy

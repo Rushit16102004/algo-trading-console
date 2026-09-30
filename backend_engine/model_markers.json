@@ -1,20 +1,20 @@
 [
   {
-    "time": 1790679900,
-    "position": "belowBar",
-    "color": "#10b981",
-    "shape": "arrowUp",
-    "text": "BUY",
-    "detail": "BUY SIGNAL on Candle T @ 11:05 (Regime: expansionup)",
-    "size": 1
-  },
-  {
     "time": 1790681100,
     "position": "belowBar",
     "color": "#10b981",
     "shape": "arrowUp",
     "text": "BUY",
     "detail": "BUY SIGNAL on Candle T @ 11:25 (Regime: markup)",
+    "size": 1
+  },
+  {
+    "time": 1790681400,
+    "position": "belowBar",
+    "color": "#06b6d4",
+    "shape": "circle",
+    "text": "ENTRY",
+    "detail": "ENTRY POINT (T+1): BUY @ 22696.2 (11:30)",
     "size": 1
   },
   {
@@ -41,7 +41,16 @@
     "color": "#ef4444",
     "shape": "cross",
     "text": "SL",
-    "detail": "SL EXIT: BUY @ 22667.8 | 1 Lot(s) | Trade PnL: -60.0 pts | Total Net PnL: -60.0 pts",
+    "detail": "SL EXIT: BUY @ 22636.2 | 1 Lot(s) | Trade PnL: -60.0 pts | Total Net PnL: -60.0 pts",
+    "size": 1
+  },
+  {
+    "time": 1790685000,
+    "position": "aboveBar",
+    "color": "#ef4444",
+    "shape": "cross",
+    "text": "SL",
+    "detail": "SL EXIT: BUY @ 22667.8 | 1 Lot(s) | Trade PnL: -60.0 pts | Total Net PnL: -120.0 pts",
     "size": 1
   },
   {
@@ -54,12 +63,48 @@
     "size": 1
   },
   {
+    "time": 1790760300,
+    "position": "belowBar",
+    "color": "#06b6d4",
+    "shape": "circle",
+    "text": "ENTRY",
+    "detail": "ENTRY POINT (T+1): BUY @ 22727.8 (09:25)",
+    "size": 1
+  },
+  {
     "time": 1790761800,
     "position": "belowBar",
     "color": "#10b981",
     "shape": "arrowUp",
     "text": "BUY",
     "detail": "BUY SIGNAL on Candle T @ 09:50 (Regime: distributionup)",
+    "size": 1
+  },
+  {
+    "time": 1790762100,
+    "position": "belowBar",
+    "color": "#06b6d4",
+    "shape": "circle",
+    "text": "ENTRY",
+    "detail": "ENTRY POINT (T+1): BUY @ 22719.5 (09:55)",
+    "size": 1
+  },
+  {
+    "time": 1790763000,
+    "position": "belowBar",
+    "color": "#10b981",
+    "shape": "arrowUp",
+    "text": "BUY",
+    "detail": "BUY SIGNAL on Candle T @ 10:10 (Regime: distributionup)",
+    "size": 1
+  },
+  {
+    "time": 1790763300,
+    "position": "belowBar",
+    "color": "#06b6d4",
+    "shape": "circle",
+    "text": "ENTRY",
+    "detail": "ENTRY POINT (T+1): BUY @ 22754.8 (10:15)",
     "size": 1
   }
 ]

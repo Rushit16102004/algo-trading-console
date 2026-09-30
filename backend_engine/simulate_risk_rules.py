@@ -69,16 +69,7 @@ def clip(val, min_val, max_val):
     return max(min_val, min(val, max_val))
 
 def is_smart_time(hour, day):
-    if day == 'Monday' and hour in [9, 10, 15]:
-        return False
-    if day == 'Tuesday' and hour in [9, 10, 11, 13, 14, 15]:
-        return False
-    if day == 'Wednesday' and hour in [9, 10, 15]:
-        return False
-    if day == 'Thursday' and hour in [9, 10, 15]:
-        return False
-    if day == 'Friday' and hour in [15]:
-        return False
+    # Time filter removed: allow trades on all candles from 1st candle (09:15 AM) through EOD (15:30 PM)
     return True
 
 # Smart + Thermal Dissipation (Rounded to nearest Integer)
